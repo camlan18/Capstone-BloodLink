@@ -1,0 +1,578 @@
+generator client {
+  provider   = "prisma-client-js"
+  engineType = "library"
+}
+
+datasource db {
+  provider = "sqlserver"
+  url      = env("DATABASE_URL")
+}
+
+model roles {
+  role_id     Int      @id @default(autoincrement())
+  role_code   String   @unique @db.NVarChar(20)
+  role_name   String   @db.NVarChar(100)
+  description String?  @db.NVarChar(500)
+  is_active   Boolean  @default(true)
+  created_at  DateTime @default(now()) @db.DateTime2
+
+  users       users[]
+}
+
+model blood_types {
+  blood_type_id   Int      @id @default(autoincrement())
+  blood_type_code String   @unique @db.NVarChar(5)
+  abo             String   @db.Char(2)
+  rh_factor       String   @db.Char(1)
+  display_order   Int      @default(0)
+  is_active       Boolean  @default(true)
+
+  compatibility_donor     blood_compatibility[] @relation("DonorCompatibility")
+  compatibility_recipient blood_compatibility[] @relation("RecipientCompatibility")
+  education_documents     education_documents[]
+  users                   users[]
+  donor_profiles          donor_profiles[]
+  blood_inventory         blood_inventory[]
+  blood_requests          blood_requests[]
+  donations               donations[]
+}
+
+model blood_components {
+  component_id   Int      @id @default(autoincrement())
+  component_code String   @unique @db.NVarChar(30)
+  component_name String   @db.NVarChar(100)
+  description    String?  @db.NVarChar(500)
+  is_active      Boolean  @default(true)
+
+  compatibility           blood_compatibility[]
+  interval_rules          donation_interval_rules?
+  blood_inventory         blood_inventory[]
+  blood_requests          blood_requests[]
+  donations               donations[]
+  donation_reminders      donation_reminders[]
+}
+
+model blood_compatibility {
+  compatibility_id        Int     @id @default(autoincrement())
+  component_id            Int
+  donor_blood_type_id     Int
+  recipient_blood_type_id Int
+  is_compatible           Boolean @default(true)
+  notes                   String? @db.NVarChar(300)
+
+  component               blood_components @relation(fields: [component_id], references: [component_id], onDelete: NoAction, onUpdate: NoAction)
+  donor_blood_type        blood_types      @relation("DonorCompatibility", fields: [donor_blood_type_id], references: [blood_type_id], onDelete: NoAction, onUpdate: NoAction)
+  recipient_blood_type    blood_types      @relation("RecipientCompatibility", fields: [recipient_blood_type_id], references: [blood_type_id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([component_id, donor_blood_type_id, recipient_blood_type_id], name: "uq_blood_compatibility")
+}
+
+model donation_interval_rules {
+  rule_id                 Int     @id @default(autoincrement())
+  component_id            Int     @unique
+  min_interval_days       Int
+  max_donations_per_year  Int?
+  description             String? @db.NVarChar(300)
+  is_active               Boolean @default(true)
+
+  component blood_components @relation(fields: [component_id], references: [component_id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model blood_request_statuses {
+  status_id   Int     @id @default(autoincrement())
+  status_code String  @unique @db.NVarChar(30)
+  status_name String  @db.NVarChar(100)
+  description String? @db.NVarChar(500)
+  sort_order  Int     @default(0)
+  is_terminal Boolean @default(false)
+
+  blood_requests                 blood_requests[]
+  status_history_from            blood_request_status_history[] @relation("FromStatus")
+  status_history_to              blood_request_status_history[] @relation("ToStatus")
+}
+
+model urgency_levels {
+  urgency_id     Int    @id @default(autoincrement())
+  urgency_code   String @unique @db.NVarChar(20)
+  urgency_name   String @db.NVarChar(100)
+  priority_level Int
+
+  blood_requests blood_requests[]
+}
+
+model provinces {
+  province_id   Int     @id @default(autoincrement())
+  province_code String? @db.NVarChar(10)
+  province_name String  @db.NVarChar(100)
+
+  districts          districts[]
+  medical_facilities medical_facilities[]
+  users              users[]
+}
+
+model districts {
+  district_id   Int    @id @default(autoincrement())
+  province_id   Int
+  district_name String @db.NVarChar(100)
+
+  province           provinces            @relation(fields: [province_id], references: [province_id], onDelete: NoAction, onUpdate: NoAction)
+  wards              wards[]
+  medical_facilities medical_facilities[]
+  users              users[]
+}
+
+model wards {
+  ward_id     Int    @id @default(autoincrement())
+  district_id Int
+  ward_name   String @db.NVarChar(100)
+
+  district           districts            @relation(fields: [district_id], references: [district_id], onDelete: NoAction, onUpdate: NoAction)
+  medical_facilities medical_facilities[]
+  users              users[]
+}
+
+model medical_facilities {
+  facility_id   Int       @id @default(autoincrement())
+  facility_code String    @unique @db.NVarChar(20)
+  facility_name String    @db.NVarChar(200)
+  short_name    String?   @db.NVarChar(100)
+  address       String    @db.NVarChar(500)
+  province_id   Int?
+  district_id   Int?
+  ward_id       Int?
+  phone         String?   @db.NVarChar(20)
+  email         String?   @db.NVarChar(100)
+  website       String?   @db.NVarChar(200)
+  latitude      Decimal?  @db.Decimal(10, 7)
+  longitude     Decimal?  @db.Decimal(10, 7)
+  logo_url      String?   @db.NVarChar(500)
+  is_primary    Boolean   @default(false)
+  is_active     Boolean   @default(true)
+  created_at    DateTime  @default(now()) @db.DateTime2
+  updated_at    DateTime? @db.DateTime2
+
+  province        provinces?        @relation(fields: [province_id], references: [province_id], onDelete: NoAction, onUpdate: NoAction)
+  district        districts?        @relation(fields: [district_id], references: [district_id], onDelete: NoAction, onUpdate: NoAction)
+  ward            wards?            @relation(fields: [ward_id], references: [ward_id], onDelete: NoAction, onUpdate: NoAction)
+  blood_inventory blood_inventory[]
+  blood_requests  blood_requests[]
+  donations       donations[]
+  facility_donation_schedules facility_donation_schedules[]
+}
+
+model facility_donation_schedules {
+  schedule_id    Int      @id @default(autoincrement())
+  facility_id    Int
+  date           DateTime @db.Date
+  start_time     DateTime @db.Time
+  end_time       DateTime @db.Time
+  max_donors     Int      @default(50)
+  current_donors Int      @default(0)
+  status         String   @default("OPEN") @db.NVarChar(20)
+  terms_html     String?  @db.NVarChar(Max)
+  created_at     DateTime @default(now()) @db.DateTime2
+
+  facility       medical_facilities         @relation(fields: [facility_id], references: [facility_id], onDelete: NoAction, onUpdate: NoAction)
+  donor_availability_slots donor_availability_slots[]
+}
+
+model education_document_categories {
+  category_id   Int     @id @default(autoincrement())
+  category_name String  @db.NVarChar(150)
+  description   String? @db.NVarChar(500)
+  sort_order    Int     @default(0)
+
+  education_documents education_documents[]
+}
+
+model education_documents {
+  document_id   Int       @id @default(autoincrement())
+  category_id   Int
+  blood_type_id Int?
+  title         String    @db.NVarChar(300)
+  slug          String    @unique @db.NVarChar(300)
+  summary       String?   @db.NVarChar(1000)
+  content_html  String    @db.NVarChar(Max)
+  thumbnail_url String?   @db.NVarChar(500)
+  view_count    Int       @default(0)
+  is_published  Boolean   @default(true)
+  published_at  DateTime? @db.DateTime2
+  created_by    Int?
+  created_at    DateTime  @default(now()) @db.DateTime2
+  updated_at    DateTime? @db.DateTime2
+
+  category   education_document_categories @relation(fields: [category_id], references: [category_id], onDelete: NoAction, onUpdate: NoAction)
+  blood_type blood_types?                  @relation(fields: [blood_type_id], references: [blood_type_id], onDelete: NoAction, onUpdate: NoAction)
+  creator    users?                        @relation("DocCreator", fields: [created_by], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model blog_categories {
+  blog_category_id Int    @id @default(autoincrement())
+  category_name    String @db.NVarChar(150)
+  slug             String @unique @db.NVarChar(150)
+
+  blog_posts blog_posts[]
+}
+
+model blog_posts {
+  post_id          Int       @id @default(autoincrement())
+  blog_category_id Int
+  author_user_id   Int?
+  title            String    @db.NVarChar(300)
+  slug             String    @unique @db.NVarChar(300)
+  summary          String?   @db.NVarChar(1000)
+  content_html     String    @db.NVarChar(Max)
+  thumbnail_url    String?   @db.NVarChar(500)
+  view_count       Int       @default(0)
+  is_published     Boolean   @default(false)
+  published_at     DateTime? @db.DateTime2
+  created_at       DateTime  @default(now()) @db.DateTime2
+  updated_at       DateTime? @db.DateTime2
+
+  category      blog_categories @relation(fields: [blog_category_id], references: [blog_category_id], onDelete: NoAction, onUpdate: NoAction)
+  author        users?          @relation("PostAuthor", fields: [author_user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+  blog_comments blog_comments[]
+}
+
+model blog_comments {
+  comment_id        Int       @id @default(autoincrement())
+  post_id           Int
+  parent_comment_id Int?
+  user_id           Int?
+  reply_to_user_id  Int?
+  guest_name        String?   @db.NVarChar(100)
+  content           String    @db.NVarChar(2000)
+  is_approved       Boolean   @default(false)
+  created_at        DateTime  @default(now()) @db.DateTime2
+  updated_at        DateTime? @db.DateTime2
+
+  post           blog_posts      @relation(fields: [post_id], references: [post_id], onDelete: NoAction, onUpdate: NoAction)
+  parent_comment blog_comments?  @relation("CommentReplies", fields: [parent_comment_id], references: [comment_id], onDelete: NoAction, onUpdate: NoAction)
+  replies        blog_comments[] @relation("CommentReplies")
+  user           users?          @relation("CommentUser", fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+  reply_to_user  users?          @relation("ReplyToUser", fields: [reply_to_user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model users {
+  user_id                   Int       @id @default(autoincrement())
+  role_id                   Int
+  email                     String    @unique @db.NVarChar(150)
+  username                  String?   @db.NVarChar(150)
+  password_hash             String    @db.NVarChar(256)
+  full_name                 String    @db.NVarChar(150)
+  phone                     String?   @db.NVarChar(20)
+  date_of_birth             DateTime? @db.Date
+  gender                    String?   @db.Char(1)
+  avatar_url                String?   @db.NVarChar(500)
+  identity_card             String?   @db.NVarChar(20)
+  address                   String?   @db.NVarChar(500)
+  province_id               Int?
+  district_id               Int?
+  ward_id                   Int?
+  latitude                  Decimal?  @db.Decimal(10, 7)
+  longitude                 Decimal?  @db.Decimal(10, 7)
+  blood_type_id             Int?
+  is_donor_registered       Boolean   @default(false)
+  is_available_for_donation Boolean   @default(false)
+  last_login_at             DateTime? @db.DateTime2
+  is_active                 Boolean   @default(true)
+  is_email_verified         Boolean   @default(false)
+  created_at                DateTime  @default(now()) @db.DateTime2
+  updated_at                DateTime? @db.DateTime2
+  refresh_token             String?   @db.NVarChar(500)
+
+  role             roles       @relation(fields: [role_id], references: [role_id], onDelete: NoAction, onUpdate: NoAction)
+  blood_type       blood_types? @relation(fields: [blood_type_id], references: [blood_type_id], onDelete: NoAction, onUpdate: NoAction)
+  province         provinces?  @relation(fields: [province_id], references: [province_id], onDelete: NoAction, onUpdate: NoAction)
+  district         districts?  @relation(fields: [district_id], references: [district_id], onDelete: NoAction, onUpdate: NoAction)
+  ward             wards?      @relation(fields: [ward_id], references: [ward_id], onDelete: NoAction, onUpdate: NoAction)
+
+  education_documents                 education_documents[]                 @relation("DocCreator")
+  blog_posts                          blog_posts[]                          @relation("PostAuthor")
+  blog_comments_user                  blog_comments[]                       @relation("CommentUser")
+  blog_comments_reply                 blog_comments[]                       @relation("ReplyToUser")
+  donor_profile                       donor_profiles?                       
+  donor_availability_slots            donor_availability_slots[]
+  inventory_transactions              inventory_transactions[]              @relation("TransactionUser")
+  blood_requests_requester            blood_requests[]                      @relation("RequestUser")
+  blood_requests_staff                blood_requests[]                      @relation("RequestStaff")
+  blood_request_status_history        blood_request_status_history[]        @relation("HistoryUser")
+  blood_request_inventory_allocations blood_request_inventory_allocations[] @relation("AllocationUser")
+  blood_request_donor_matches         blood_request_donor_matches[]         @relation("MatchDonor")
+  donations_donor                     donations[]                           @relation("DonationDonor")
+  donations_staff                     donations[]                           @relation("DonationStaff")
+  donation_reminders                  donation_reminders[]
+  user_otps                           user_otps[]
+  notifications                       notifications[]
+}
+
+model donor_profiles {
+  donor_profile_id        Int       @id @default(autoincrement())
+  user_id                 Int       @unique
+  blood_type_id           Int
+  weight_kg               Decimal?  @db.Decimal(5, 2)
+  height_cm               Int?
+  first_donation_date     DateTime? @db.Date
+  total_donations         Int       @default(0)
+  last_donation_date      DateTime? @db.Date
+  next_eligible_date      DateTime? @db.Date
+  health_notes            String?   @db.NVarChar(1000)
+  emergency_contact_name  String?   @db.NVarChar(150)
+  emergency_contact_phone String?   @db.NVarChar(20)
+  is_active               Boolean   @default(true)
+  created_at              DateTime  @default(now()) @db.DateTime2
+  updated_at              DateTime? @db.DateTime2
+
+  user       users       @relation(fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+  blood_type blood_types @relation(fields: [blood_type_id], references: [blood_type_id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model donor_availability_slots {
+  slot_id       Int      @id @default(autoincrement())
+  user_id       Int
+  schedule_id   Int?
+  day_of_week   Int?     @db.TinyInt
+  specific_date DateTime? @db.Date
+  start_time    DateTime? @db.Time
+  end_time      DateTime? @db.Time
+  notes         String?  @db.NVarChar(300)
+  is_recurring  Boolean  @default(false)
+  status        String   @default("PENDING") @db.NVarChar(20)
+  is_active     Boolean  @default(true)
+  created_at    DateTime @default(now()) @db.DateTime2
+
+  user     users                        @relation(fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+  schedule facility_donation_schedules? @relation(fields: [schedule_id], references: [schedule_id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model blood_inventory {
+  inventory_id       Int       @id @default(autoincrement())
+  facility_id        Int
+  blood_type_id      Int
+  component_id       Int
+  bag_code           String    @unique @db.NVarChar(50)
+  volume_ml          Int
+  collection_date    DateTime  @db.Date
+  expiry_date        DateTime  @db.Date
+  status_code        String    @default("AVAILABLE") @db.NVarChar(20)
+  source_donation_id Int?
+  notes              String?   @db.NVarChar(500)
+  created_at         DateTime  @default(now()) @db.DateTime2
+  updated_at         DateTime? @db.DateTime2
+
+  facility                            medical_facilities                    @relation(fields: [facility_id], references: [facility_id], onDelete: NoAction, onUpdate: NoAction)
+  blood_type                          blood_types                           @relation(fields: [blood_type_id], references: [blood_type_id], onDelete: NoAction, onUpdate: NoAction)
+  component                           blood_components                      @relation(fields: [component_id], references: [component_id], onDelete: NoAction, onUpdate: NoAction)
+  source_donation                     donations?                            @relation("InventoryDonation", fields: [source_donation_id], references: [donation_id], onDelete: NoAction, onUpdate: NoAction)
+  inventory_transactions              inventory_transactions[]
+  blood_request_inventory_allocations blood_request_inventory_allocations[]
+  donations                           donations[]                           @relation("InventoryDonations")
+}
+
+model inventory_transactions {
+  transaction_id   Int      @id @default(autoincrement())
+  inventory_id     Int
+  transaction_type String   @db.NVarChar(20)
+  quantity         Int      @default(1)
+  reference_type   String?  @db.NVarChar(50)
+  reference_id     Int?
+  performed_by     Int?
+  notes            String?  @db.NVarChar(500)
+  created_at       DateTime @default(now()) @db.DateTime2
+
+  inventory blood_inventory @relation(fields: [inventory_id], references: [inventory_id], onDelete: NoAction, onUpdate: NoAction)
+  user      users?          @relation("TransactionUser", fields: [performed_by], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model blood_requests {
+  request_id           Int       @id @default(autoincrement())
+  request_code         String    @unique @db.NVarChar(30)
+  facility_id          Int
+  requester_user_id    Int?
+  patient_name         String    @db.NVarChar(150)
+  patient_phone        String?   @db.NVarChar(20)
+  blood_type_id        Int
+  component_id         Int
+  units_needed         Int
+  units_fulfilled      Int       @default(0)
+  urgency_id           Int
+  status_id            Int
+  is_emergency         Boolean   @default(false)
+  hospital_name        String?   @db.NVarChar(200)
+  ward_room            String?   @db.NVarChar(100)
+  clinical_notes       String?   @db.NVarChar(1000)
+  province_id          Int?
+  district_id          Int?
+  ward_id              Int?
+  address              String?   @db.NVarChar(500)
+  latitude             Decimal?  @db.Decimal(10, 7)
+  longitude            Decimal?  @db.Decimal(10, 7)
+  required_before      DateTime? @db.DateTime2
+  fulfilled_from_stock Boolean   @default(false)
+  needs_donor_match    Boolean   @default(false)
+  assigned_staff_id    Int?
+  created_at           DateTime  @default(now()) @db.DateTime2
+  updated_at           DateTime? @db.DateTime2
+  completed_at         DateTime? @db.DateTime2
+
+  facility                            medical_facilities                    @relation(fields: [facility_id], references: [facility_id], onDelete: NoAction, onUpdate: NoAction)
+  requester                           users?                                @relation("RequestUser", fields: [requester_user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+  blood_type                          blood_types                           @relation(fields: [blood_type_id], references: [blood_type_id], onDelete: NoAction, onUpdate: NoAction)
+  component                           blood_components                      @relation(fields: [component_id], references: [component_id], onDelete: NoAction, onUpdate: NoAction)
+  urgency                             urgency_levels                        @relation(fields: [urgency_id], references: [urgency_id], onDelete: NoAction, onUpdate: NoAction)
+  status                              blood_request_statuses                @relation(fields: [status_id], references: [status_id], onDelete: NoAction, onUpdate: NoAction)
+  staff                               users?                                @relation("RequestStaff", fields: [assigned_staff_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+  status_history                      blood_request_status_history[]
+  blood_request_inventory_allocations blood_request_inventory_allocations[]
+  blood_request_donor_matches         blood_request_donor_matches[]
+  donations                           donations[]
+}
+
+model blood_request_status_history {
+  history_id     Int      @id @default(autoincrement())
+  request_id     Int
+  from_status_id Int?
+  to_status_id   Int
+  changed_by     Int?
+  change_reason  String?  @db.NVarChar(500)
+  created_at     DateTime @default(now()) @db.DateTime2
+
+  request     blood_requests          @relation(fields: [request_id], references: [request_id], onDelete: NoAction, onUpdate: NoAction)
+  from_status blood_request_statuses? @relation("FromStatus", fields: [from_status_id], references: [status_id], onDelete: NoAction, onUpdate: NoAction)
+  to_status   blood_request_statuses  @relation("ToStatus", fields: [to_status_id], references: [status_id], onDelete: NoAction, onUpdate: NoAction)
+  user        users?                  @relation("HistoryUser", fields: [changed_by], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model blood_request_inventory_allocations {
+  allocation_id Int       @id @default(autoincrement())
+  request_id    Int
+  inventory_id  Int
+  allocated_at  DateTime  @default(now()) @db.DateTime2
+  allocated_by  Int?
+  released_at   DateTime? @db.DateTime2
+  is_active     Boolean   @default(true)
+
+  request   blood_requests  @relation(fields: [request_id], references: [request_id], onDelete: NoAction, onUpdate: NoAction)
+  inventory blood_inventory @relation(fields: [inventory_id], references: [inventory_id], onDelete: NoAction, onUpdate: NoAction)
+  user      users?          @relation("AllocationUser", fields: [allocated_by], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model blood_request_donor_matches {
+  match_id      Int       @id @default(autoincrement())
+  request_id    Int
+  donor_user_id Int
+  distance_km   Decimal?  @db.Decimal(10, 2)
+  match_score   Decimal?  @db.Decimal(5, 2)
+  match_status  String    @default("PENDING") @db.NVarChar(20)
+  contacted_at  DateTime? @db.DateTime2
+  responded_at  DateTime? @db.DateTime2
+  staff_notes   String?   @db.NVarChar(500)
+  created_at    DateTime  @default(now()) @db.DateTime2
+
+  request blood_requests @relation(fields: [request_id], references: [request_id], onDelete: NoAction, onUpdate: NoAction)
+  donor   users          @relation("MatchDonor", fields: [donor_user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model donations {
+  donation_id         Int       @id @default(autoincrement())
+  donation_code       String    @unique @db.NVarChar(30)
+  facility_id         Int
+  donor_user_id       Int
+  blood_type_id       Int
+  component_id        Int
+  request_id          Int?
+  volume_ml           Int
+  donation_date       DateTime  @db.DateTime2
+  staff_user_id       Int?
+  health_check_passed Boolean   @default(true)
+  result_notes        String?   @db.NVarChar(500)
+  inventory_id        Int?
+  status_code         String    @default("COMPLETED") @db.NVarChar(20)
+  next_eligible_date  DateTime? @db.Date
+  created_at          DateTime  @default(now()) @db.DateTime2
+
+  facility           medical_facilities   @relation(fields: [facility_id], references: [facility_id], onDelete: NoAction, onUpdate: NoAction)
+  donor              users                @relation("DonationDonor", fields: [donor_user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+  blood_type         blood_types          @relation(fields: [blood_type_id], references: [blood_type_id], onDelete: NoAction, onUpdate: NoAction)
+  component          blood_components     @relation(fields: [component_id], references: [component_id], onDelete: NoAction, onUpdate: NoAction)
+  request            blood_requests?      @relation(fields: [request_id], references: [request_id], onDelete: NoAction, onUpdate: NoAction)
+  staff              users?               @relation("DonationStaff", fields: [staff_user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+  inventory          blood_inventory?     @relation("InventoryDonations", fields: [inventory_id], references: [inventory_id], onDelete: NoAction, onUpdate: NoAction)
+  blood_inventories  blood_inventory[]    @relation("InventoryDonation")
+  donation_reminders donation_reminders[]
+}
+
+model donation_reminders {
+  reminder_id   Int       @id @default(autoincrement())
+  user_id       Int
+  donation_id   Int?
+  component_id  Int
+  reminder_type String    @db.NVarChar(30)
+  reminder_date DateTime  @db.Date
+  message       String    @db.NVarChar(500)
+  is_sent       Boolean   @default(false)
+  sent_at       DateTime? @db.DateTime2
+  is_read       Boolean   @default(false)
+  created_at    DateTime  @default(now()) @db.DateTime2
+
+  user      users            @relation(fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+  donation  donations?       @relation(fields: [donation_id], references: [donation_id], onDelete: NoAction, onUpdate: NoAction)
+  component blood_components @relation(fields: [component_id], references: [component_id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model otp_types {
+  otp_type_id    Int      @id @default(autoincrement())
+  otp_type_code  String   @unique @db.NVarChar(50)
+  otp_type_name  String   @db.NVarChar(100)
+  description    String?  @db.NVarChar(500)
+  expiry_minutes Int      @default(10)
+  max_attempts   Int      @default(5)
+  is_active      Boolean  @default(true)
+  created_at     DateTime @default(now()) @db.DateTime2
+
+  user_otps user_otps[]
+}
+
+model user_otps {
+  otp_id           BigInt    @id @default(autoincrement())
+  user_id          Int?
+  otp_type_id      Int
+  destination      String    @db.NVarChar(150)
+  destination_type String    @db.NVarChar(10)
+  otp_hash         String    @db.NVarChar(256)
+  expires_at       DateTime  @db.DateTime2
+  is_verified      Boolean   @default(false)
+  verified_at      DateTime? @db.DateTime2
+  attempt_count    Int       @default(0)
+  max_attempts     Int
+  ip_address       String?   @db.NVarChar(45)
+  reference_type   String?   @db.NVarChar(50)
+  reference_id     Int?
+  created_at       DateTime  @default(now()) @db.DateTime2
+
+  user users?    @relation(fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+  type otp_types @relation(fields: [otp_type_id], references: [otp_type_id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model notifications {
+  notification_id   Int       @id @default(autoincrement())
+  user_id           Int
+  title             String    @db.NVarChar(200)
+  message           String    @db.NVarChar(1000)
+  notification_type String    @db.NVarChar(50)
+  reference_type    String?   @db.NVarChar(50)
+  reference_id      Int?
+  is_read           Boolean   @default(false)
+  created_at        DateTime  @default(now()) @db.DateTime2
+  read_at           DateTime? @db.DateTime2
+
+  user users @relation(fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model system_settings {
+  setting_id    Int      @id @default(autoincrement())
+  setting_key   String   @unique @db.NVarChar(100)
+  setting_value String   @db.NVarChar(Max)
+  description   String?  @db.NVarChar(500)
+  updated_at    DateTime @default(now()) @db.DateTime2
+}
