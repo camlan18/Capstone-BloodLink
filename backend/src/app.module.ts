@@ -7,6 +7,7 @@ import { AppService } from './app.service';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { MailModule } from './mail/mail.module';
+import { BlogModule } from './blog/blog.module';
 import { JwtAuthGuard } from './common/jwt-auth.guard';
 import { RolesGuard } from './common/roles.guard';
 
@@ -17,6 +18,7 @@ import { RolesGuard } from './common/roles.guard';
     PrismaModule,
     AuthModule,
     MailModule,
+    BlogModule
   ],
   controllers: [AppController],
   providers: [
@@ -25,4 +27,4 @@ import { RolesGuard } from './common/roles.guard';
     { provide: APP_GUARD, useClass: RolesGuard },
   ],
 })
-export class AppModule {}
+export class AppModule { }
