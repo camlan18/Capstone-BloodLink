@@ -6,7 +6,7 @@ import { BlogFilterDto } from './dto/blog-filter.dto';
 
 @Injectable()
 export class BlogService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
   async getCategories() {
     return await this.prisma.blog_categories.findMany({
@@ -79,7 +79,7 @@ export class BlogService {
   async getRelatedPosts(slug: string) {
     const post = await this.prisma.blog_posts.findUnique({ where: { slug } });
     if (!post) throw new NotFoundException('Bài viết không tồn tại');
-    
+
     return await this.prisma.blog_posts.findMany({
       where: {
         blog_category_id: post.blog_category_id,
@@ -103,7 +103,7 @@ export class BlogService {
         guest_name: userId ? null : data.guest_name,
         content: data.content,
         parent_comment_id: data.parent_comment_id,
-        is_approved: userId ? true : false, // Member auto approve, Guest must be verified
+        is_approved: true,
       },
     });
   }
