@@ -5,7 +5,7 @@ export const blogService = {
   getPosts: async (params?: any): Promise<ApiResponse<BlogPost[]> | any> => {
     try {
       const response = await api.get('/blog/posts', { params });
-      return response.data;
+      return response;
     } catch (error) {
       throw error;
     }
@@ -14,7 +14,7 @@ export const blogService = {
   getPostBySlug: async (slug: string): Promise<BlogPost | any> => {
     try {
       const response = await api.get(`/blog/posts/${slug}`);
-      return response.data;
+      return response;
     } catch (error) {
       throw error;
     }
@@ -23,7 +23,7 @@ export const blogService = {
   getRelatedPosts: async (slug: string): Promise<BlogPost[] | any> => {
     try {
       const response = await api.get(`/blog/posts/${slug}/related`);
-      return response.data;
+      return response;
     } catch (error) {
       throw error;
     }
@@ -32,7 +32,7 @@ export const blogService = {
   getCategories: async (): Promise<ApiResponse<BlogCategory[]> | any> => {
     try {
       const response = await api.get('/blog/categories');
-      return response.data;
+      return response;
     } catch (error) {
       throw error;
     }
@@ -40,8 +40,10 @@ export const blogService = {
 
   getComments: async (postId: number): Promise<ApiResponse<BlogComment[]> | any> => {
     try {
-      const response = await api.get(`/blog/posts/${postId}/comments`);
-      return response.data;
+      const response = await api.get(`/blog/posts/${postId}/comments`, {
+        params: { t: Date.now() }
+      });
+      return response;
     } catch (error) {
       throw error;
     }
@@ -54,7 +56,7 @@ export const blogService = {
         guest_name: guestName,
         parent_comment_id: parentId
       });
-      return response.data;
+      return response;
     } catch (error) {
       throw error;
     }
