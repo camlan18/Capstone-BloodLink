@@ -4,10 +4,12 @@ import { APP_GUARD } from '@nestjs/core';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { UsersModule } from './users/users.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { MailModule } from './mail/mail.module';
 import { BlogModule } from './blog/blog.module';
+import { DonorModule } from './donor/donor.module';
 import { JwtAuthGuard } from './common/jwt-auth.guard';
 import { RolesGuard } from './common/roles.guard';
 
@@ -18,7 +20,9 @@ import { RolesGuard } from './common/roles.guard';
     PrismaModule,
     AuthModule,
     MailModule,
-    BlogModule
+    BlogModule,
+    UsersModule,
+    DonorModule
   ],
   controllers: [AppController],
   providers: [
