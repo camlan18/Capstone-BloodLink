@@ -86,7 +86,6 @@ export class ResendOtpDto {
   email: string;
 }
 
-
 export class RefreshTokenDto {
   @ApiProperty({ example: 'eb14d3153fabd5c926eb...', description: 'Mã Refresh Token' })
   @IsString()

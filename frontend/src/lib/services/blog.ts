@@ -38,10 +38,10 @@ export const blogService = {
     }
   },
 
-  getComments: async (postId: number): Promise<ApiResponse<BlogComment[]> | any> => {
+  getComments: async (postId: number, params?: any): Promise<ApiResponse<BlogComment[]> | any> => {
     try {
       const response = await api.get(`/blog/posts/${postId}/comments`, {
-        params: { t: Date.now() }
+        params: { t: Date.now(), ...params }
       });
       return response;
     } catch (error) {
@@ -56,6 +56,24 @@ export const blogService = {
         guest_name: guestName,
         parent_comment_id: parentId
       });
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  editComment: async (commentId: number, content: string) => {
+    try {
+      const response = await api.put(`/blog/comments/${commentId}`, { content });
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  deleteComment: async (commentId: number) => {
+    try {
+      const response = await api.delete(`/blog/comments/${commentId}`);
       return response;
     } catch (error) {
       throw error;

@@ -3,7 +3,8 @@ import { Search, ChevronLeft, ChevronRight, SlidersHorizontal, MoreVertical, Arr
 
 export interface Column<T> {
   key: string;
-  title: string;
+  title?: string;
+  label?: string;
   sortable?: boolean;
   hideable?: boolean;
   defaultHidden?: boolean;
@@ -71,6 +72,8 @@ export function DataTable<T extends Record<string, any>>({
   const [actionMenu, setActionMenu] = useState<{ item: T; x: number; y: number } | null>(null);
   
   const menuRef = useRef<HTMLDivElement>(null);
+  
+  const safeData = data || [];
 
   // Đóng column menu khi click ra ngoài
   useEffect(() => {
@@ -155,8 +158,8 @@ export function DataTable<T extends Record<string, any>>({
     }
   };
 
-  const isAllSelected = data.length > 0 && data.every(item => selectedIds.includes(item.id));
-  const isSomeSelected = data.some(item => selectedIds.includes(item.id)) && !isAllSelected;
+  const isAllSelected = safeData.length > 0 && safeData.every(item => selectedIds.includes(item.id));
+  const isSomeSelected = safeData.some(item => selectedIds.includes(item.id)) && !isAllSelected;
 
   return (
     <div className="w-full bg-white flex flex-col relative">
@@ -187,14 +190,14 @@ export function DataTable<T extends Record<string, any>>({
       )}
 
       {/* ----------------- TOOLBAR ----------------- */}
-      <div className="flex flex-col lg:flex-row items-center justify-between p-4 gap-4 border-b border-gray-100">
-        <div className="relative w-full lg:w-80 flex-shrink-0">
+      <div className="flex flex-col xl:flex-row items-start justify-between p-4 gap-4 border-b border-gray-100">
+        <div className="relative w-full xl:w-80 flex-shrink-0">
           <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
             <Search className="h-4 w-4 text-gray-400" />
           </div>
           <input
             type="text"
-            className="block w-full pl-10 pr-3 py-2 border border-gray-200 rounded-md text-sm placeholder-gray-400 focus:outline-none focus:border-[#0f4c3a] focus:ring-1 focus:ring-[#0f4c3a]"
+            className="block h-11 w-full pl-10 pr-3 py-2.5 border border-slate-200 rounded-md text-sm placeholder-slate-400 focus:outline-none focus:border-blood focus:ring-1 focus:ring-blood transition-all bg-white"
             placeholder="Tìm kiếm..."
             value={searchValue}
             onChange={(e) => setSearchValue(e.target.value)}
@@ -202,12 +205,12 @@ export function DataTable<T extends Record<string, any>>({
           />
         </div>
 
-        <div className="flex items-center gap-2 w-full lg:w-auto flex-wrap justify-end">
+        <div className="flex items-start gap-2 w-full xl:w-auto flex-wrap justify-end">
           {toolbarFilters}   
           <div className="relative" ref={menuRef}>
             <button 
               onClick={() => setShowColumnMenu(!showColumnMenu)}
-              className={`p-2 border rounded-md transition-colors flex items-center justify-center ${
+              className={`h-11 w-11 border rounded-md transition-colors flex items-center justify-center ${
                 showColumnMenu ? 'bg-gray-100 border-gray-300' : 'bg-white border-gray-200 hover:bg-gray-50'
               }`}
             >
@@ -220,18 +223,18 @@ export function DataTable<T extends Record<string, any>>({
                   Hiển thị cột
                 </div>
                 <div className="max-h-64 overflow-y-auto p-2 space-y-1">
-                  {columns.filter(c => c.hideable !== false && c.title !== '').map(col => (
+                  {columns.filter(c => c.hideable !== false && (c.title || c.label)).map(col => (
                     <label 
                       key={col.key} 
                       className="flex items-center gap-3 px-2 py-2 hover:bg-gray-50 rounded cursor-pointer transition-colors"
                     >
                       <input 
                         type="checkbox" 
-                        className="w-4 h-4 rounded border-gray-300 text-[#0f4c3a] focus:ring-[#0f4c3a] cursor-pointer"
+                        className="w-4 h-4 rounded border-gray-300 text-blood focus:ring-blood cursor-pointer"
                         checked={visibleColumns.includes(col.key)}
                         onChange={() => toggleColumn(col.key)}
                       />
-                      <span className="text-sm font-medium text-gray-700 select-none">{col.title}</span>
+                      <span className="text-sm font-medium text-gray-700 select-none">{col.title || col.label}</span>
                     </label>
                   ))}
                 </div>
@@ -245,17 +248,17 @@ export function DataTable<T extends Record<string, any>>({
       <div className="overflow-x-auto min-h-[400px]">
         {loading ? (
           <div className="flex items-center justify-center h-64">
-             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#0f4c3a]"></div>
+             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blood"></div>
           </div>
         ) : (
           <table className="w-full text-sm text-left">
-            <thead className="bg-gray-50/50 text-xs text-gray-500 font-semibold border-b border-gray-100">
+            <thead className="bg-white text-xs text-gray-500 font-semibold border-b border-gray-200 uppercase">
               <tr>
                 {selectable && (
                   <th className="px-4 py-4 w-12 text-center whitespace-nowrap">
                     <input 
                       type="checkbox" 
-                      className="rounded border-gray-300 text-[#0f4c3a] focus:ring-[#0f4c3a] cursor-pointer" 
+                      className="rounded border-gray-300 text-blood focus:ring-blood cursor-pointer" 
                       checked={isAllSelected}
                       ref={input => {
                         if (input) input.indeterminate = isSomeSelected;
@@ -273,11 +276,11 @@ export function DataTable<T extends Record<string, any>>({
                 {activeColumns.map((col) => (
                   <th
                     key={col.key}
-                    className={`px-4 py-4 whitespace-nowrap ${col.sortable ? 'cursor-pointer select-none hover:bg-gray-100' : ''}`}
+                    className={`px-4 py-4 whitespace-nowrap ${col.sortable ? 'cursor-pointer select-none hover:bg-gray-50' : ''}`}
                     onClick={() => col.sortable && handleSort(col.key)}
                   >
                     <div className="flex items-center gap-2">
-                      {col.title}
+                      {col.title || col.label}
                       {col.sortable && renderSortIcon(col.key)}
                     </div>
                   </th>
@@ -285,20 +288,20 @@ export function DataTable<T extends Record<string, any>>({
                 
                 {/* Cột Actions (Ghim cố định bên phải) */}
                 {rowActions && (
-                  <th className="px-4 py-4 text-center whitespace-nowrap sticky right-0 bg-gray-50/50 z-10 w-16 shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.05)]">
+                  <th className="px-4 py-4 text-center whitespace-nowrap sticky right-0 bg-white z-10 w-16">
                     Thao tác
                   </th>
                 )}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {data.map((item, index) => (
-                <tr key={item.id || index} className="hover:bg-gray-50/50 transition-colors group">
+              {safeData.map((item, index) => (
+                <tr key={item.id || index} className="hover:bg-slate-50 transition-colors group">
                   {selectable && (
                     <td className="px-4 py-4 text-center whitespace-nowrap">
                       <input 
                         type="checkbox" 
-                        className="rounded border-gray-300 text-[#0f4c3a] focus:ring-[#0f4c3a] cursor-pointer" 
+                        className="rounded border-gray-300 text-blood focus:ring-blood cursor-pointer" 
                         checked={selectedIds.includes(item.id)}
                         onChange={(e) => handleSelectItem(item.id, e.target.checked)}
                         onClick={(e) => e.stopPropagation()}
@@ -319,22 +322,26 @@ export function DataTable<T extends Record<string, any>>({
                   
                   {/* Cột Nút Action (Ghim cố định) */}
                   {rowActions && (
-                    <td className="px-4 py-4 text-center whitespace-nowrap sticky right-0 bg-white group-hover:bg-gray-50/50 z-10 shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.05)]">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          const rect = e.currentTarget.getBoundingClientRect();
-                          setActionMenu({ item, x: rect.right, y: rect.bottom });
-                        }}
-                        className="p-1.5 text-gray-500 hover:text-[#0f4c3a] hover:bg-gray-100 rounded-md transition-colors focus:outline-none"
-                      >
-                        <MoreHorizontal className="h-5 w-5" />
-                      </button>
+                    <td className="px-4 py-4 text-center whitespace-nowrap sticky right-0 bg-white group-hover:bg-slate-50 z-10">
+                      {rowActions(item).filter(a => !a.hidden).length > 0 ? (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const rect = e.currentTarget.getBoundingClientRect();
+                            setActionMenu({ item, x: rect.right, y: rect.bottom });
+                          }}
+                          className="p-1.5 text-gray-500 hover:text-blood hover:bg-gray-100 rounded-md transition-colors focus:outline-none"
+                        >
+                          <MoreHorizontal className="h-5 w-5" />
+                        </button>
+                      ) : (
+                        <span className="text-gray-300">-</span>
+                      )}
                     </td>
                   )}
                 </tr>
               ))}
-              {data.length === 0 && (
+              {safeData.length === 0 && (
                 <tr>
                   {/* +1 cho cột STT mới thêm */}
                   <td colSpan={activeColumns.length + (selectable ? 1 : 0) + (rowActions ? 1 : 0) + 1} className="px-4 py-12 text-center text-gray-500">

@@ -37,6 +37,11 @@ export interface DonorProfile {
   total_donations: number;
   last_donation_date?: string;
   is_eligible: boolean;
+  weight_kg?: number;
+  height_cm?: number;
+  health_notes?: string;
+  emergency_contact_name?: string;
+  emergency_contact_phone?: string;
   blood_type?: {
     blood_type_id: number;
     blood_group: string;

@@ -1,5 +1,6 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Req, Query, UseGuards, ParseIntPipe, UseInterceptors, UploadedFile } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, Req, Query, UseGuards, ParseIntPipe, UseInterceptors, UploadedFile, Res, BadRequestException } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import type { Response } from 'express';
 import { UsersService } from './users.service';
 import { Roles } from '../common/decorators';
 import { RoleCode } from '../common/enums';
@@ -42,6 +43,32 @@ export class UsersController {
   @Get()
   async getAllUsers(@Query() query: UserFilterDto) {
     return await this.usersService.getAllUsers(query);
+  }
+
+  @Roles(RoleCode.ADMIN)
+  @Get('export')
+  async exportExcel(@Query() query: UserFilterDto, @Res() res: Response) {
+    const buffer = await this.usersService.exportExcel(query);
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', 'attachment; filename=users.xlsx');
+    res.send(buffer);
+  }
+
+  @Roles(RoleCode.ADMIN)
+  @Get('template')
+  async downloadTemplate(@Res() res: Response) {
+    const buffer = await this.usersService.getTemplate();
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', 'attachment; filename=users_template.xlsx');
+    res.send(buffer);
+  }
+
+  @Roles(RoleCode.ADMIN)
+  @Post('import')
+  @UseInterceptors(FileInterceptor('file'))
+  async importExcel(@UploadedFile() file: Express.Multer.File, @Req() req: any) {
+    if (!file) throw new BadRequestException('Vui lòng chọn file Excel');
+    return await this.usersService.importExcel(file.buffer, req.user.user_id);
   }
 
   @Roles(RoleCode.ADMIN)

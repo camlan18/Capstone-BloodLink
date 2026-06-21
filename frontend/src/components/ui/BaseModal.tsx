@@ -2,8 +2,10 @@ import React from 'react';
 import { X } from 'lucide-react';
 
 export interface BaseModalProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  isOpen?: boolean;
+  onClose?: () => void;
   title: string;
   subtitle?: React.ReactNode;
   size?:
@@ -34,6 +36,8 @@ export interface BaseModalProps {
 export const BaseModal = ({
   open,
   onOpenChange,
+  isOpen,
+  onClose,
   title,
   subtitle,
   size = 'md',
@@ -46,8 +50,12 @@ export const BaseModal = ({
   hideFooter = false,
   disableSubmit = false,
   zIndexClass = 'z-50',
-}: BaseModalProps) => {
-  if (!open) return null;
+  submitBtnClass,
+}: BaseModalProps & { submitBtnClass?: string }) => {
+  const isModalOpen = open !== undefined ? open : isOpen;
+  const handleClose = onOpenChange ? () => onOpenChange(false) : (onClose ? onClose : () => {});
+
+  if (!isModalOpen) return null;
 
   const sizeClasses = {
     sm: 'max-w-sm',
@@ -76,8 +84,8 @@ export const BaseModal = ({
         <div className="shrink-0 flex items-center justify-end gap-3 px-6 py-4 bg-gray-50 border-t border-gray-100">
           <button
             type="button"
-            onClick={() => onOpenChange(false)}
-            className="px-5 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-sm hover:bg-gray-50 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-200"
+            onClick={handleClose}
+            className="px-5 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-200"
           >
             {cancelText}
           </button>
@@ -87,7 +95,7 @@ export const BaseModal = ({
               type="submit"
               data-enter-submit
               disabled={loading || disableSubmit}
-              className="px-5 py-2.5 text-sm font-medium text-white bg-[#0f4c3a] border border-transparent rounded-sm hover:bg-[#0a3327] disabled:opacity-70 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#0f4c3a]"
+              className={submitBtnClass || "px-5 py-2.5 text-sm font-medium text-white bg-blood border border-transparent rounded-md hover:bg-blood-deep disabled:opacity-70 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blood shadow-sm"}
             >
               {loading ? loadingText : submitText}
             </button>
@@ -101,7 +109,7 @@ export const BaseModal = ({
     <div className={`fixed inset-0 ${zIndexClass} flex items-center justify-center bg-black/40 backdrop-blur-[2px] p-4`}>
       <div
         className={`
-          w-full max-h-[95vh] bg-white rounded-sm shadow-2xl flex flex-col overflow-hidden
+          w-full max-h-[95vh] bg-white rounded-xl shadow-2xl flex flex-col overflow-hidden
           animate-in fade-in zoom-in-95 duration-200
           ${sizeClasses[size]}
         `}
@@ -121,7 +129,7 @@ export const BaseModal = ({
 
           <button
             type="button"
-            onClick={() => onOpenChange(false)}
+            onClick={handleClose}
             className="text-gray-400 hover:text-gray-700 transition-colors focus:outline-none"
           >
             <X size={20} />

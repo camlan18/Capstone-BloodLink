@@ -6,6 +6,7 @@ import * as crypto from 'crypto';
 import { RegisterDto, LoginDto, OtpDto, ForgotPasswordDto, ResetPasswordDto, ResendOtpDto } from './dto/auth.dto';
 import { RoleCode, OtpTypeCode, DestinationType } from '../common/enums';
 import { MailService } from '../mail/mail.service';
+import { NotificationsService, NotificationType } from '../notifications/notifications.service';
 
 @Injectable()
 export class AuthService {
@@ -13,6 +14,7 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
     private readonly mailService: MailService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   async register(dto: RegisterDto) {
@@ -136,6 +138,23 @@ export class AuthService {
         data: { is_email_verified: true, is_active: true },
       }),
     ]);
+
+    // Gửi thông báo cho Admin
+    await this.notificationsService.notifyAdmins(
+      'Người dùng mới',
+      `Tài khoản ${user.email} vừa đăng ký thành công.`,
+      NotificationType.INFO,
+      'USER',
+      user.user_id
+    );
+
+    // Gửi thông báo chào mừng cho người dùng
+    await this.notificationsService.createNotification({
+      user_ids: [user.user_id],
+      title: 'Chào mừng bạn đến với BloodLink',
+      message: 'Cảm ơn bạn đã đăng ký tài khoản. Hãy cập nhật hồ sơ hiến máu để chúng tôi hiểu rõ hơn về bạn nhé.',
+      notification_type: NotificationType.INFO,
+    });
 
     return { message: 'Xác thực tài khoản thành công. Bạn có thể đăng nhập.' };
   }
@@ -340,6 +359,13 @@ export class AuthService {
         data: { password_hash: newPasswordHash },
       }),
     ]);
+
+    await this.notificationsService.createNotification({
+      user_ids: [user.user_id],
+      title: 'Đổi mật khẩu thành công',
+      message: 'Mật khẩu của bạn đã được thay đổi thành công thông qua tính năng khôi phục mật khẩu.',
+      notification_type: NotificationType.SUCCESS,
+    });
 
     return { message: 'Đổi mật khẩu thành công. Vui lòng đăng nhập lại.' };
   }
