@@ -7,13 +7,16 @@ import { UserFilterDto } from './dto/user-filter.dto';
 import { CloudinaryService } from '../cloudinary/cloudinary.service';
 import { MailService } from '../mail/mail.service';
 import { OtpTypeCode, DestinationType } from '../common/enums';
+import { ExcelUtil } from '../common/utils/excel.util';
+import { NotificationsService, NotificationType } from '../notifications/notifications.service';
 
 @Injectable()
 export class UsersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly cloudinary: CloudinaryService,
-    private readonly mailService: MailService
+    private readonly mailService: MailService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   async getProfile(userId: number) {
@@ -207,6 +210,13 @@ export class UsersService {
       }),
     ]);
 
+    await this.notificationsService.createNotification({
+      user_ids: [user.user_id],
+      title: 'Đổi mật khẩu thành công',
+      message: 'Mật khẩu của bạn đã được thay đổi thành công thông qua mục Hồ sơ cá nhân.',
+      notification_type: NotificationType.SUCCESS,
+    });
+
     return { message: 'Đổi mật khẩu thành công' };
   }
 
@@ -214,19 +224,52 @@ export class UsersService {
     const existingUser = await this.prisma.users.findUnique({ where: { email: dto.email } });
     if (existingUser) throw new BadRequestException('Email đã tồn tại');
 
-    // Default password for admin created user: 'Blood@123456'
+    const rawPassword = dto.password || 'Blood@123456';
     const salt = await bcrypt.genSalt(10);
-    const hash = await bcrypt.hash('Blood@123456', salt);
+    const hash = await bcrypt.hash(rawPassword, salt);
+
+    const data: any = {
+      email: dto.email,
+      password_hash: hash,
+      full_name: dto.full_name,
+      role_id: dto.role_id,
+      is_email_verified: true,
+      is_active: true,
+    };
+    if (dto.username !== undefined) data.username = dto.username;
+    if (dto.phone !== undefined) data.phone = dto.phone;
+    if (dto.date_of_birth !== undefined) data.date_of_birth = dto.date_of_birth ? new Date(dto.date_of_birth) : null;
+    if (dto.gender !== undefined) data.gender = dto.gender;
+    if (dto.identity_card !== undefined) data.identity_card = dto.identity_card;
+    if (dto.address !== undefined) data.address = dto.address;
+    if (dto.province_id !== undefined) data.province_id = dto.province_id;
+    if (dto.district_id !== undefined) data.district_id = dto.district_id;
+    if (dto.ward_id !== undefined) data.ward_id = dto.ward_id;
+    if (dto.blood_type_id !== undefined) data.blood_type_id = dto.blood_type_id;
+    if (dto.is_donor_registered !== undefined) data.is_donor_registered = dto.is_donor_registered;
+    if (dto.is_available_for_donation !== undefined) data.is_available_for_donation = dto.is_available_for_donation;
+    if (dto.is_email_verified !== undefined) data.is_email_verified = dto.is_email_verified;
+
+    if (dto.donor_profile) {
+      data.donor_profile = {
+        create: {
+          blood_type_id: dto.donor_profile.blood_type_id || dto.blood_type_id || 1,
+          weight_kg: dto.donor_profile.weight_kg,
+          height_cm: dto.donor_profile.height_cm,
+          first_donation_date: dto.donor_profile.first_donation_date ? new Date(dto.donor_profile.first_donation_date) : null,
+          total_donations: dto.donor_profile.total_donations || 0,
+          last_donation_date: dto.donor_profile.last_donation_date ? new Date(dto.donor_profile.last_donation_date) : null,
+          next_eligible_date: dto.donor_profile.next_eligible_date ? new Date(dto.donor_profile.next_eligible_date) : null,
+          health_notes: dto.donor_profile.health_notes,
+          emergency_contact_name: dto.donor_profile.emergency_contact_name,
+          emergency_contact_phone: dto.donor_profile.emergency_contact_phone,
+          is_active: dto.donor_profile.is_active !== undefined ? dto.donor_profile.is_active : true,
+        }
+      };
+    }
 
     const user = await this.prisma.users.create({
-      data: {
-        email: dto.email,
-        password_hash: hash,
-        full_name: dto.full_name,
-        role_id: dto.role_id,
-        is_email_verified: true,
-        is_active: true,
-      }
+      data
     });
 
     delete (user as any).password_hash;
@@ -236,7 +279,20 @@ export class UsersService {
   async getUserById(userId: number) {
     const user = await this.prisma.users.findUnique({
       where: { user_id: userId },
-      include: { role: true },
+      include: { 
+        role: true,
+        province: true,
+        district: true,
+        ward: true,
+        blood_type: true,
+        donor_profile: {
+          include: { blood_type: true }
+        },
+        donations_donor: {
+          include: { facility: true, component: true },
+          orderBy: { created_at: 'desc' }
+        }
+      },
     });
     if (!user) throw new NotFoundException('User không tồn tại');
     delete (user as any).password_hash;
@@ -244,22 +300,75 @@ export class UsersService {
   }
 
   async updateUserAdmin(userId: number, dto: UpdateUserAdminDto) {
+    const data: any = {};
+    if (dto.password) {
+      const salt = await bcrypt.genSalt(10);
+      data.password_hash = await bcrypt.hash(dto.password, salt);
+    }
+    if (dto.role_id !== undefined) data.role_id = dto.role_id;
+    if (dto.is_active !== undefined) data.is_active = dto.is_active;
+    if (dto.full_name !== undefined) data.full_name = dto.full_name;
+    if (dto.username !== undefined) data.username = dto.username;
+    if (dto.phone !== undefined) data.phone = dto.phone;
+    if (dto.email !== undefined) data.email = dto.email;
+    if (dto.date_of_birth !== undefined) data.date_of_birth = dto.date_of_birth ? new Date(dto.date_of_birth) : null;
+    if (dto.gender !== undefined) data.gender = dto.gender;
+    if (dto.identity_card !== undefined) data.identity_card = dto.identity_card;
+    if (dto.address !== undefined) data.address = dto.address;
+    if (dto.province_id !== undefined) data.province_id = dto.province_id;
+    if (dto.district_id !== undefined) data.district_id = dto.district_id;
+    if (dto.ward_id !== undefined) data.ward_id = dto.ward_id;
+    if (dto.blood_type_id !== undefined) data.blood_type_id = dto.blood_type_id;
+    if (dto.is_donor_registered !== undefined) data.is_donor_registered = dto.is_donor_registered;
+    if (dto.is_available_for_donation !== undefined) data.is_available_for_donation = dto.is_available_for_donation;
+    if (dto.is_email_verified !== undefined) data.is_email_verified = dto.is_email_verified;
+
+    if (dto.donor_profile) {
+      data.donor_profile = {
+        upsert: {
+          create: {
+            blood_type_id: dto.donor_profile.blood_type_id || dto.blood_type_id || 1,
+            weight_kg: dto.donor_profile.weight_kg,
+            height_cm: dto.donor_profile.height_cm,
+            first_donation_date: dto.donor_profile.first_donation_date ? new Date(dto.donor_profile.first_donation_date) : null,
+            total_donations: dto.donor_profile.total_donations || 0,
+            last_donation_date: dto.donor_profile.last_donation_date ? new Date(dto.donor_profile.last_donation_date) : null,
+            next_eligible_date: dto.donor_profile.next_eligible_date ? new Date(dto.donor_profile.next_eligible_date) : null,
+            health_notes: dto.donor_profile.health_notes,
+            emergency_contact_name: dto.donor_profile.emergency_contact_name,
+            emergency_contact_phone: dto.donor_profile.emergency_contact_phone,
+            is_active: dto.donor_profile.is_active !== undefined ? dto.donor_profile.is_active : true,
+          },
+          update: {
+            ...(dto.donor_profile.blood_type_id !== undefined && { blood_type_id: dto.donor_profile.blood_type_id }),
+            ...(dto.donor_profile.weight_kg !== undefined && { weight_kg: dto.donor_profile.weight_kg }),
+            ...(dto.donor_profile.height_cm !== undefined && { height_cm: dto.donor_profile.height_cm }),
+            ...(dto.donor_profile.first_donation_date !== undefined && { first_donation_date: dto.donor_profile.first_donation_date ? new Date(dto.donor_profile.first_donation_date) : null }),
+            ...(dto.donor_profile.total_donations !== undefined && { total_donations: dto.donor_profile.total_donations }),
+            ...(dto.donor_profile.last_donation_date !== undefined && { last_donation_date: dto.donor_profile.last_donation_date ? new Date(dto.donor_profile.last_donation_date) : null }),
+            ...(dto.donor_profile.next_eligible_date !== undefined && { next_eligible_date: dto.donor_profile.next_eligible_date ? new Date(dto.donor_profile.next_eligible_date) : null }),
+            ...(dto.donor_profile.health_notes !== undefined && { health_notes: dto.donor_profile.health_notes }),
+            ...(dto.donor_profile.emergency_contact_name !== undefined && { emergency_contact_name: dto.donor_profile.emergency_contact_name }),
+            ...(dto.donor_profile.emergency_contact_phone !== undefined && { emergency_contact_phone: dto.donor_profile.emergency_contact_phone }),
+            ...(dto.donor_profile.is_active !== undefined && { is_active: dto.donor_profile.is_active }),
+          }
+        }
+      };
+    }
+
     const user = await this.prisma.users.update({
       where: { user_id: userId },
-      data: {
-        ...(dto.role_id ? { role_id: dto.role_id } : {}),
-        ...(dto.is_active !== undefined ? { is_active: dto.is_active } : {}),
-      }
+      data,
     });
     delete (user as any).password_hash;
     return user;
   }
 
   async toggleLockUser(userId: number) {
-    const user = await this.prisma.users.findUnique({ where: { user_id: userId } });
+    const user = await this.prisma.users.findUnique({ where: { user_id: userId }, include: { role: true } });
     if (!user) throw new NotFoundException('User không tồn tại');
 
-    if (user.role_id === 1) throw new BadRequestException('Không thể khóa Super Admin'); // Assuming 1 is Admin
+    if (user.role?.role_code === 'ADMIN') throw new BadRequestException('Không thể khóa Super Admin');
 
     const updated = await this.prisma.users.update({
       where: { user_id: userId },
@@ -267,5 +376,90 @@ export class UsersService {
     });
     
     return { message: updated.is_active ? 'Đã mở khóa tài khoản' : 'Đã khóa tài khoản' };
+  }
+
+  // --- EXCEL FEATURE ---
+
+  async exportExcel(query: any): Promise<Buffer> {
+    const list = await this.getAllUsers({ ...query, limit: 10000 });
+    const data = list.data.map((item: any) => ({
+      'Email': item.email,
+      'Họ tên': item.full_name || '',
+      'Số điện thoại': item.phone || '',
+      'CCCD': item.identity_card || '',
+      'Ngày sinh': item.date_of_birth ? new Date(item.date_of_birth).toLocaleDateString('vi-VN') : '',
+      'Giới tính': item.gender === 'M' ? 'Nam' : item.gender === 'F' ? 'Nữ' : 'Khác',
+      'Vai trò': item.role?.role_name || '',
+      'Cơ sở (Nếu có)': item.facility?.facility_name || '',
+      'Trạng thái': item.is_active ? 'Hoạt động' : 'Đã khóa'
+    }));
+    return ExcelUtil.generateExcel(data, 'NguoiDung');
+  }
+
+  async getTemplate(): Promise<Buffer> {
+    const headers = [
+      'Email',
+      'Mật khẩu',
+      'Họ tên',
+      'Số điện thoại',
+      'CCCD',
+      'Role (ID)',
+      'Facility (ID)',
+      'Ngày sinh (YYYY-MM-DD)',
+      'Giới tính (M/F)'
+    ];
+    return ExcelUtil.generateTemplate(headers, 'Template_NguoiDung');
+  }
+
+  async importExcel(buffer: Buffer, staffId: number) {
+    const data = ExcelUtil.parseExcel(buffer);
+    let success = 0;
+    let failed = 0;
+
+    for (const row of data) {
+      try {
+        const email = row['Email'];
+        const password = row['Mật khẩu'] || '123456';
+        const fullName = row['Họ tên'];
+        const roleId = Number(row['Role (ID)']);
+
+        if (!email || !fullName || !roleId) {
+          failed++;
+          continue;
+        }
+
+        const exist = await this.prisma.users.findUnique({ where: { email } });
+        if (exist) {
+          failed++;
+          continue;
+        }
+
+        const hashedPassword = await bcrypt.hash(password.toString(), 10);
+        
+        const facilityId = row['Facility (ID)'] ? Number(row['Facility (ID)']) : null;
+        const dobStr = row['Ngày sinh (YYYY-MM-DD)'];
+        const dob = dobStr ? new Date(dobStr) : null;
+        const gender = row['Giới tính (M/F)'] === 'M' ? 'M' : row['Giới tính (M/F)'] === 'F' ? 'F' : 'O';
+
+        await this.prisma.users.create({
+          data: {
+            email,
+            password_hash: hashedPassword,
+            full_name: fullName,
+            role_id: roleId,
+            phone: row['Số điện thoại']?.toString(),
+            identity_card: row['CCCD']?.toString(),
+            date_of_birth: dob,
+            gender: gender,
+            is_active: true
+          }
+        });
+        success++;
+      } catch (err) {
+        failed++;
+      }
+    }
+
+    return { message: `Import hoàn tất. Thành công: ${success}, Thất bại/Bỏ qua: ${failed}` };
   }
 }

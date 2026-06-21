@@ -3,9 +3,12 @@ import { BlogService } from './blog.service';
 import { Public, Roles } from '../common/decorators';
 import { RoleCode } from '../common/enums';
 import { PaginationDto } from '../common/pagination.dto';
-import { CreatePostDto, UpdatePostDto, AddCommentDto } from './dto/blog.dto';
+import { CreatePostDto, UpdatePostDto, AddCommentDto, CreateCategoryDto, UpdateCategoryDto } from './dto/blog.dto';
 import { BlogFilterDto } from './dto/blog-filter.dto';
+import { JwtAuthGuard } from '../common/jwt-auth.guard';
+import { RolesGuard } from '../common/roles.guard';
 
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('api/v1/blog')
 export class BlogController {
   constructor(private readonly blogService: BlogService) {}
@@ -36,18 +39,47 @@ export class BlogController {
 
   @Public()
   @Get('posts/:id/comments')
-  async getComments(@Param('id') id: string) {
-    return await this.blogService.getComments(Number(id));
+  async getComments(@Param('id') id: string, @Query() query: any) {
+    return await this.blogService.getComments(Number(id), query);
   }
 
   @Public() 
   @Post('posts/:id/comments')
   async addComment(@Param('id', ParseIntPipe) id: number, @Req() req: any, @Body() body: AddCommentDto) {
-    const userId = req.user ? req.user.user_id : null;
+    const userId = (req.user && typeof req.user === 'object' && req.user.user_id) ? req.user.user_id : null;
     return await this.blogService.addComment(id, userId, body);
   }
 
-  // --- ADMIN / CONTENT CREATOR ROUTES ---
+  @Put('comments/:id')
+  async editMyComment(@Param('id', ParseIntPipe) id: number, @Req() req: any, @Body('content') content: string) {
+    return await this.blogService.editComment(id, req.user.user_id, content);
+  }
+
+  @Delete('comments/:id')
+  async deleteMyComment(@Param('id', ParseIntPipe) id: number, @Req() req: any) {
+    return await this.blogService.deleteMyComment(id, req.user.user_id);
+  }
+
+  // --- ADMIN / CONTENT CREATOR ROUTES (CATEGORIES) ---
+  @Roles(RoleCode.ADMIN, RoleCode.MODERATOR)
+  @Post('categories')
+  async createCategory(@Body() dto: CreateCategoryDto) {
+    return await this.blogService.createCategory(dto);
+  }
+
+  @Roles(RoleCode.ADMIN, RoleCode.MODERATOR)
+  @Put('categories/:id')
+  async updateCategory(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateCategoryDto) {
+    return await this.blogService.updateCategory(id, dto);
+  }
+
+  @Roles(RoleCode.ADMIN, RoleCode.MODERATOR)
+  @Delete('categories/:id')
+  async deleteCategory(@Param('id', ParseIntPipe) id: number) {
+    return await this.blogService.deleteCategory(id);
+  }
+
+  // --- ADMIN / CONTENT CREATOR ROUTES (POSTS) ---
   @Roles(RoleCode.ADMIN, RoleCode.MODERATOR)
   @Post('posts')
   async createPost(@Req() req: any, @Body() dto: CreatePostDto) {
@@ -68,14 +100,20 @@ export class BlogController {
 
   // --- MODERATOR ROUTES (Comments) ---
   @Roles(RoleCode.ADMIN, RoleCode.MODERATOR)
-  @Get('comments/pending')
-  async getPendingComments(@Query() query: PaginationDto) {
-    return await this.blogService.getPendingComments(query);
+  @Get('admin/comments')
+  async getAdminComments(@Query() query: any) {
+    return await this.blogService.getAdminComments(query);
   }
 
   @Roles(RoleCode.ADMIN, RoleCode.MODERATOR)
-  @Put('comments/:id/approve')
+  @Put('admin/comments/:id/approve')
   async approveComment(@Param('id', ParseIntPipe) id: number, @Body('is_approved') isApproved: boolean) {
     return await this.blogService.approveComment(id, isApproved);
+  }
+
+  @Roles(RoleCode.ADMIN, RoleCode.MODERATOR)
+  @Delete('admin/comments/:id')
+  async deleteAdminComment(@Param('id', ParseIntPipe) id: number) {
+    return await this.blogService.deleteAdminComment(id);
   }
 }

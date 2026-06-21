@@ -11,18 +11,23 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
   }
 
   canActivate(context: ExecutionContext) {
+    return super.canActivate(context);
+  }
+
+  handleRequest(err: any, user: any, info: any, context: ExecutionContext) {
     const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
       context.getHandler(),
       context.getClass(),
     ]);
-    if (isPublic) return true;
-    return super.canActivate(context);
-  }
 
-  handleRequest(err: any, user: any) {
-    if (err || !user) {
-      throw err || new UnauthorizedException('Token không hợp lệ hoặc đã hết hạn');
-    }
-    return user;
+    // Nếu parse được user từ token thì trả về user
+    if (user) return user;
+
+    // Nếu không có user (hoặc token sai) nhưng là route public thì bỏ qua lỗi, trả về true
+    // Trả về true để AuthGuard của NestJS hiểu là request được phép pass qua
+    if (isPublic) return true;
+
+    // Nếu không phải public và không có user thì văng lỗi
+    throw err || new UnauthorizedException('Token không hợp lệ hoặc đã hết hạn');
   }
 }

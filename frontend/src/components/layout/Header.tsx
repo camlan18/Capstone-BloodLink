@@ -1,7 +1,9 @@
 'use client';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { useAuthStore } from '@/lib/stores';
-import { Droplet, Menu, LogOut, User as UserIcon, X, ChevronDown, Heart, Clock, CalendarPlus } from 'lucide-react';
+import { educationService } from '@/lib/services/education';
+import { Droplet, Menu, LogOut, User as UserIcon, X, ChevronDown, Heart, Clock, CalendarPlus, LayoutDashboard, Bell, ClipboardList } from 'lucide-react';
 import { Button, buttonVariants } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -13,6 +15,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useEffect, useState } from 'react';
+import { notificationService } from '@/lib/services/notification';
 
 const navLinks = [
   { name: 'Trang chủ', href: '/' },
@@ -41,13 +44,68 @@ const navLinks = [
 ];
 
 export const Header = () => {
+  const pathname = usePathname();
   const { user, isAuthenticated, logout } = useAuthStore();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [dynamicLinks, setDynamicLinks] = useState(navLinks);
 
   useEffect(() => {
     setMounted(true);
+    
+    const fetchCategories = async () => {
+      try {
+        const res = await educationService.getCategories();
+        if (res.data) {
+          const categories = res.data;
+          setDynamicLinks(prev => prev.map(link => {
+            if (link.name === 'Tài liệu') {
+              return {
+                ...link,
+                submenu: categories && categories.length > 0 
+                  ? categories.map((cat: any) => ({
+                      name: cat.category_name,
+                      href: `/education?category=${cat.category_id}`,
+                      description: cat.description || 'Tìm hiểu thêm thông tin'
+                    }))
+                  : undefined
+              };
+            }
+            return link;
+          }));
+        }
+      } catch (error) {
+        console.error('Failed to fetch education categories:', error);
+      }
+    };
+    
+    fetchCategories();
   }, []);
+
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      const fetchUnreadCount = async () => {
+        try {
+          const res = await notificationService.getUnreadCount();
+          if (res && res.unread_count !== undefined) {
+            setUnreadCount(res.unread_count);
+          }
+        } catch (error) {
+          console.error('Failed to fetch unread notifications count:', error);
+        }
+      };
+      fetchUnreadCount();
+      
+      // Optional: Polling every 60 seconds
+      const intervalId = setInterval(fetchUnreadCount, 60000);
+      return () => clearInterval(intervalId);
+    }
+  }, [isAuthenticated]);
+
+  const userRole = typeof user?.role === 'string' ? user.role : user?.role?.role_code;
+  const isAdmin = userRole && ['ADMIN', 'STAFF', 'MODERATOR', 'HOSPITAL_STAFF'].includes(userRole);
 
   return (
     <header className="sticky top-0 z-50 w-full glass border-b border-slate-200/60">
@@ -65,41 +123,53 @@ export const Header = () => {
 
         {/* Desktop Nav */}
         <nav className="hidden lg:flex items-center gap-1 relative">
-          {navLinks.map((link) => (
-            <div key={link.href} className="relative group">
-              <Link
-                href={link.href}
-                className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-blood rounded-lg hover:bg-blood-light transition-all flex items-center gap-1"
-              >
-                {link.name}
-                {link.submenu && <ChevronDown className="w-3 h-3 transition-transform group-hover:-rotate-180" />}
-              </Link>
-              
-              {link.submenu && (
-                <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-[500px] bg-white rounded-lg shadow-xl shadow-slate-200/50 border border-slate-100 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all translate-y-2 group-hover:translate-y-0 z-50">
-                  <div className="p-4 grid grid-cols-2 gap-4">
-                    {link.submenu.map((sub) => (
-                      <Link 
-                        key={sub.name} 
-                        href={sub.href}
-                        className="p-3 rounded-lg hover:bg-slate-50 transition-colors group/item"
-                      >
-                        <div className="font-semibold text-sm text-navy group-hover/item:text-blood mb-1">{sub.name}</div>
-                        <div className="text-xs text-slate-500">{sub.description}</div>
-                      </Link>
-                    ))}
+          {dynamicLinks.map((link) => {
+            const isActive = pathname === link.href || (link.href !== '/' && pathname?.startsWith(link.href));
+            return (
+              <div key={link.href} className="relative group">
+                <Link
+                  href={link.href}
+                  className={`px-4 py-2 text-sm font-medium rounded-lg transition-all flex items-center gap-1 ${
+                    isActive ? 'text-blood bg-red-50 font-semibold' : 'text-slate-600 hover:text-blood hover:bg-red-50'
+                  }`}
+                >
+                  {link.name}
+                  {link.submenu && link.submenu.length > 0 && <ChevronDown className="w-3 h-3 transition-transform group-hover:-rotate-180" />}
+                </Link>
+                
+                {link.submenu && link.submenu.length > 0 && (
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-[500px] bg-white rounded-lg shadow-xl shadow-slate-200/50 border border-slate-100 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all translate-y-2 group-hover:translate-y-0 z-50">
+                    <div className="p-4 grid grid-cols-2 gap-4">
+                      {link.submenu.map((sub) => (
+                        <Link 
+                          key={sub.name} 
+                          href={sub.href}
+                          className="p-3 rounded-lg hover:bg-slate-50 transition-colors group/item"
+                        >
+                          <div className="font-semibold text-sm text-navy group-hover/item:text-blood mb-1">{sub.name}</div>
+                          <div className="text-xs text-slate-500">{sub.description}</div>
+                        </Link>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
-            </div>
-          ))}
+                )}
+              </div>
+            );
+          })}
         </nav>
 
         {/* Desktop Auth */}
         <div className="hidden lg:flex items-center gap-3">
           {mounted && isAuthenticated ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger className="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-slate-100 transition-colors">
+            <>
+              <Link href="/donor/notifications" className="relative p-2 text-slate-500 hover:bg-slate-100 rounded-full transition-colors mr-1">
+                <Bell className="w-5 h-5" />
+                {unreadCount > 0 && (
+                  <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-blood rounded-full border-2 border-white"></span>
+                )}
+              </Link>
+              <DropdownMenu>
+                <DropdownMenuTrigger className="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-slate-100 transition-colors">
                 <div className="w-8 h-8 rounded-md bg-blood flex items-center justify-center overflow-hidden shrink-0">
                   {user?.avatar_url ? (
                     <img src={user.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
@@ -120,6 +190,13 @@ export const Header = () => {
                   </DropdownMenuLabel>
                 </DropdownMenuGroup>
                 <DropdownMenuSeparator />
+                {isAdmin && (
+                  <DropdownMenuItem>
+                    <Link href="/admin" className="w-full flex items-center gap-2 text-blood font-medium">
+                      <LayoutDashboard className="h-4 w-4" /> Trang Quản lý
+                    </Link>
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem>
                   <Link href="/donor/profile" className="w-full flex items-center gap-2">
                     <UserIcon className="h-4 w-4" /> Hồ sơ hiến máu
@@ -135,6 +212,11 @@ export const Header = () => {
                     <CalendarPlus className="h-4 w-4" /> Đăng ký hiến máu
                   </Link>
                 </DropdownMenuItem>
+                <DropdownMenuItem>
+                  <Link href="/donor/requests" className="w-full flex items-center gap-2">
+                    <ClipboardList className="h-4 w-4" /> Lịch sử yêu cầu máu
+                  </Link>
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem className="text-blood focus:text-blood" onClick={logout}>
                   <LogOut className="mr-2 h-4 w-4" />
@@ -142,6 +224,7 @@ export const Header = () => {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+            </>
           ) : (
             <div className="flex items-center gap-2">
               <Link
@@ -176,23 +259,42 @@ export const Header = () => {
       {mobileOpen && (
         <div className="lg:hidden bg-white border-t border-slate-100 animate-slide-up">
           <div className="container mx-auto px-4 py-4 space-y-1">
-            {navLinks.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                onClick={() => setMobileOpen(false)}
-                className="block px-4 py-3 text-sm font-medium text-slate-600 hover:text-blood hover:bg-blood-light rounded-lg transition-colors"
-              >
-                {link.name}
-              </Link>
-            ))}
+            {dynamicLinks.map((link) => {
+              const isActive = pathname === link.href || (link.href !== '/' && pathname?.startsWith(link.href));
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  onClick={() => setMobileOpen(false)}
+                  className={`block px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
+                    isActive ? 'text-blood bg-red-50 font-semibold' : 'text-slate-600 hover:text-blood hover:bg-red-50'
+                  }`}
+                >
+                  {link.name}
+                </Link>
+              );
+            })}
             <div className="pt-4 border-t border-slate-100 flex flex-col gap-2">
               {mounted && isAuthenticated ? (
                 <>
-                  <Link href="/donor/profile" onClick={() => setMobileOpen(false)} className="px-4 py-3 text-sm font-medium text-slate-600 hover:text-blood hover:bg-blood-light rounded-lg transition-colors">
+                  {isAdmin && (
+                    <Link href="/admin" onClick={() => setMobileOpen(false)} className="px-4 py-3 text-sm font-medium text-blood hover:bg-red-50 rounded-lg transition-colors">
+                      Trang Quản lý
+                    </Link>
+                  )}
+                  <Link href="/donor/profile" onClick={() => setMobileOpen(false)} className="px-4 py-3 text-sm font-medium text-slate-600 hover:text-blood hover:bg-red-50 rounded-lg transition-colors">
                     Hồ sơ của tôi
                   </Link>
-                  <button onClick={() => { logout(); setMobileOpen(false); }} className="px-4 py-3 text-sm font-medium text-blood hover:bg-blood-light rounded-lg transition-colors text-left">
+                  <Link href="/donor/requests" onClick={() => setMobileOpen(false)} className="px-4 py-3 text-sm font-medium text-slate-600 hover:text-blood hover:bg-red-50 rounded-lg transition-colors">
+                    Lịch sử yêu cầu máu
+                  </Link>
+                  <Link href="/donor/notifications" onClick={() => setMobileOpen(false)} className="flex items-center justify-between px-4 py-3 text-sm font-medium text-slate-600 hover:text-blood hover:bg-red-50 rounded-lg transition-colors">
+                    <span>Thông báo</span>
+                    {unreadCount > 0 && (
+                      <span className="bg-blood text-white text-xs px-2 py-0.5 rounded-full">{unreadCount}</span>
+                    )}
+                  </Link>
+                  <button onClick={() => { logout(); setMobileOpen(false); }} className="px-4 py-3 text-sm font-medium text-blood hover:bg-red-50 rounded-lg transition-colors text-left">
                     Đăng xuất
                   </button>
                 </>

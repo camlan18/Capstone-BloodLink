@@ -6,7 +6,10 @@ import { BlogComment } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
-import { MessageSquare, Send, User, CornerDownRight } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { ConfirmModal } from '@/components/ui/ConfirmModal';
+import { Pagination } from '@/components/ui/Pagination';
+import { MessageSquare, Send, User, CornerDownRight, MoreVertical, Edit2, Trash2, X } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface BlogCommentsProps {
@@ -17,6 +20,13 @@ export function BlogComments({ postId }: BlogCommentsProps) {
   const { user, isAuthenticated } = useAuthStore();
   const [comments, setComments] = useState<BlogComment[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Pagination & Sorting states
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(5);
+  const [sortOrder, setSortOrder] = useState('desc');
+  const [totalComments, setTotalComments] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
   
   // Form states
   const [content, setContent] = useState('');
@@ -28,11 +38,21 @@ export function BlogComments({ postId }: BlogCommentsProps) {
   const [replyContent, setReplyContent] = useState('');
   const [replyGuestName, setReplyGuestName] = useState('');
 
+  // Edit states
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editContent, setEditContent] = useState('');
+  
+  // Delete confirm state
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+
   const fetchComments = async () => {
     try {
-      const res = await blogService.getComments(postId);
+      setLoading(true);
+      const res = await blogService.getComments(postId, { page, limit, sortOrder });
       if (res && res.data) {
         setComments(res.data);
+        setTotalComments((res as any).meta?.total || 0);
+        setTotalPages((res as any).meta?.totalPages || 1);
       }
     } catch (error) {
       console.error('Failed to fetch comments', error);
@@ -43,7 +63,7 @@ export function BlogComments({ postId }: BlogCommentsProps) {
 
   useEffect(() => {
     fetchComments();
-  }, [postId]);
+  }, [postId, page, limit, sortOrder]);
 
   const handleSubmit = async (e: React.FormEvent, parentId?: number) => {
     e.preventDefault();
@@ -73,11 +93,46 @@ export function BlogComments({ postId }: BlogCommentsProps) {
       } else {
         setContent('');
         setGuestName('');
+        setPage(1); // Reset to first page when adding new root comment
       }
       
       fetchComments();
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Có lỗi xảy ra khi gửi bình luận');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deletingId) return;
+    try {
+      setSubmitting(true);
+      await blogService.deleteComment(deletingId);
+      toast.success('Đã xóa bình luận');
+      fetchComments();
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Lỗi khi xóa bình luận');
+    } finally {
+      setSubmitting(false);
+      setDeletingId(null);
+    }
+  };
+
+  const handleEditSubmit = async (e: React.FormEvent, commentId: number) => {
+    e.preventDefault();
+    if (!editContent.trim()) {
+      toast.error('Nội dung không được để trống');
+      return;
+    }
+    try {
+      setSubmitting(true);
+      await blogService.editComment(commentId, editContent);
+      toast.success('Đã cập nhật bình luận');
+      setEditingId(null);
+      fetchComments();
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Lỗi khi cập nhật bình luận');
     } finally {
       setSubmitting(false);
     }
@@ -104,11 +159,59 @@ export function BlogComments({ postId }: BlogCommentsProps) {
                   <span className="ml-2 text-[10px] uppercase font-bold tracking-wider text-slate-400 bg-slate-200 px-1.5 py-0.5 rounded-sm">Guest</span>
                 )}
               </div>
-              <span className="text-xs text-slate-400 font-medium">
-                {new Date(comment.created_at).toLocaleDateString('vi-VN', { year: 'numeric', month: 'short', day: 'numeric' })}
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-slate-400 font-medium">
+                  {new Date(comment.created_at).toLocaleDateString('vi-VN', { year: 'numeric', month: 'short', day: 'numeric' })}
+                </span>
+                
+                {/* 3-dot menu for owner */}
+                {isAuthenticated && user?.user_id === comment.user_id && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger className="text-slate-400 hover:text-navy transition-colors p-1 rounded-md hover:bg-slate-200">
+                      <MoreVertical className="w-4 h-4" />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-12 min-w-0 p-1 flex flex-col items-center">
+                      <DropdownMenuItem 
+                        onClick={() => {
+                          setEditingId(comment.comment_id);
+                          setEditContent(comment.content);
+                          setReplyingTo(null);
+                        }}
+                        className="cursor-pointer justify-center w-full rounded-md py-2"
+                        title="Chỉnh sửa"
+                      >
+                        <Edit2 className="w-4 h-4 text-slate-600" />
+                      </DropdownMenuItem>
+                      <DropdownMenuItem 
+                        onClick={() => setDeletingId(comment.comment_id)}
+                        className="cursor-pointer justify-center w-full rounded-md py-2 text-red-600 focus:text-red-600 focus:bg-red-50"
+                        title="Xóa"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+              </div>
             </div>
-            <p className="text-slate-700 text-sm whitespace-pre-wrap leading-relaxed">{comment.content}</p>
+            
+            {editingId === comment.comment_id ? (
+              <form onSubmit={(e) => handleEditSubmit(e, comment.comment_id)} className="mt-2 space-y-2">
+                <Textarea 
+                  value={editContent}
+                  onChange={(e) => setEditContent(e.target.value)}
+                  className="min-h-[80px] text-sm resize-none bg-white"
+                />
+                <div className="flex justify-end gap-2">
+                  <Button type="button" variant="ghost" size="sm" onClick={() => setEditingId(null)} className="h-8">Hủy</Button>
+                  <Button type="submit" size="sm" disabled={submitting} className="h-8 bg-blood hover:bg-blood-dark text-white">
+                    Lưu
+                  </Button>
+                </div>
+              </form>
+            ) : (
+              <p className="text-slate-700 text-sm whitespace-pre-wrap leading-relaxed">{comment.content}</p>
+            )}
           </div>
           
           {!isReply && (
@@ -164,10 +267,26 @@ export function BlogComments({ postId }: BlogCommentsProps) {
 
   return (
     <div className="mt-16 pt-10 border-t border-slate-100">
-      <h3 className="text-2xl font-extrabold text-navy mb-8 flex items-center gap-3">
-        <MessageSquare className="w-6 h-6 text-blood" />
-        Bình luận ({comments.length})
-      </h3>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4">
+        <h3 className="text-2xl font-extrabold text-navy flex items-center gap-3 mb-0">
+          <MessageSquare className="w-6 h-6 text-blood" />
+          Bình luận ({totalComments})
+        </h3>
+        
+        <div className="flex items-center gap-4 text-sm">
+          <div className="flex items-center gap-2">
+            <span className="text-slate-500 font-medium hidden sm:inline">Sắp xếp:</span>
+            <select 
+              value={sortOrder}
+              onChange={(e) => { setSortOrder(e.target.value); setPage(1); }}
+              className="border-slate-200 rounded-lg text-sm focus:ring-blood/20 focus:border-blood text-slate-700 bg-white py-1.5 px-3 outline-none cursor-pointer"
+            >
+              <option value="desc">Mới nhất</option>
+              <option value="asc">Cũ nhất</option>
+            </select>
+          </div>
+        </div>
+      </div>
 
       {/* Main Comment Form */}
       <div className="bg-white p-6 md:p-8 rounded-3xl border border-slate-100 shadow-xl shadow-slate-200/40 mb-10 relative overflow-hidden">
@@ -226,6 +345,33 @@ export function BlogComments({ postId }: BlogCommentsProps) {
           </div>
         )}
       </div>
+
+      {/* Pagination Controls */}
+      {totalPages > 1 && (
+        <Pagination
+          currentPage={page}
+          totalPages={totalPages}
+          onPageChange={setPage}
+          pageSize={limit}
+          onPageSizeChange={(size) => {
+            setLimit(size);
+            setPage(1);
+          }}
+          pageSizeOptions={[5, 10, 20]}
+        />
+      )}
+
+      <ConfirmModal
+        isOpen={!!deletingId}
+        onClose={() => setDeletingId(null)}
+        onConfirm={handleDelete}
+        title="Xóa bình luận"
+        message="Bạn có chắc chắn muốn xóa bình luận này? Hành động này không thể hoàn tác."
+        confirmText="Xóa"
+        cancelText="Hủy"
+        type="danger"
+        isLoading={submitting}
+      />
     </div>
   );
 }

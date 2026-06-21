@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { toast } from 'sonner';
 
 const apiClient = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1',
@@ -114,8 +115,26 @@ apiClient.interceptors.response.use(
       }
     }
 
+    if (error.response && error.response.status === 403) {
+      if (typeof window !== 'undefined') {
+        toast.error('Bạn không có đủ quyền để thực hiện thao tác này (Lỗi 403)');
+      }
+      if (error.response.data) {
+        error.response.data.message = 'Bạn không có quyền (403 Forbidden)';
+      }
+    }
+
     return Promise.reject(error);
   }
 );
+
+export const uploadImage = async (file: File): Promise<string> => {
+  const formData = new FormData();
+  formData.append('file', file);
+  const res: any = await apiClient.post('/upload/image', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return res.data?.url || res.url || res;
+};
 
 export default apiClient;

@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsOptional, IsInt, IsBoolean, IsDateString, IsNumber } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsInt, IsBoolean, IsDateString, IsNumber, IsIn, MaxLength, MinLength } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 
@@ -19,6 +19,11 @@ export class UpdateSlotStatusDto {
   @IsString()
   @IsNotEmpty()
   status: string; // VD: 'COMPLETED', 'CANCELLED'
+
+  @ApiProperty({ example: 'Huyết áp cao', description: 'Ghi chú thêm', required: false })
+  @IsString()
+  @IsOptional()
+  notes?: string;
 }
 
 export class RecordDonationDto {
@@ -50,17 +55,29 @@ export class RecordDonationDto {
   @ApiProperty({ example: '2026-05-31T00:00:00Z', description: 'Ngày hiến máu' })
   @IsDateString()
   donation_date: string;
+
+  @ApiProperty({ example: true, description: 'Đạt kiểm tra sức khỏe', required: false })
+  @IsBoolean()
+  @IsOptional()
+  health_check_passed?: boolean;
+
+  @ApiProperty({ example: 'Huyết áp bình thường', description: 'Ghi chú kết quả', required: false })
+  @IsString()
+  @IsOptional()
+  result_notes?: string;
 }
 
 export class UpdateDonorProfileDto {
   @ApiProperty({ example: 'Nguyễn Văn A', description: 'Họ tên', required: false })
   @IsString()
   @IsOptional()
+  @MaxLength(150)
   full_name?: string;
 
   @ApiProperty({ example: '0123456789', description: 'Số điện thoại', required: false })
   @IsString()
   @IsOptional()
+  @MaxLength(20)
   phone_number?: string;
 
   @ApiProperty({ example: '012345678912', description: 'CCCD/CMND', required: false })
@@ -76,6 +93,7 @@ export class UpdateDonorProfileDto {
   @ApiProperty({ example: 'M', description: 'Giới tính (M, F, O)', required: false })
   @IsString()
   @IsOptional()
+  @IsIn(['M', 'F', 'O'])
   gender?: string;
 
   @ApiProperty({ example: '123 Đường ABC, Quận X', description: 'Địa chỉ', required: false })

@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { PaginationDto } from '../common/pagination.dto';
-import { CreatePostDto, UpdatePostDto, AddCommentDto } from './dto/blog.dto';
+import { CreatePostDto, UpdatePostDto, AddCommentDto, CreateCategoryDto, UpdateCategoryDto } from './dto/blog.dto';
 import { BlogFilterDto } from './dto/blog-filter.dto';
 
 @Injectable()
@@ -12,6 +12,52 @@ export class BlogService {
     return await this.prisma.blog_categories.findMany({
       orderBy: { category_name: 'asc' },
     });
+  }
+
+  async createCategory(dto: CreateCategoryDto) {
+    const existing = await this.prisma.blog_categories.findUnique({ where: { slug: dto.slug } });
+    if (existing) throw new BadRequestException('Đường dẫn danh mục (slug) đã tồn tại');
+
+    return await this.prisma.blog_categories.create({
+      data: {
+        category_name: dto.category_name,
+        slug: dto.slug,
+      }
+    });
+  }
+
+  async updateCategory(id: number, dto: UpdateCategoryDto) {
+    const category = await this.prisma.blog_categories.findUnique({ where: { blog_category_id: id } });
+    if (!category) throw new NotFoundException('Danh mục không tồn tại');
+
+    if (dto.slug && dto.slug !== category.slug) {
+      const existing = await this.prisma.blog_categories.findUnique({ where: { slug: dto.slug } });
+      if (existing) throw new BadRequestException('Đường dẫn danh mục (slug) đã tồn tại');
+    }
+
+    return await this.prisma.blog_categories.update({
+      where: { blog_category_id: id },
+      data: {
+        category_name: dto.category_name,
+        slug: dto.slug,
+      }
+    });
+  }
+
+  async deleteCategory(id: number) {
+    const category = await this.prisma.blog_categories.findUnique({ 
+      where: { blog_category_id: id },
+      include: { _count: { select: { blog_posts: true } } }
+    });
+    
+    if (!category) throw new NotFoundException('Danh mục không tồn tại');
+    
+    if (category._count.blog_posts > 0) {
+      throw new BadRequestException('Không thể xóa danh mục đang có bài viết');
+    }
+
+    await this.prisma.blog_categories.delete({ where: { blog_category_id: id } });
+    return { message: 'Đã xóa danh mục thành công' };
   }
 
   async getAllPosts(query: BlogFilterDto) {
@@ -108,18 +154,60 @@ export class BlogService {
     });
   }
 
-  async getComments(postId: number) {
-    return await this.prisma.blog_comments.findMany({
-      where: { post_id: postId, is_approved: true, parent_comment_id: null },
-      include: {
-        user: { select: { full_name: true, avatar_url: true } },
-        replies: {
-          where: { is_approved: true },
-          include: { user: { select: { full_name: true, avatar_url: true } } },
-        },
-      },
-      orderBy: { created_at: 'desc' },
+  async editComment(commentId: number, userId: number, content: string) {
+    const comment = await this.prisma.blog_comments.findUnique({ where: { comment_id: commentId } });
+    if (!comment) throw new NotFoundException('Bình luận không tồn tại');
+    if (comment.user_id !== userId) throw new BadRequestException('Bạn không có quyền sửa bình luận này');
+
+    return await this.prisma.blog_comments.update({
+      where: { comment_id: commentId },
+      data: { content },
     });
+  }
+
+  async deleteMyComment(commentId: number, userId: number) {
+    const comment = await this.prisma.blog_comments.findUnique({ where: { comment_id: commentId } });
+    if (!comment) throw new NotFoundException('Bình luận không tồn tại');
+    if (comment.user_id !== userId) throw new BadRequestException('Bạn không có quyền xóa bình luận này');
+
+    await this.prisma.blog_comments.delete({ where: { comment_id: commentId } });
+    return { message: 'Đã xóa bình luận' };
+  }
+
+  async getComments(postId: number, query: any) {
+    const page = query.page ? Number(query.page) : 1;
+    const limit = query.limit ? Number(query.limit) : 5;
+    const skip = (page - 1) * limit;
+    
+    const sortOrder = query.sortOrder === 'asc' ? 'asc' : 'desc';
+
+    const where = { post_id: postId, is_approved: true, parent_comment_id: null };
+
+    const [data, total] = await Promise.all([
+      this.prisma.blog_comments.findMany({
+        where,
+        skip,
+        take: limit,
+        include: {
+          user: { select: { full_name: true, avatar_url: true } },
+          replies: {
+            where: { is_approved: true },
+            include: { user: { select: { full_name: true, avatar_url: true } } },
+            orderBy: { created_at: 'asc' },
+          },
+        },
+        orderBy: [
+          { created_at: sortOrder },
+          { comment_id: sortOrder },
+        ],
+      }),
+      this.prisma.blog_comments.count({ where }),
+    ]);
+
+    return {
+      data,
+      meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
+    };
   }
 
   // Admin / Content Creator functions
@@ -170,20 +258,27 @@ export class BlogService {
   }
 
   // Moderator functions
-  async getPendingComments(query: PaginationDto) {
-    const page = query.page || 1;
-    const limit = query.limit || 20;
+  async getAdminComments(query: any) {
+    const page = Number(query.page) || 1;
+    const limit = Number(query.limit) || 20;
     const skip = (page - 1) * limit;
+
+    const where: any = {};
+    if (query.status === 'PENDING') where.is_approved = false;
+    else if (query.status === 'APPROVED') where.is_approved = true;
 
     const [data, total] = await Promise.all([
       this.prisma.blog_comments.findMany({
-        where: { is_approved: false },
+        where,
         skip,
         take: limit,
-        include: { post: { select: { title: true } } },
-        orderBy: { created_at: 'asc' },
+        include: { 
+          post: { select: { title: true, slug: true } },
+          user: { select: { full_name: true, email: true } }
+        },
+        orderBy: { created_at: 'desc' },
       }),
-      this.prisma.blog_comments.count({ where: { is_approved: false } }),
+      this.prisma.blog_comments.count({ where }),
     ]);
 
     return {
@@ -196,14 +291,17 @@ export class BlogService {
     const comment = await this.prisma.blog_comments.findUnique({ where: { comment_id: commentId } });
     if (!comment) throw new NotFoundException('Bình luận không tồn tại');
 
-    if (!isApproved) {
-      await this.prisma.blog_comments.delete({ where: { comment_id: commentId } });
-      return { message: 'Đã từ chối và xóa bình luận' };
-    }
-
     return await this.prisma.blog_comments.update({
       where: { comment_id: commentId },
-      data: { is_approved: true },
+      data: { is_approved: isApproved },
     });
+  }
+
+  async deleteAdminComment(commentId: number) {
+    const comment = await this.prisma.blog_comments.findUnique({ where: { comment_id: commentId } });
+    if (!comment) throw new NotFoundException('Bình luận không tồn tại');
+
+    await this.prisma.blog_comments.delete({ where: { comment_id: commentId } });
+    return { message: 'Đã xóa bình luận' };
   }
 }

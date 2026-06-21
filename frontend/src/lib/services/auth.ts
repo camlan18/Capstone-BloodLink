@@ -3,7 +3,7 @@ import { ApiResponse, User } from '@/types';
 
 export const authService = {
   login: async (credentials: any) => {
-    return apiClient.post<any, ApiResponse<{ access_token: string; user: User }>>('/auth/login', credentials);
+    return apiClient.post<any, ApiResponse<{ access_token: string; refresh_token?: string; user: User }>>('/auth/login', credentials);
   },
   register: async (data: any) => {
     return apiClient.post<any, ApiResponse<any>>('/auth/register', data);

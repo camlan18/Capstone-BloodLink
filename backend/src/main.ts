@@ -6,10 +6,10 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-
+  
   // Enable CORS
   app.enableCors({
-    origin: '*',
+    origin: '*', // Allow all origins for development
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,
   });
@@ -17,11 +17,11 @@ async function bootstrap() {
   // Enable validation globally
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
   app.useGlobalInterceptors(new ResponseInterceptor());
-
+  
   // Setup Swagger
   const config = new DocumentBuilder()
-    .setTitle('Blood Link API')
-    .setDescription('The API documentation for Blood Link API')
+    .setTitle('HienMau API')
+    .setDescription('The API documentation for HienMau Project')
     .setVersion('1.0')
     .addBearerAuth()
     .build();

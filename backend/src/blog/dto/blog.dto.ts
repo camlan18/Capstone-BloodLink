@@ -58,3 +58,17 @@ export class AddCommentDto {
   @Type(() => Number)
   parent_comment_id?: number;
 }
+
+export class CreateCategoryDto {
+  @ApiProperty({ example: 'Tin tức', description: 'Tên danh mục' })
+  @IsString()
+  @IsNotEmpty({ message: 'Tên danh mục không được để trống' })
+  category_name: string;
+
+  @ApiProperty({ example: 'tin-tuc', description: 'Đường dẫn danh mục' })
+  @IsString()
+  @IsNotEmpty({ message: 'Slug không được để trống' })
+  slug: string;
+}
+
+export class UpdateCategoryDto extends CreateCategoryDto {}
