@@ -13,6 +13,7 @@ import { MailModule } from './mail/mail.module';
 import { JwtAuthGuard } from './common/jwt-auth.guard';
 import { RolesGuard } from './common/roles.guard';
 import { NotificationsModule } from './notifications/notifications.module';
+import { EducationModule } from './education/education.module';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
@@ -24,6 +25,8 @@ import { NotificationsModule } from './notifications/notifications.module';
     BlogModule,
     MailModule,
     NotificationsModule,
+    DonorModule,
+    EducationModule,
   ],
   controllers: [AppController],
   providers: [
