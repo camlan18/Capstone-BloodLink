@@ -5,6 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { donorService } from '@/lib/services/donor';
 import { authService } from '@/lib/services/auth';
+import { adminMasterDataService } from '@/lib/services/admin-master-data';
 import { useAuthStore } from '@/lib/stores';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -37,6 +38,8 @@ export default function DonorProfilePage() {
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const [bloodTypes, setBloodTypes] = useState<any[]>([]);
+
   // Password Change State
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [isOtpSent, setIsOtpSent] = useState(false);
@@ -44,7 +47,7 @@ export default function DonorProfilePage() {
   const [submittingPassword, setSubmittingPassword] = useState(false);
   const [passwordData, setPasswordData] = useState({ otp_code: '', new_password: '', confirm_password: '' });
 
-  const form = useForm<z.infer<typeof formSchema>>({
+  const form = useForm<any>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       full_name: '',
@@ -69,13 +72,20 @@ export default function DonorProfilePage() {
   const fetchProfile = async () => {
     try {
       setLoading(true);
-      const [donorRes, authRes] = await Promise.all([
+      const [donorRes, authRes, btRes] = await Promise.all([
         donorService.getProfile().catch(() => null),
-        authService.getProfile().catch(() => null)
+        authService.getProfile().catch(() => null),
+        adminMasterDataService.getBloodTypes({ limit: 100 }).catch(() => null)
       ]);
       
       let currentDonor = donorProfile;
       let currentUser = user;
+
+      if (btRes) {
+        const fetchedBloodTypes = Array.isArray(btRes.data?.data) ? btRes.data.data : (Array.isArray(btRes.data) ? btRes.data : (Array.isArray(btRes) ? btRes : []));
+        console.log('FETCHED BLOOD TYPES:', fetchedBloodTypes, 'RAW BTRES:', btRes);
+        setBloodTypes(fetchedBloodTypes);
+      }
 
       if (donorRes && donorRes.data) {
         setDonorProfile(donorRes.data);
@@ -195,8 +205,8 @@ export default function DonorProfilePage() {
   };
 
   const getBloodTypeText = (id: number) => {
-    const map: Record<number, string> = { 1: 'O+', 2: 'O-', 3: 'A+', 4: 'A-', 5: 'B+', 6: 'B-', 7: 'AB+', 8: 'AB-' };
-    return map[id] || 'Chưa rõ';
+    const bt = bloodTypes.find((b: any) => b.blood_type_id === id);
+    return bt ? bt.blood_type_code : 'Chưa rõ';
   };
 
   if (loading) {
@@ -443,13 +453,24 @@ export default function DonorProfilePage() {
               <FormField control={form.control} name="blood_type_id" render={({ field }) => (
                 <FormItem>
                   <FormLabel className="text-slate-700">Nhóm máu</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value?.toString()}>
-                    <FormControl><SelectTrigger className="bg-slate-50 border-slate-200 h-10"><SelectValue placeholder="Chọn nhóm máu" /></SelectTrigger></FormControl>
+                  <Select onValueChange={(val) => field.onChange(Number(val))} value={field.value ? field.value.toString() : ""}>
+                    <FormControl>
+                      <SelectTrigger className="bg-slate-50 border-slate-200 h-10">
+                        <SelectValue placeholder="Chọn nhóm máu">
+                          {field.value && field.value !== "0" && bloodTypes && bloodTypes.length > 0
+                            ? (bloodTypes.find((bt: any) => bt.blood_type_id.toString() === field.value?.toString())?.blood_type_code || "Chọn nhóm máu")
+                            : null}
+                        </SelectValue>
+                      </SelectTrigger>
+                    </FormControl>
                     <SelectContent>
-                      <SelectItem value="1">O+</SelectItem><SelectItem value="2">O-</SelectItem>
-                      <SelectItem value="3">A+</SelectItem><SelectItem value="4">A-</SelectItem>
-                      <SelectItem value="5">B+</SelectItem><SelectItem value="6">B-</SelectItem>
-                      <SelectItem value="7">AB+</SelectItem><SelectItem value="8">AB-</SelectItem>
+                      {bloodTypes && bloodTypes.length > 0 ? bloodTypes.map((bt: any) => (
+                        <SelectItem key={bt.blood_type_id} value={bt.blood_type_id.toString()}>
+                          {bt.blood_type_code}
+                        </SelectItem>
+                      )) : (
+                        <SelectItem value={field.value ? field.value.toString() : "0"}>Đang tải...</SelectItem>
+                      )}
                     </SelectContent>
                   </Select>
                   <FormMessage />
