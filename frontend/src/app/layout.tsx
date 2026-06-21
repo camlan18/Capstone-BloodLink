@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Roboto } from "next/font/google";
+import { Toaster } from 'sonner';
 import "./globals.css";
 
 const roboto = Roboto({
@@ -19,9 +20,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="vi" className={`${roboto.variable} h-full antialiased`}>
+    <html lang="vi" data-scroll-behavior="smooth" className={`${roboto.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col font-[var(--font-roboto)]">
         {children}
+        <Toaster position="top-right" />
       </body>
     </html>
   );

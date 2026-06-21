@@ -18,12 +18,14 @@ import {
 import { Input } from '@/components/ui/input';
 import { KeyRound, ArrowLeft, CheckCircle2 } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 const formSchema = z.object({
   email: z.string().email({ message: 'Vui lòng nhập đúng định dạng email' }),
 });
 
 export default function ForgotPasswordPage() {
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState<'request' | 'reset'>('request');
   const [email, setEmail] = useState('');
@@ -73,7 +75,7 @@ export default function ForgotPasswordPage() {
         new_password: resetData.new_password
       });
       toast.success('Khôi phục mật khẩu thành công! Hãy đăng nhập lại.');
-      window.location.href = '/login';
+      router.push('/login');
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Không thể đổi mật khẩu. Mã OTP có thể không đúng hoặc đã hết hạn.');
     } finally {
