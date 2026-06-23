@@ -3,12 +3,13 @@ import { useEffect, useState } from 'react';
 import { adminMasterDataService } from '@/lib/services/admin-master-data';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { Plus, Edit, Eye, Loader2, PowerOff } from 'lucide-react';
+import { Plus, Edit, Eye, Loader2, PowerOff, Upload, Trash2 } from 'lucide-react';
 import { DataTable, Column, ActionItem } from '@/components/ui/DataTable';
 import { BaseModal } from '@/components/ui/BaseModal';
 import { Input } from '@/components/ui/input';
 import { ExportImportDropdown } from '@/components/ui/ExportImportDropdown';
 import { ExcelImportModal } from '@/components/ui/ExcelImportModal';
+import { uploadImage } from '@/lib/services/apiClient';
 
 export default function AdminFacilitiesPage() {
   const [loading, setLoading] = useState(true);
@@ -117,14 +118,20 @@ export default function AdminFacilitiesPage() {
     setIsModalOpen(true);
   };
 
-  const handleDelete = async (item: any) => {
-    if (!confirm('Bạn có chắc chắn muốn ngừng hoạt động cơ sở này?')) return;
+  const handleToggleStatus = async (item: any) => {
+    const newStatus = !item.is_active;
+    const actionText = newStatus ? 'mở lại hoạt động' : 'ngừng hoạt động';
+    if (!confirm(`Bạn có chắc chắn muốn ${actionText} cơ sở này?`)) return;
     try {
-      await adminMasterDataService.deleteFacility(item.facility_id);
-      toast.success('Đã ngừng hoạt động cơ sở y tế');
+      await adminMasterDataService.updateFacility(item.facility_id, { 
+        facility_name: item.facility_name,
+        address: item.address || 'Chưa cập nhật',
+        is_active: newStatus 
+      });
+      toast.success(`Đã ${actionText} cơ sở y tế`);
       fetchData();
     } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Lỗi khi ngừng hoạt động');
+      toast.error(error.response?.data?.message || `Lỗi khi ${actionText}`);
     }
   };
 
@@ -243,10 +250,10 @@ export default function AdminFacilitiesPage() {
       onClick: () => handleOpenEdit(item)
     },
     {
-      label: 'Ngừng hoạt động',
-      icon: <PowerOff className="w-4 h-4 text-red-600" />,
-      className: 'text-red-600',
-      onClick: () => handleDelete(item)
+      label: item.is_active ? 'Ngừng hoạt động' : 'Mở lại hoạt động',
+      icon: <PowerOff className={`w-4 h-4 ${item.is_active ? 'text-red-600' : 'text-emerald-600'}`} />,
+      className: item.is_active ? 'text-red-600' : 'text-emerald-600',
+      onClick: () => handleToggleStatus(item)
     }
   ];
 
@@ -329,7 +336,46 @@ export default function AdminFacilitiesPage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Logo URL</label>
-              <Input type="text" value={formData.logo_url} onChange={e => setFormData({...formData, logo_url: e.target.value})} placeholder="https://" />
+              <div className="flex items-center gap-2">
+                <Input 
+                  type="text" 
+                  value={formData.logo_url} 
+                  onChange={e => setFormData({...formData, logo_url: e.target.value})} 
+                  placeholder="Hoặc nhập URL..." 
+                  className="flex-1"
+                />
+                <div className="relative">
+                  <Button type="button" variant="outline" className="relative overflow-hidden cursor-pointer whitespace-nowrap">
+                    <Upload className="w-4 h-4 mr-2 inline-block" /> Tải lên
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          const toastId = toast.loading('Đang tải ảnh lên...');
+                          try {
+                            const url = await uploadImage(file);
+                            setFormData(prev => ({...prev, logo_url: url}));
+                            toast.success('Tải ảnh thành công', { id: toastId });
+                          } catch (err) {
+                            toast.error('Lỗi khi tải ảnh', { id: toastId });
+                          }
+                        }
+                      }} 
+                    />
+                  </Button>
+                </div>
+              </div>
+              {formData.logo_url && (
+                <div className="mt-2 w-24 h-24 rounded-md overflow-hidden bg-slate-100 border border-slate-200 shadow-sm relative group">
+                  <img src={formData.logo_url} alt="Preview" className="w-full h-full object-contain" />
+                  <div className="absolute inset-0 bg-black/40 hidden group-hover:flex items-center justify-center transition-all cursor-pointer" onClick={() => setFormData({...formData, logo_url: ''})}>
+                    <Trash2 className="w-5 h-5 text-white" />
+                  </div>
+                </div>
+              )}
             </div>
 
             <div>

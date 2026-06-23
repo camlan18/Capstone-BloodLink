@@ -15,7 +15,7 @@ export const adminDonationService = {
 
   exportExcel: async (params?: any) => {
     const res = await api.get('/donor/slots/export', { params, responseType: 'blob' });
-    const url = window.URL.createObjectURL(new Blob([res.data]));
+    const url = window.URL.createObjectURL(new Blob([res as any]));
     const link = document.createElement('a');
     link.href = url;
     link.setAttribute('download', 'donations.xlsx');
@@ -26,7 +26,7 @@ export const adminDonationService = {
 
   downloadTemplate: async () => {
     const res = await api.get('/donor/slots/template', { responseType: 'blob' });
-    const url = window.URL.createObjectURL(new Blob([res.data]));
+    const url = window.URL.createObjectURL(new Blob([res as any]));
     const link = document.createElement('a');
     link.href = url;
     link.setAttribute('download', 'donations_template.xlsx');

@@ -92,10 +92,14 @@ export class SchedulesService implements OnModuleInit {
 
     const parseTime = (timeStr: string) => {
       const [h, m, s] = timeStr.split(':').map(Number);
-      const dt = new Date(baseDate);
-      dt.setHours(h, m, s || 0);
+      const dt = new Date('1970-01-01T00:00:00.000Z');
+      dt.setUTCHours(h, m, s || 0);
       return dt;
     };
+
+    if (dto.start_time >= dto.end_time) {
+      throw new BadRequestException('Giờ kết thúc phải lớn hơn giờ bắt đầu trong cùng một ngày');
+    }
 
     return await this.prisma.facility_donation_schedules.create({
       data: {
@@ -120,10 +124,29 @@ export class SchedulesService implements OnModuleInit {
     const parseTime = (timeStr?: string) => {
       if (!timeStr) return undefined;
       const [h, m, s] = timeStr.split(':').map(Number);
-      const dt = new Date(baseDate);
-      dt.setHours(h, m, s || 0);
+      const dt = new Date('1970-01-01T00:00:00.000Z');
+      dt.setUTCHours(h, m, s || 0);
       return dt;
     };
+
+    const newStartTime = dto.start_time || schedule.start_time; // Need to format schedule.start_time to string to compare?
+    // Actually, schedule.start_time and schedule.end_time are Date objects from Prisma.
+    // It's safer to just check if both dto.start_time and dto.end_time are provided.
+    if (dto.start_time && dto.end_time) {
+      if (dto.start_time >= dto.end_time) {
+        throw new BadRequestException('Giờ kết thúc phải lớn hơn giờ bắt đầu trong cùng một ngày');
+      }
+    } else if (dto.start_time && !dto.end_time) {
+      const endStr = schedule.end_time.toISOString().substring(11, 16);
+      if (dto.start_time >= endStr) {
+        throw new BadRequestException('Giờ kết thúc phải lớn hơn giờ bắt đầu trong cùng một ngày');
+      }
+    } else if (!dto.start_time && dto.end_time) {
+      const startStr = schedule.start_time.toISOString().substring(11, 16);
+      if (startStr >= dto.end_time) {
+        throw new BadRequestException('Giờ kết thúc phải lớn hơn giờ bắt đầu trong cùng một ngày');
+      }
+    }
 
     return await this.prisma.facility_donation_schedules.update({
       where: { schedule_id: id },

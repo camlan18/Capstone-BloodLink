@@ -691,6 +691,7 @@ export default function AdminRequestsPage() {
               <label className="block text-sm font-medium text-slate-700 mb-1">Cần máu trước ngày (Tùy chọn)</label>
               <Input 
                 type="datetime-local"
+                min={format(new Date(), "yyyy-MM-dd'T'HH:mm")}
                 value={createData.required_before} 
                 onChange={e => setCreateData({...createData, required_before: e.target.value})} 
               />
