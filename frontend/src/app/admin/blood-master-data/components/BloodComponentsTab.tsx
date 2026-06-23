@@ -70,14 +70,20 @@ export default function BloodComponentsTab() {
     }
   };
 
-  const handleDelete = async (id: number) => {
-    if (!confirm('Bạn có chắc chắn muốn vô hiệu hóa thành phần máu này?')) return;
+  const handleToggleStatus = async (item: any) => {
+    const newStatus = !item.is_active;
+    const actionText = newStatus ? 'mở lại hoạt động' : 'vô hiệu hóa';
+    if (!confirm(`Bạn có chắc chắn muốn ${actionText} thành phần máu này?`)) return;
     try {
-      await adminMasterDataService.deleteBloodComponent(id);
-      toast.success('Vô hiệu hóa thành công');
+      await adminMasterDataService.updateBloodComponent(item.component_id, { 
+        component_code: item.component_code,
+        component_name: item.component_name,
+        is_active: newStatus 
+      });
+      toast.success(`Thành công`);
       fetchData();
     } catch (error) {
-      toast.error('Lỗi khi xóa');
+      toast.error('Lỗi khi thao tác');
     }
   };
 
@@ -114,10 +120,10 @@ export default function BloodComponentsTab() {
       }
     },
     {
-      label: 'Vô hiệu hóa',
-      icon: <Trash2 className="w-4 h-4 text-red-500" />,
-      hidden: !item.is_active,
-      onClick: () => handleDelete(item.component_id)
+      label: item.is_active ? 'Vô hiệu hóa' : 'Mở lại hoạt động',
+      icon: item.is_active ? <Trash2 className="w-4 h-4 text-red-500" /> : <Loader2 className="w-4 h-4 text-emerald-500" />,
+      className: item.is_active ? 'text-red-500' : 'text-emerald-500',
+      onClick: () => handleToggleStatus(item)
     }
   ];
 

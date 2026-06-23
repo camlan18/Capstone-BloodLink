@@ -71,14 +71,20 @@ export default function BloodTypesTab() {
     }
   };
 
-  const handleDelete = async (id: number) => {
-    if (!confirm('Bạn có chắc chắn muốn xóa/vô hiệu hóa nhóm máu này?')) return;
+  const handleToggleStatus = async (item: any) => {
+    const newStatus = !item.is_active;
+    const actionText = newStatus ? 'mở lại hoạt động' : 'vô hiệu hóa';
+    if (!confirm(`Bạn có chắc chắn muốn ${actionText} nhóm máu này?`)) return;
     try {
-      await adminMasterDataService.deleteBloodType(id);
-      toast.success('Xóa nhóm máu thành công');
+      await adminMasterDataService.updateBloodType(item.blood_type_id, {
+        blood_group: item.abo,
+        rh_factor: item.rh_factor,
+        is_active: newStatus 
+      });
+      toast.success(`Thành công`);
       fetchData();
     } catch (error) {
-      toast.error('Lỗi khi xóa nhóm máu');
+      toast.error('Lỗi khi thao tác');
     }
   };
 
@@ -116,10 +122,10 @@ export default function BloodTypesTab() {
       }
     },
     {
-      label: 'Vô hiệu hóa',
-      icon: <Trash2 className="w-4 h-4 text-red-500" />,
-      hidden: !item.is_active,
-      onClick: () => handleDelete(item.blood_type_id)
+      label: item.is_active ? 'Vô hiệu hóa' : 'Mở lại hoạt động',
+      icon: item.is_active ? <Trash2 className="w-4 h-4 text-red-500" /> : <Loader2 className="w-4 h-4 text-emerald-500" />,
+      className: item.is_active ? 'text-red-500' : 'text-emerald-500',
+      onClick: () => handleToggleStatus(item)
     }
   ];
 

@@ -293,7 +293,7 @@ export default function AdminDonationsPage() {
     {
       label: 'Khám & Thu máu',
       icon: <Stethoscope className="w-4 h-4 text-blood" />,
-      hidden: slot.status === 'CANCELLED' || slot.notes === 'COMPLETED' || slot.status === 'COMPLETED',
+      hidden: ['CANCELLED', 'COMPLETED', 'EXAMINED_FAILED', 'REJECTED'].includes(slot.status) || slot.notes === 'COMPLETED',
       onClick: () => handleOpenRecord(slot)
     },
     {
@@ -402,6 +402,7 @@ export default function AdminDonationsPage() {
             <label className="block text-sm font-medium text-slate-700 mb-1">Ngày hẹn</label>
             <Input 
               type="date"
+              min={format(new Date(), 'yyyy-MM-dd')}
               value={createData.specific_date} 
               onChange={e => setCreateData({...createData, specific_date: e.target.value})} 
               required
@@ -505,6 +506,7 @@ export default function AdminDonationsPage() {
                 <label className="block text-sm font-medium text-slate-700 mb-1">Ngày giờ hiến</label>
                 <Input 
                   type="datetime-local" 
+                  min={format(new Date(), "yyyy-MM-dd'T'HH:mm")}
                   value={recordData.donation_date} 
                   onChange={e => setRecordData({...recordData, donation_date: e.target.value})} 
                   required
@@ -682,7 +684,7 @@ export default function AdminDonationsPage() {
 
             <div className="pt-6 mt-6 flex justify-end gap-3 border-t border-slate-100">
               <Button type="button" variant="outline" onClick={() => setIsDetailOpen(false)}>Đóng</Button>
-              {(selectedSlot.status === 'PENDING' || selectedSlot.status === 'APPROVED') && (
+              {(!['CANCELLED', 'COMPLETED', 'EXAMINED_FAILED', 'REJECTED'].includes(selectedSlot.status) && selectedSlot.notes !== 'COMPLETED') && (
                 <Button type="button" className="bg-blood hover:bg-blood-deep text-white" onClick={() => {
                   setIsDetailOpen(false);
                   handleOpenRecord(selectedSlot);

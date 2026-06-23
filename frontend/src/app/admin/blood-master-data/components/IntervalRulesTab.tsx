@@ -66,6 +66,16 @@ export default function IntervalRulesTab() {
     if (!formData.component_id || !formData.min_interval_days) {
       return toast.error('Vui lòng chọn thành phần máu và khoảng cách tối thiểu');
     }
+    
+    if (formData.min_interval_days > 365) {
+      return toast.error('Khoảng cách tối thiểu không được vượt quá 365 ngày (1 năm)');
+    }
+
+    const maxCalculated = Math.floor(365 / formData.min_interval_days);
+    if (formData.max_donations_per_year > maxCalculated) {
+      return toast.error(`Với khoảng cách ${formData.min_interval_days} ngày, số lần hiến tối đa/năm chỉ có thể là ${maxCalculated}`);
+    }
+
     setSubmitting(true);
     try {
       if (selectedItem) {
@@ -84,14 +94,20 @@ export default function IntervalRulesTab() {
     }
   };
 
-  const handleDelete = async (id: number) => {
-    if (!confirm('Bạn có chắc chắn muốn vô hiệu hóa quy tắc này?')) return;
+  const handleToggleStatus = async (item: any) => {
+    const newStatus = !item.is_active;
+    const actionText = newStatus ? 'mở lại hoạt động' : 'vô hiệu hóa';
+    if (!confirm(`Bạn có chắc chắn muốn ${actionText} quy tắc này?`)) return;
     try {
-      await adminMasterDataService.deleteDonationIntervalRule(id);
-      toast.success('Vô hiệu hóa thành công');
+      await adminMasterDataService.updateDonationIntervalRule(item.rule_id, {
+        component_id: item.component_id,
+        min_interval_days: item.min_interval_days,
+        is_active: newStatus
+      });
+      toast.success(`Thành công`);
       fetchData();
     } catch (error) {
-      toast.error('Lỗi khi xóa');
+      toast.error('Lỗi khi thao tác');
     }
   };
 
@@ -142,10 +158,10 @@ export default function IntervalRulesTab() {
       }
     },
     {
-      label: 'Vô hiệu hóa',
-      icon: <Trash2 className="w-4 h-4 text-red-500" />,
-      hidden: !item.is_active,
-      onClick: () => handleDelete(item.rule_id)
+      label: item.is_active ? 'Vô hiệu hóa' : 'Mở lại hoạt động',
+      icon: item.is_active ? <Trash2 className="w-4 h-4 text-red-500" /> : <Loader2 className="w-4 h-4 text-emerald-500" />,
+      className: item.is_active ? 'text-red-500' : 'text-emerald-500',
+      onClick: () => handleToggleStatus(item)
     }
   ];
 
@@ -211,17 +227,30 @@ export default function IntervalRulesTab() {
               <label className="block text-sm font-medium text-slate-700 mb-1">Khoảng cách tối thiểu (Ngày) <span className="text-red-500">*</span></label>
               <Input 
                 type="number"
+                min={1}
+                max={365}
                 value={formData.min_interval_days}
-                onChange={e => setFormData({...formData, min_interval_days: Number(e.target.value)})}
+                onChange={e => {
+                  const val = Number(e.target.value);
+                  setFormData({...formData, min_interval_days: val});
+                }}
               />
+              <p className="text-[10px] text-slate-500 mt-1">Tối đa 365 ngày</p>
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Số lần tối đa/năm</label>
               <Input 
                 type="number"
+                min={1}
+                max={formData.min_interval_days ? Math.floor(365 / formData.min_interval_days) : undefined}
                 value={formData.max_donations_per_year}
                 onChange={e => setFormData({...formData, max_donations_per_year: Number(e.target.value)})}
               />
+              <p className="text-[10px] text-slate-500 mt-1">
+                {formData.min_interval_days 
+                  ? `Hợp lệ: 1 - ${Math.floor(365 / formData.min_interval_days)} lần` 
+                  : 'Phụ thuộc khoảng cách tối thiểu'}
+              </p>
             </div>
           </div>
           <div>

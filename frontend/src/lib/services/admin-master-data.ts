@@ -51,7 +51,7 @@ export const adminMasterDataService = {
 
   exportFacilitiesExcel: async (params?: any) => {
     const res = await api.get('/master-data/facilities/export', { params, responseType: 'blob' });
-    const url = window.URL.createObjectURL(new Blob([res.data]));
+    const url = window.URL.createObjectURL(new Blob([res as any]));
     const link = document.createElement('a');
     link.href = url;
     link.setAttribute('download', 'facilities.xlsx');
@@ -62,7 +62,7 @@ export const adminMasterDataService = {
 
   downloadFacilitiesTemplate: async () => {
     const res = await api.get('/master-data/facilities/template', { responseType: 'blob' });
-    const url = window.URL.createObjectURL(new Blob([res.data]));
+    const url = window.URL.createObjectURL(new Blob([res as any]));
     const link = document.createElement('a');
     link.href = url;
     link.setAttribute('download', 'facilities_template.xlsx');

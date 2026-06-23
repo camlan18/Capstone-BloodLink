@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import { Activity, ArrowLeft, Heart, Info, Send, User, Phone, Building2, Droplet, Calendar, FileText, MapPin } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { format } from 'date-fns';
 
 export default function CreateBloodRequestPage() {
   const router = useRouter();
@@ -277,6 +278,7 @@ export default function CreateBloodRequestPage() {
                         <Input 
                           type="datetime-local"
                           name="required_before" 
+                          min={format(new Date(), "yyyy-MM-dd'T'HH:mm")}
                           value={formData.required_before} 
                           onChange={handleChange} 
                           className="h-12 pl-10 bg-slate-50 border-slate-200 focus:bg-white transition-colors rounded-xl"

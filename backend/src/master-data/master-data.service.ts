@@ -220,6 +220,13 @@ export class MasterDataService {
     const exists = await this.prisma.medical_facilities.findUnique({ where: { facility_code: facilityCode } });
     if (exists) throw new BadRequestException('Mã cơ sở y tế đã tồn tại');
 
+    if (dto.is_primary) {
+      await this.prisma.medical_facilities.updateMany({
+        where: { is_primary: true },
+        data: { is_primary: false }
+      });
+    }
+
     return await this.prisma.medical_facilities.create({
       data: {
         ...dto,
@@ -229,6 +236,16 @@ export class MasterDataService {
   }
 
   async updateFacility(id: number, dto: UpdateFacilityDto) {
+    if (dto.is_primary) {
+      await this.prisma.medical_facilities.updateMany({
+        where: { 
+          is_primary: true,
+          facility_id: { not: id }
+        },
+        data: { is_primary: false }
+      });
+    }
+
     return await this.prisma.medical_facilities.update({
       where: { facility_id: id },
       data: dto
@@ -289,6 +306,14 @@ export class MasterDataService {
         }
 
         const facilityCode = row['Mã cơ sở'] || `FAC-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+        const isPrimary = row['Cơ sở chính (1/0)'] === '1' || row['Cơ sở chính (1/0)'] === 1;
+
+        if (isPrimary) {
+          await this.prisma.medical_facilities.updateMany({
+            where: { is_primary: true },
+            data: { is_primary: false }
+          });
+        }
 
         await this.prisma.medical_facilities.create({
           data: {
@@ -299,7 +324,7 @@ export class MasterDataService {
             phone: row['Số điện thoại']?.toString(),
             email: row['Email']?.toString(),
             website: row['Website']?.toString(),
-            is_primary: row['Cơ sở chính (1/0)'] === '1' || row['Cơ sở chính (1/0)'] === 1,
+            is_primary: isPrimary,
             is_active: true
           }
         });

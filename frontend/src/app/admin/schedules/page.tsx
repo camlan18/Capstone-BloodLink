@@ -105,8 +105,7 @@ export default function AdminSchedulesPage() {
         if (!timeStr) return '00:00';
         // If it's a date string like "1970-01-01T08:00:00.000Z"
         if (timeStr.includes('T')) {
-          const d = new Date(timeStr);
-          return format(d, 'HH:mm');
+          return timeStr.substring(11, 16);
         }
         return timeStr;
       } catch (e) {
@@ -195,6 +194,11 @@ export default function AdminSchedulesPage() {
       return;
     }
 
+    if (formData.start_time >= formData.end_time) {
+      toast.error('Giờ kết thúc phải lớn hơn giờ bắt đầu (trong cùng 1 ngày)');
+      return;
+    }
+
     try {
       const payload = {
         facility_id: parseInt(formData.facility_id),
@@ -240,7 +244,7 @@ export default function AdminSchedulesPage() {
         const formatTime = (timeStr: string) => {
           try {
             if (!timeStr) return '--:--';
-            if (timeStr.includes('T')) return format(new Date(timeStr), 'HH:mm');
+            if (timeStr.includes('T')) return timeStr.substring(11, 16);
             return timeStr;
           } catch(e) { return '--:--'; }
         };
@@ -411,6 +415,7 @@ export default function AdminSchedulesPage() {
               <label className="block text-sm font-medium text-slate-700 mb-1">Ngày tổ chức <span className="text-red-500">*</span></label>
               <Input 
                 type="date" 
+                min={format(new Date(), 'yyyy-MM-dd')}
                 value={formData.date} 
                 onChange={e => setFormData({...formData, date: e.target.value})}
                 required 
@@ -534,8 +539,8 @@ export default function AdminSchedulesPage() {
                   <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm text-center">
                     <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Khung giờ</p>
                     <p className="text-base font-bold text-slate-800">
-                      {currentView.start_time?.includes('T') ? format(new Date(currentView.start_time), 'HH:mm') : currentView.start_time} - 
-                      {currentView.end_time?.includes('T') ? format(new Date(currentView.end_time), 'HH:mm') : currentView.end_time}
+                      {currentView.start_time?.includes('T') ? currentView.start_time.substring(11, 16) : currentView.start_time} - 
+                      {currentView.end_time?.includes('T') ? currentView.end_time.substring(11, 16) : currentView.end_time}
                     </p>
                   </div>
                   <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm text-center">

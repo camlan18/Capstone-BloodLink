@@ -23,7 +23,7 @@ export const adminUserService = {
 
   exportExcel: async (params?: any) => {
     const res = await api.get('/users/export', { params, responseType: 'blob' });
-    const url = window.URL.createObjectURL(new Blob([res.data]));
+    const url = window.URL.createObjectURL(new Blob([res as any]));
     const link = document.createElement('a');
     link.href = url;
     link.setAttribute('download', 'users.xlsx');
@@ -34,7 +34,7 @@ export const adminUserService = {
 
   downloadTemplate: async () => {
     const res = await api.get('/users/template', { responseType: 'blob' });
-    const url = window.URL.createObjectURL(new Blob([res.data]));
+    const url = window.URL.createObjectURL(new Blob([res as any]));
     const link = document.createElement('a');
     link.href = url;
     link.setAttribute('download', 'users_template.xlsx');

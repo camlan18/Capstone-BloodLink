@@ -26,6 +26,23 @@ import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, ArrowRight,
 import { toast } from 'sonner';
 import { BaseModal } from '@/components/ui/BaseModal';
 
+const getStatusBadge = (status: string) => {
+  switch (status) {
+    case 'PENDING':
+      return { text: 'Chờ duyệt', color: 'bg-orange-100 border-orange-200 text-orange-800', icon: <Clock className="w-3.5 h-3.5" /> };
+    case 'APPROVED':
+      return { text: 'Đã duyệt', color: 'bg-blue-100 border-blue-300 text-blue-800', icon: <CheckCircle2 className="w-3.5 h-3.5" /> };
+    case 'COMPLETED':
+      return { text: 'Hoàn thành', color: 'bg-emerald-500 border-emerald-600 text-white shadow-md shadow-emerald-500/20', icon: <CheckCircle2 className="w-3.5 h-3.5 text-white" /> };
+    case 'CANCELLED':
+      return { text: 'Đã hủy', color: 'bg-slate-100 border-slate-300 text-slate-600', icon: <XCircle className="w-3.5 h-3.5" /> };
+    case 'REJECTED':
+      return { text: 'Từ chối', color: 'bg-red-100 border-red-300 text-red-800', icon: <XCircle className="w-3.5 h-3.5" /> };
+    default:
+      return { text: 'Đã đăng ký', color: 'bg-emerald-50 border-emerald-200 text-emerald-700', icon: <CheckCircle2 className="w-3.5 h-3.5" /> };
+  }
+};
+
 export default function BookDonationPage() {
   const { user, donorProfile, setUser, setDonorProfile } = useAuthStore();
   const router = useRouter();
@@ -33,6 +50,7 @@ export default function BookDonationPage() {
   
   const [mySlots, setMySlots] = useState<any[]>([]);
   const [schedules, setSchedules] = useState<any[]>([]);
+  const [myHistory, setMyHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -56,15 +74,17 @@ export default function BookDonationPage() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [slotsRes, schedRes, donorRes, authRes] = await Promise.all([
+      const [slotsRes, schedRes, donorRes, authRes, historyRes] = await Promise.all([
         donorService.getMySlots().catch(() => null),
         donorService.getSchedules().catch(() => null),
         donorService.getProfile().catch(() => null),
-        authService.getProfile().catch(() => null)
+        authService.getProfile().catch(() => null),
+        donorService.getHistory().catch(() => null)
       ]);
       
       if (slotsRes && slotsRes.data) setMySlots(slotsRes.data);
       if (schedRes && schedRes.data) setSchedules(schedRes.data);
+      if (historyRes && historyRes.data) setMyHistory(historyRes.data);
       
       if (donorRes && donorRes.data) {
         setDonorProfile(donorRes.data);
@@ -239,18 +259,23 @@ export default function BookDonationPage() {
                 </div>
 
                 {mySlot && mySlot.schedule && (
-                  <div className="absolute bottom-3 left-3 right-3 bg-emerald-50 border border-emerald-200 rounded-lg p-2 animate-slide-up shadow-sm">
-                    <div className="flex items-center gap-1.5 text-emerald-700 font-bold text-xs mb-1">
-                      <CheckCircle2 className="w-3.5 h-3.5" /> Đã đăng ký
-                    </div>
-                    <div className="text-[11px] font-medium text-emerald-600 line-clamp-1 mb-0.5">
-                      {mySlot.schedule.facility?.facility_name}
-                    </div>
-                    <div className="flex items-center gap-1 text-emerald-600 text-[10px]">
-                      <Clock className="w-3 h-3" />
-                      {mySlot.schedule.start_time?.slice(11, 16)} - {mySlot.schedule.end_time?.slice(11, 16)}
-                    </div>
-                  </div>
+                  (() => {
+                    const statusConfig = getStatusBadge(mySlot.status);
+                    return (
+                      <div className={`absolute bottom-3 left-3 right-3 ${statusConfig.color} border rounded-lg p-2 animate-slide-up shadow-sm`}>
+                        <div className="flex items-center gap-1.5 font-bold text-xs mb-1">
+                          {statusConfig.icon} {statusConfig.text}
+                        </div>
+                        <div className="text-[11px] font-medium line-clamp-1 mb-0.5 opacity-90">
+                          {mySlot.schedule.facility?.facility_name}
+                        </div>
+                        <div className="flex items-center gap-1 text-[10px] opacity-80">
+                          <Clock className="w-3 h-3" />
+                          {mySlot.schedule.start_time?.includes('T') ? mySlot.schedule.start_time.substring(11, 16) : mySlot.schedule.start_time} - {mySlot.schedule.end_time?.includes('T') ? mySlot.schedule.end_time.substring(11, 16) : mySlot.schedule.end_time}
+                        </div>
+                      </div>
+                    );
+                  })()
                 )}
                 
                 {!isPast && !mySlot && isCurrentMonth && openSchedulesCount > 0 && (
@@ -305,7 +330,7 @@ export default function BookDonationPage() {
                 <div className="flex flex-wrap items-center gap-3 text-sm font-medium mb-6">
                   <div className="flex items-center gap-2 text-slate-700 bg-slate-50 px-3 py-2 rounded-lg border border-slate-100">
                     <Clock className="w-4 h-4 text-slate-400" />
-                    {sch.start_time?.slice(11, 16)} - {sch.end_time?.slice(11, 16)}
+                    {sch.start_time?.includes('T') ? sch.start_time.substring(11, 16) : sch.start_time} - {sch.end_time?.includes('T') ? sch.end_time.substring(11, 16) : sch.end_time}
                   </div>
                   <div className="flex items-center gap-2 text-slate-700 bg-slate-50 px-3 py-2 rounded-lg border border-slate-100">
                     <Users className="w-4 h-4 text-slate-400" />
@@ -388,35 +413,79 @@ export default function BookDonationPage() {
         {selectedMySlot && selectedMySlot.schedule && (
           <div className="space-y-4">
             <div className="bg-white p-4 rounded-xl">
-              <h4 className="font-bold text-navy mb-2">{selectedMySlot.schedule.facility?.facility_name}</h4>
+              <div className="flex justify-between items-start mb-2">
+                <h4 className="font-bold text-navy">{selectedMySlot.schedule.facility?.facility_name}</h4>
+                {(() => {
+                  const statusConfig = getStatusBadge(selectedMySlot.status);
+                  return (
+                    <span className={`flex items-center gap-1 px-2.5 py-1 rounded text-xs font-bold ${statusConfig.color} border`}>
+                      {statusConfig.icon} {statusConfig.text}
+                    </span>
+                  );
+                })()}
+              </div>
               <div className="flex items-start gap-2 text-sm text-slate-500 mb-3">
                 <MapPin className="w-4 h-4 mt-0.5" />
                 <span>{selectedMySlot.schedule.facility?.address}</span>
               </div>
               <div className="flex items-center gap-2 text-sm text-slate-500 bg-slate-50 p-2 rounded-lg inline-flex">
                 <Clock className="w-4 h-4 text-emerald-600" />
-                <span className="font-semibold">{selectedMySlot.schedule.start_time?.slice(11, 16)} - {selectedMySlot.schedule.end_time?.slice(11, 16)}</span>
+                <span className="font-semibold">{selectedMySlot.schedule.start_time?.includes('T') ? selectedMySlot.schedule.start_time.substring(11, 16) : selectedMySlot.schedule.start_time} - {selectedMySlot.schedule.end_time?.includes('T') ? selectedMySlot.schedule.end_time.substring(11, 16) : selectedMySlot.schedule.end_time}</span>
               </div>
             </div>
 
             {(() => {
+              if (selectedMySlot.status === 'COMPLETED') {
+                const historyItem = myHistory.find(h => 
+                  h.facility_id === selectedMySlot.schedule?.facility_id && 
+                  h.donation_date && selectedMySlot.schedule?.date &&
+                  h.donation_date.substring(0, 10) === selectedMySlot.schedule.date.substring(0, 10)
+                );
+                
+                return (
+                  <div className="pt-4 border-t border-slate-200 mt-4">
+                    <div className="bg-emerald-50 rounded-xl p-4 border border-emerald-100">
+                      <h5 className="font-bold text-emerald-800 mb-3 flex items-center gap-1.5"><CheckCircle2 className="w-5 h-5"/> Lịch đã hoàn thành</h5>
+                      <div className="space-y-3 text-sm">
+                        {historyItem?.volume_ml ? (
+                          <div className="flex justify-between items-center bg-white p-2.5 rounded-lg shadow-sm">
+                            <span className="text-slate-600 font-medium">Lượng máu đã hiến:</span>
+                            <span className="font-bold text-emerald-700 text-base">{historyItem.volume_ml} ml</span>
+                          </div>
+                        ) : null}
+                        {historyItem?.notes && (
+                          <div className="flex flex-col gap-1 bg-white p-2.5 rounded-lg shadow-sm">
+                            <span className="text-slate-500 font-medium text-xs">Ghi chú của bác sĩ:</span>
+                            <span className="font-semibold text-slate-800">{historyItem.notes}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+
+              if (selectedMySlot.status === 'CANCELLED' || selectedMySlot.status === 'REJECTED') {
+                 return null;
+              }
+
               const daysLeft = differenceInDays(parseISO(selectedMySlot.schedule.date), startOfDay(new Date()));
               const canCancel = daysLeft > 2;
               
               return (
-                <div className="pt-4 border-t border-slate-200">
+                <div className="pt-4 border-t border-slate-200 mt-4">
                   {!canCancel ? (
-                    <div className="text-sm text-orange-600 bg-orange-50 p-3 rounded-lg border border-orange-200 text-center">
+                    <div className="text-sm text-orange-600 bg-orange-50 p-3 rounded-lg border border-orange-200 text-center font-medium">
                       Bạn không thể hủy lịch này do đã quá sát ngày hiến máu (Ít hơn 2 ngày).
                     </div>
                   ) : (
                     <button
                       onClick={() => handleCancelBooking(selectedMySlot.slot_id)}
                       disabled={isCanceling}
-                      className="w-full py-3 border-2 border-red-200 text-red-600 hover:bg-red-50 font-bold rounded-xl transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                      className="w-full py-3 border-2 border-red-200 text-red-600 hover:bg-red-50 font-bold rounded-xl transition-colors flex items-center justify-center gap-2 disabled:opacity-50 shadow-sm"
                     >
                       {isCanceling ? (
-                        <><span className="w-4 h-4 border-2 border-red-600 border-t-transparent rounded-full animate-spin"></span> Đang hủy</>
+                        <><span className="w-5 h-5 border-2 border-red-600 border-t-transparent rounded-full animate-spin"></span> Đang xử lý</>
                       ) : (
                         <><XCircle className="w-5 h-5" /> Hủy lịch này</>
                       )}

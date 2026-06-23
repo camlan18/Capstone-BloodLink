@@ -23,7 +23,7 @@ export const adminInventoryService = {
 
   exportExcel: async (params?: any) => {
     const res = await api.get('/inventory/export', { params, responseType: 'blob' });
-    const url = window.URL.createObjectURL(new Blob([res.data]));
+    const url = window.URL.createObjectURL(new Blob([res as any]));
     const link = document.createElement('a');
     link.href = url;
     link.setAttribute('download', 'inventory.xlsx');
@@ -34,7 +34,7 @@ export const adminInventoryService = {
 
   downloadTemplate: async () => {
     const res = await api.get('/inventory/template', { responseType: 'blob' });
-    const url = window.URL.createObjectURL(new Blob([res.data]));
+    const url = window.URL.createObjectURL(new Blob([res as any]));
     const link = document.createElement('a');
     link.href = url;
     link.setAttribute('download', 'inventory_template.xlsx');
