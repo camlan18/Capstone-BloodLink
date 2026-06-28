@@ -28,12 +28,16 @@ export const useAuthStore = create<AuthState>()(
         set({ user, isAuthenticated: true });
       },
       logout: () => {
+        set({ user: null, isAuthenticated: false, donorProfile: null });
         if (typeof window !== 'undefined') {
           localStorage.removeItem('access_token');
           localStorage.removeItem('refresh_token');
-          window.location.href = '/login';
+          if (window.location.pathname !== '/login') {
+            setTimeout(() => {
+              window.location.href = '/login';
+            }, 100);
+          }
         }
-        set({ user: null, isAuthenticated: false, donorProfile: null });
       },
       setDonorProfile: (profile) => set({ donorProfile: profile }),
       setUser: (user) => set({ user }),
