@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { toast } from 'sonner';
+import { useAuthStore } from '../stores';
 
 const apiClient = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1',
@@ -53,7 +54,7 @@ apiClient.interceptors.response.use(
 
     if (error.response && error.response.status === 401 && !originalRequest._retry) {
       if (isRefreshing) {
-        return new Promise(function(resolve, reject) {
+        return new Promise(function (resolve, reject) {
           failedQueue.push({ resolve, reject });
         }).then(token => {
           originalRequest.headers['Authorization'] = 'Bearer ' + token;
@@ -71,10 +72,7 @@ apiClient.interceptors.response.use(
       if (!refreshToken) {
         isRefreshing = false;
         if (typeof window !== 'undefined') {
-          localStorage.removeItem('access_token');
-          localStorage.removeItem('refresh_token');
-          localStorage.removeItem('user');
-          window.location.href = '/login';
+          useAuthStore.getState().logout();
         }
         return Promise.reject(error);
       }
@@ -83,7 +81,7 @@ apiClient.interceptors.response.use(
         const response = await axios.post(`${apiClient.defaults.baseURL}/auth/refresh-token`, {
           refresh_token: refreshToken
         });
-        
+
         // Lấy token (tùy thuộc vào việc interceptor response bên NestJS bọc data)
         const newAccessToken = response.data?.data?.access_token || response.data?.access_token;
         const newRefreshToken = response.data?.data?.refresh_token || response.data?.refresh_token;
@@ -93,6 +91,11 @@ apiClient.interceptors.response.use(
         if (typeof window !== 'undefined') {
           localStorage.setItem('access_token', newAccessToken);
           if (newRefreshToken) localStorage.setItem('refresh_token', newRefreshToken);
+
+          const newUser = response.data?.data?.user || response.data?.user;
+          if (newUser) {
+            useAuthStore.getState().setUser(newUser);
+          }
         }
 
         apiClient.defaults.headers.common['Authorization'] = 'Bearer ' + newAccessToken;
@@ -106,10 +109,7 @@ apiClient.interceptors.response.use(
         processQueue(err, null);
         isRefreshing = false;
         if (typeof window !== 'undefined') {
-          localStorage.removeItem('access_token');
-          localStorage.removeItem('refresh_token');
-          localStorage.removeItem('user');
-          window.location.href = '/login';
+          useAuthStore.getState().logout();
         }
         return Promise.reject(err);
       }
