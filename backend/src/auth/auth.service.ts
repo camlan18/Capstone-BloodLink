@@ -15,7 +15,7 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly mailService: MailService,
     private readonly notificationsService: NotificationsService,
-  ) {}
+  ) { }
 
   async register(dto: RegisterDto) {
     const existingUser = await this.prisma.users.findUnique({
@@ -52,8 +52,8 @@ export class AuthService {
           is_email_verified: false,
         },
       });
-      
-      let otpType = await tx.otp_types.findUnique({ where: { otp_type_code: OtpTypeCode.REGISTER_VERIFY }});
+
+      let otpType = await tx.otp_types.findUnique({ where: { otp_type_code: OtpTypeCode.REGISTER_VERIFY } });
       if (!otpType) {
         otpType = await tx.otp_types.create({
           data: { otp_type_code: OtpTypeCode.REGISTER_VERIFY, otp_type_name: 'Xác thực đăng ký' }
@@ -92,10 +92,10 @@ export class AuthService {
   }
 
   async verifyOtp(dto: OtpDto) {
-    const user = await this.prisma.users.findUnique({ where: { email: dto.email }});
+    const user = await this.prisma.users.findUnique({ where: { email: dto.email } });
     if (!user) throw new BadRequestException('User không tồn tại');
 
-    const otpType = await this.prisma.otp_types.findUnique({ where: { otp_type_code: OtpTypeCode.REGISTER_VERIFY }});
+    const otpType = await this.prisma.otp_types.findUnique({ where: { otp_type_code: OtpTypeCode.REGISTER_VERIFY } });
 
     const latestOtp = await this.prisma.user_otps.findFirst({
       where: {
@@ -160,11 +160,11 @@ export class AuthService {
   }
 
   async resendOtp(dto: ResendOtpDto) {
-    const user = await this.prisma.users.findUnique({ where: { email: dto.email }});
+    const user = await this.prisma.users.findUnique({ where: { email: dto.email } });
     if (!user) throw new BadRequestException('User không tồn tại');
     if (user.is_email_verified) throw new BadRequestException('Tài khoản đã được xác thực');
 
-    const otpType = await this.prisma.otp_types.findUnique({ where: { otp_type_code: OtpTypeCode.REGISTER_VERIFY }});
+    const otpType = await this.prisma.otp_types.findUnique({ where: { otp_type_code: OtpTypeCode.REGISTER_VERIFY } });
 
     // Delete old OTPs
     await this.prisma.user_otps.deleteMany({
@@ -194,13 +194,13 @@ export class AuthService {
 
   async login(dto: LoginDto) {
     const user = await this.prisma.users.findFirst({
-      where: { 
+      where: {
         OR: [
           { email: dto.identifier },
           { username: dto.identifier }
         ]
       },
-      include: { role: true },
+      include: { role: true, facility: true },
     });
 
     if (!user) {
@@ -222,26 +222,30 @@ export class AuthService {
 
     const refreshToken = crypto.randomBytes(40).toString('hex');
 
-    // Cập nhật last login và refresh_token
     await this.prisma.users.update({
       where: { user_id: user.user_id },
-      data: { 
+      data: {
         last_login_at: new Date(),
         refresh_token: refreshToken
       },
     });
 
-    const payload = { sub: user.user_id, email: user.email, role: user.role.role_code };
-    
+    const payload = { sub: user.user_id, email: user.email, role: user.role.role_code, facility_id: user.facility_id };
+
     return {
       access_token: this.jwtService.sign(payload),
       refresh_token: refreshToken,
       user: {
-        id: user.user_id,
+        user_id: user.user_id,
         email: user.email,
         full_name: user.full_name,
         avatar_url: user.avatar_url,
-        role: user.role.role_code,
+        role: {
+          role_code: user.role.role_code,
+          role_name: user.role.role_name
+        },
+        facility_id: user.facility_id,
+        facility: user.facility ? { facility_name: user.facility.facility_name } : undefined,
       }
     };
   }
@@ -253,50 +257,57 @@ export class AuthService {
 
     const user = await this.prisma.users.findFirst({
       where: { refresh_token: refreshToken, is_active: true },
-      include: { role: true },
+      include: { role: true, facility: true },
     });
 
     if (!user) {
       throw new UnauthorizedException('Refresh token không hợp lệ hoặc đã hết hạn');
     }
 
-    // Cấp phát access_token mới và refresh_token mới (xoay vòng)
     const newRefreshToken = crypto.randomBytes(40).toString('hex');
     await this.prisma.users.update({
       where: { user_id: user.user_id },
       data: { refresh_token: newRefreshToken },
     });
 
-    const payload = { sub: user.user_id, email: user.email, role: user.role.role_code };
+    const payload = { sub: user.user_id, email: user.email, role: user.role.role_code, facility_id: user.facility_id };
 
     return {
       access_token: this.jwtService.sign(payload),
       refresh_token: newRefreshToken,
+      user: {
+        id: user.user_id,
+        email: user.email,
+        full_name: user.full_name,
+        avatar_url: user.avatar_url,
+        role: user.role.role_code,
+        facility_id: user.facility_id,
+        facility: user.facility ? { facility_name: user.facility.facility_name } : undefined,
+      }
     };
   }
 
   async forgotPassword(dto: ForgotPasswordDto) {
-    const user = await this.prisma.users.findUnique({ where: { email: dto.email }});
+    const user = await this.prisma.users.findUnique({ where: { email: dto.email } });
     if (!user) throw new BadRequestException('User không tồn tại');
 
     const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
     const otpHash = await bcrypt.hash(otpCode, 10);
 
     await this.prisma.$transaction(async (tx) => {
-      let otpType = await tx.otp_types.findUnique({ where: { otp_type_code: OtpTypeCode.RESET_PASSWORD }});
+      let otpType = await tx.otp_types.findUnique({ where: { otp_type_code: OtpTypeCode.RESET_PASSWORD } });
       if (!otpType) {
         otpType = await tx.otp_types.create({
           data: { otp_type_code: OtpTypeCode.RESET_PASSWORD, otp_type_name: 'Khôi phục mật khẩu' }
         });
       }
-      
+
       const expiresAt = new Date();
       expiresAt.setMinutes(expiresAt.getMinutes() + (otpType.expiry_minutes || 10));
 
-      // Hủy các OTP reset password cũ
       await tx.user_otps.updateMany({
         where: { user_id: user.user_id, otp_type_id: otpType.otp_type_id, is_verified: false },
-        data: { is_verified: true } // đánh dấu là hết hiệu lực
+        data: { is_verified: true }
       });
 
       await tx.user_otps.create({
@@ -318,10 +329,10 @@ export class AuthService {
   }
 
   async resetPassword(dto: ResetPasswordDto) {
-    const user = await this.prisma.users.findUnique({ where: { email: dto.email }});
+    const user = await this.prisma.users.findUnique({ where: { email: dto.email } });
     if (!user) throw new BadRequestException('User không tồn tại');
 
-    const otpType = await this.prisma.otp_types.findUnique({ where: { otp_type_code: OtpTypeCode.RESET_PASSWORD }});
+    const otpType = await this.prisma.otp_types.findUnique({ where: { otp_type_code: OtpTypeCode.RESET_PASSWORD } });
 
     const latestOtp = await this.prisma.user_otps.findFirst({
       where: {

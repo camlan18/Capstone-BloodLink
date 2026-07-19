@@ -105,30 +105,21 @@ model provinces {
   province_code String? @db.NVarChar(10)
   province_name String  @db.NVarChar(100)
 
-  districts          districts[]
-  medical_facilities medical_facilities[]
-  users              users[]
-}
-
-model districts {
-  district_id   Int    @id @default(autoincrement())
-  province_id   Int
-  district_name String @db.NVarChar(100)
-
-  province           provinces            @relation(fields: [province_id], references: [province_id], onDelete: NoAction, onUpdate: NoAction)
   wards              wards[]
   medical_facilities medical_facilities[]
   users              users[]
+  blood_requests     blood_requests[]
 }
 
 model wards {
   ward_id     Int    @id @default(autoincrement())
-  district_id Int
+  province_id Int
   ward_name   String @db.NVarChar(100)
 
-  district           districts            @relation(fields: [district_id], references: [district_id], onDelete: NoAction, onUpdate: NoAction)
+  province           provinces            @relation(fields: [province_id], references: [province_id], onDelete: NoAction, onUpdate: NoAction)
   medical_facilities medical_facilities[]
   users              users[]
+  blood_requests     blood_requests[]
 }
 
 model medical_facilities {
@@ -138,7 +129,6 @@ model medical_facilities {
   short_name    String?   @db.NVarChar(100)
   address       String    @db.NVarChar(500)
   province_id   Int?
-  district_id   Int?
   ward_id       Int?
   phone         String?   @db.NVarChar(20)
   email         String?   @db.NVarChar(100)
@@ -152,8 +142,8 @@ model medical_facilities {
   updated_at    DateTime? @db.DateTime2
 
   province        provinces?        @relation(fields: [province_id], references: [province_id], onDelete: NoAction, onUpdate: NoAction)
-  district        districts?        @relation(fields: [district_id], references: [district_id], onDelete: NoAction, onUpdate: NoAction)
   ward            wards?            @relation(fields: [ward_id], references: [ward_id], onDelete: NoAction, onUpdate: NoAction)
+  users           users[]
   blood_inventory blood_inventory[]
   blood_requests  blood_requests[]
   donations       donations[]
@@ -267,10 +257,10 @@ model users {
   identity_card             String?   @db.NVarChar(20)
   address                   String?   @db.NVarChar(500)
   province_id               Int?
-  district_id               Int?
   ward_id                   Int?
   latitude                  Decimal?  @db.Decimal(10, 7)
   longitude                 Decimal?  @db.Decimal(10, 7)
+  facility_id               Int?
   blood_type_id             Int?
   is_donor_registered       Boolean   @default(false)
   is_available_for_donation Boolean   @default(false)
@@ -284,8 +274,8 @@ model users {
   role             roles       @relation(fields: [role_id], references: [role_id], onDelete: NoAction, onUpdate: NoAction)
   blood_type       blood_types? @relation(fields: [blood_type_id], references: [blood_type_id], onDelete: NoAction, onUpdate: NoAction)
   province         provinces?  @relation(fields: [province_id], references: [province_id], onDelete: NoAction, onUpdate: NoAction)
-  district         districts?  @relation(fields: [district_id], references: [district_id], onDelete: NoAction, onUpdate: NoAction)
   ward             wards?      @relation(fields: [ward_id], references: [ward_id], onDelete: NoAction, onUpdate: NoAction)
+  facility         medical_facilities? @relation(fields: [facility_id], references: [facility_id], onDelete: NoAction, onUpdate: NoAction)
 
   education_documents                 education_documents[]                 @relation("DocCreator")
   blog_posts                          blog_posts[]                          @relation("PostAuthor")
@@ -366,7 +356,6 @@ model blood_inventory {
   source_donation                     donations?                            @relation("InventoryDonation", fields: [source_donation_id], references: [donation_id], onDelete: NoAction, onUpdate: NoAction)
   inventory_transactions              inventory_transactions[]
   blood_request_inventory_allocations blood_request_inventory_allocations[]
-  donations                           donations[]                           @relation("InventoryDonations")
 }
 
 model inventory_transactions {
@@ -402,7 +391,6 @@ model blood_requests {
   ward_room            String?   @db.NVarChar(100)
   clinical_notes       String?   @db.NVarChar(1000)
   province_id          Int?
-  district_id          Int?
   ward_id              Int?
   address              String?   @db.NVarChar(500)
   latitude             Decimal?  @db.Decimal(10, 7)
@@ -422,6 +410,8 @@ model blood_requests {
   urgency                             urgency_levels                        @relation(fields: [urgency_id], references: [urgency_id], onDelete: NoAction, onUpdate: NoAction)
   status                              blood_request_statuses                @relation(fields: [status_id], references: [status_id], onDelete: NoAction, onUpdate: NoAction)
   staff                               users?                                @relation("RequestStaff", fields: [assigned_staff_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+  province                            provinces?                            @relation(fields: [province_id], references: [province_id], onDelete: NoAction, onUpdate: NoAction)
+  ward                                wards?                                @relation(fields: [ward_id], references: [ward_id], onDelete: NoAction, onUpdate: NoAction)
   status_history                      blood_request_status_history[]
   blood_request_inventory_allocations blood_request_inventory_allocations[]
   blood_request_donor_matches         blood_request_donor_matches[]
@@ -486,7 +476,6 @@ model donations {
   staff_user_id       Int?
   health_check_passed Boolean   @default(true)
   result_notes        String?   @db.NVarChar(500)
-  inventory_id        Int?
   status_code         String    @default("COMPLETED") @db.NVarChar(20)
   next_eligible_date  DateTime? @db.Date
   created_at          DateTime  @default(now()) @db.DateTime2
@@ -497,7 +486,6 @@ model donations {
   component          blood_components     @relation(fields: [component_id], references: [component_id], onDelete: NoAction, onUpdate: NoAction)
   request            blood_requests?      @relation(fields: [request_id], references: [request_id], onDelete: NoAction, onUpdate: NoAction)
   staff              users?               @relation("DonationStaff", fields: [staff_user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
-  inventory          blood_inventory?     @relation("InventoryDonations", fields: [inventory_id], references: [inventory_id], onDelete: NoAction, onUpdate: NoAction)
   blood_inventories  blood_inventory[]    @relation("InventoryDonation")
   donation_reminders donation_reminders[]
 }

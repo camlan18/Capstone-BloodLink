@@ -44,15 +44,26 @@ export class SchedulesService implements OnModuleInit {
     }
   }
 
-  async getAllSchedules(query: ScheduleFilterDto) {
+  async getAllSchedules(query: ScheduleFilterDto, user: any) {
     const page = query.page || 1;
     const limit = query.limit || 20;
     const skip = (page - 1) * limit;
 
     const where: any = {};
-    if (query.facility_id) where.facility_id = Number(query.facility_id);
     if (query.status) where.status = query.status;
     if (query.date) where.date = new Date(query.date);
+
+    if (user.role_code === 'HOSPITAL_STAFF') {
+      if (!user.facility_id) {
+        return { data: [], meta: { total: 0, page, limit, totalPages: 0 } };
+      }
+      where.facility_id = user.facility_id;
+    } else if (query.facility_id) {
+      const parsedId = Number(query.facility_id);
+      if (!isNaN(parsedId)) {
+        where.facility_id = parsedId;
+      }
+    }
 
     const [data, total] = await Promise.all([
       this.prisma.facility_donation_schedules.findMany({
@@ -76,16 +87,22 @@ export class SchedulesService implements OnModuleInit {
     };
   }
 
-  async getScheduleById(id: number) {
-    const schedule = await this.prisma.facility_donation_schedules.findUnique({
-      where: { schedule_id: id },
+  async getScheduleById(id: number, user: any) {
+    const where: any = { schedule_id: id };
+    if (user.role_code === 'HOSPITAL_STAFF') {
+      if (!user.facility_id) throw new NotFoundException('Lịch hiến máu không tồn tại hoặc bạn không có quyền xem');
+      where.facility_id = user.facility_id;
+    }
+
+    const schedule = await this.prisma.facility_donation_schedules.findFirst({
+      where,
       include: { facility: true },
     });
-    if (!schedule) throw new NotFoundException('Lịch hiến máu không tồn tại');
+    if (!schedule) throw new NotFoundException('Lịch hiến máu không tồn tại hoặc bạn không có quyền xem');
     return schedule;
   }
 
-  async createSchedule(dto: CreateScheduleDto) {
+  async createSchedule(dto: CreateScheduleDto, user: any) {
     // Parse time strings (e.g. "08:00") into Date objects (using a dummy date since it's @db.Time)
     const baseDate = new Date();
     baseDate.setHours(0, 0, 0, 0);
@@ -100,10 +117,13 @@ export class SchedulesService implements OnModuleInit {
     if (dto.start_time >= dto.end_time) {
       throw new BadRequestException('Giờ kết thúc phải lớn hơn giờ bắt đầu trong cùng một ngày');
     }
+    
+    const facility_id = user.role_code === 'HOSPITAL_STAFF' ? user.facility_id : dto.facility_id;
+    if (!facility_id) throw new BadRequestException('Vui lòng chọn cơ sở y tế');
 
     return await this.prisma.facility_donation_schedules.create({
       data: {
-        facility_id: dto.facility_id,
+        facility_id: facility_id,
         date: new Date(dto.date),
         start_time: parseTime(dto.start_time),
         end_time: parseTime(dto.end_time),
@@ -114,9 +134,15 @@ export class SchedulesService implements OnModuleInit {
     });
   }
 
-  async updateSchedule(id: number, dto: UpdateScheduleDto) {
-    const schedule = await this.prisma.facility_donation_schedules.findUnique({ where: { schedule_id: id } });
-    if (!schedule) throw new NotFoundException('Lịch hiến máu không tồn tại');
+  async updateSchedule(id: number, dto: UpdateScheduleDto, user: any) {
+    const where: any = { schedule_id: id };
+    if (user.role_code === 'HOSPITAL_STAFF') {
+      if (!user.facility_id) throw new NotFoundException('Lịch hiến máu không tồn tại hoặc bạn không có quyền sửa');
+      where.facility_id = user.facility_id;
+    }
+
+    const schedule = await this.prisma.facility_donation_schedules.findFirst({ where });
+    if (!schedule) throw new NotFoundException('Lịch hiến máu không tồn tại hoặc bạn không có quyền sửa');
 
     const baseDate = new Date();
     baseDate.setHours(0, 0, 0, 0);
@@ -162,9 +188,15 @@ export class SchedulesService implements OnModuleInit {
     });
   }
 
-  async deleteSchedule(id: number) {
-    const schedule = await this.prisma.facility_donation_schedules.findUnique({ 
-      where: { schedule_id: id },
+  async deleteSchedule(id: number, user: any) {
+    const where: any = { schedule_id: id };
+    if (user.role_code === 'HOSPITAL_STAFF') {
+      if (!user.facility_id) throw new NotFoundException('Lịch hiến máu không tồn tại');
+      where.facility_id = user.facility_id;
+    }
+
+    const schedule = await this.prisma.facility_donation_schedules.findFirst({ 
+      where,
       include: { _count: { select: { donor_availability_slots: true } } }
     });
     if (!schedule) throw new NotFoundException('Lịch hiến máu không tồn tại');
@@ -177,7 +209,9 @@ export class SchedulesService implements OnModuleInit {
     return { message: 'Xóa lịch hiến máu thành công' };
   }
 
-  async getScheduleDonors(scheduleId: number, query: any) {
+  async getScheduleDonors(scheduleId: number, query: any, user: any) {
+    await this.getScheduleById(scheduleId, user); // Check permission
+
     const page = Number(query.page) || 1;
     const limit = Number(query.limit) || 20;
     const skip = (page - 1) * limit;
@@ -220,7 +254,8 @@ export class SchedulesService implements OnModuleInit {
     };
   }
 
-  async updateDonorStatus(scheduleId: number, slotId: number, status: string) {
+  async updateDonorStatus(scheduleId: number, slotId: number, status: string, user: any) {
+    await this.getScheduleById(scheduleId, user); // Check permission
     const slot = await this.prisma.donor_availability_slots.findUnique({
       where: { slot_id: slotId }
     });
@@ -246,8 +281,8 @@ export class SchedulesService implements OnModuleInit {
     return updatedSlot;
   }
 
-  async exportScheduleDonors(scheduleId: number) {
-    const schedule = await this.getScheduleById(scheduleId);
+  async exportScheduleDonors(scheduleId: number, user: any) {
+    const schedule = await this.getScheduleById(scheduleId, user);
     
     const donors = await this.prisma.donor_availability_slots.findMany({
       where: { schedule_id: scheduleId },

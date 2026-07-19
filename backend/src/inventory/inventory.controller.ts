@@ -14,57 +14,57 @@ import { FileInterceptor } from '@nestjs/platform-express';
 export class InventoryController {
   constructor(private readonly inventoryService: InventoryService) {}
 
-  @Roles(RoleCode.ADMIN, RoleCode.STAFF)
+  @Roles(RoleCode.ADMIN, RoleCode.FACILITY_ADMIN)
   @Post('receive')
   async receiveBlood(@Req() req: any, @Body() dto: ReceiveBloodDto) {
     return await this.inventoryService.receiveBlood({
       ...dto,
       staff_user_id: req.user.user_id,
-    });
+    }, req.user);
   }
 
-  @Roles(RoleCode.ADMIN, RoleCode.STAFF)
+  @Roles(RoleCode.ADMIN, RoleCode.FACILITY_ADMIN)
   @Put(':id')
   async updateBlood(
     @Req() req: any,
     @Param('id', ParseIntPipe) inventoryId: number,
     @Body() dto: Partial<ReceiveBloodDto>,
   ) {
-    return await this.inventoryService.updateBlood(inventoryId, dto, req.user.user_id);
+    return await this.inventoryService.updateBlood(inventoryId, dto, req.user);
   }
 
-  @Roles(RoleCode.ADMIN, RoleCode.STAFF)
+  @Roles(RoleCode.ADMIN, RoleCode.FACILITY_ADMIN)
   @Post(':id/discard')
   async discardBlood(
     @Req() req: any,
     @Param('id', ParseIntPipe) inventoryId: number,
     @Body() dto: DiscardBloodDto,
   ) {
-    return await this.inventoryService.discardBlood(inventoryId, req.user.user_id, dto.reason);
+    return await this.inventoryService.discardBlood(inventoryId, req.user, dto.reason);
   }
 
-  @Roles(RoleCode.ADMIN, RoleCode.STAFF)
+  @Roles(RoleCode.ADMIN, RoleCode.FACILITY_ADMIN)
   @Get('stats')
-  async getStats() {
-    return await this.inventoryService.getInventoryStats();
+  async getStats(@Req() req: any) {
+    return await this.inventoryService.getInventoryStats(req.user);
   }
 
-  @Roles(RoleCode.ADMIN, RoleCode.STAFF)
+  @Roles(RoleCode.ADMIN, RoleCode.FACILITY_ADMIN)
   @Get()
-  async getInventoryList(@Query() query: any) {
-    return await this.inventoryService.getInventoryList(query);
+  async getInventoryList(@Query() query: any, @Req() req: any) {
+    return await this.inventoryService.getInventoryList(query, req.user);
   }
 
-  @Roles(RoleCode.ADMIN, RoleCode.STAFF)
+  @Roles(RoleCode.ADMIN, RoleCode.FACILITY_ADMIN)
   @Get('export')
-  async exportExcel(@Query() query: any, @Res() res: Response) {
-    const buffer = await this.inventoryService.exportExcel(query);
+  async exportExcel(@Query() query: any, @Res() res: Response, @Req() req: any) {
+    const buffer = await this.inventoryService.exportExcel(query, req.user);
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', 'attachment; filename=inventory.xlsx');
     res.send(buffer);
   }
 
-  @Roles(RoleCode.ADMIN, RoleCode.STAFF)
+  @Roles(RoleCode.ADMIN, RoleCode.FACILITY_ADMIN)
   @Get('template')
   async downloadTemplate(@Res() res: Response) {
     const buffer = await this.inventoryService.getTemplate();
@@ -73,7 +73,7 @@ export class InventoryController {
     res.send(buffer);
   }
 
-  @Roles(RoleCode.ADMIN, RoleCode.STAFF)
+  @Roles(RoleCode.ADMIN, RoleCode.FACILITY_ADMIN)
   @Post('import')
   @UseInterceptors(FileInterceptor('file'))
   async importExcel(@UploadedFile() file: Express.Multer.File, @Req() req: any) {

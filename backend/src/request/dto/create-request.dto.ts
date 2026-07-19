@@ -74,12 +74,6 @@ export class CreateRequestDto {
   @Type(() => Number)
   province_id?: number;
 
-  @ApiProperty({ example: 1, description: 'ID Quận/Huyện', required: false })
-  @IsOptional()
-  @IsInt()
-  @Type(() => Number)
-  district_id?: number;
-
   @ApiProperty({ example: 1, description: 'ID Phường/Xã', required: false })
   @IsOptional()
   @IsInt()

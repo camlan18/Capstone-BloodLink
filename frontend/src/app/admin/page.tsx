@@ -5,8 +5,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { adminDashboardService } from '@/lib/services/admin-dashboard';
 import { adminMasterDataService } from '@/lib/services/admin-master-data';
 import { toast } from 'sonner';
+import { useAuthStore } from '@/lib/stores';
 
 export default function AdminDashboardPage() {
+  const { user } = useAuthStore();
   const [stats, setStats] = useState<any[]>([]);
   const [alerts, setAlerts] = useState<any[]>([]);
   const [chartData, setChartData] = useState<any[]>([]);
@@ -142,23 +144,25 @@ export default function AdminDashboardPage() {
         </div>
         
         <div className="flex flex-wrap items-center gap-4">
-          <div className="w-72">
-            <Select value={facilityId} onValueChange={(v) => setFacilityId(v || 'all')}>
-              <SelectTrigger className="w-full bg-white border-slate-200 rounded-none shadow-sm focus:ring-0 focus:border-blood h-10 font-medium text-slate-700">
-                <SelectValue placeholder="Tất cả cơ sở y tế">
-                  {facilityId === 'all' ? 'Tất cả cơ sở y tế' : facilities.find(f => f.facility_id.toString() === facilityId)?.facility_name || 'Tất cả cơ sở y tế'}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent className="rounded-none">
-                <SelectItem value="all">Tất cả cơ sở y tế</SelectItem>
-                {facilities.map(f => (
-                  <SelectItem key={f.facility_id} value={f.facility_id.toString()}>
-                    {f.facility_name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {(!user || user.role === 'ADMIN' || user.role === 'STAFF') && (
+            <div className="w-72">
+              <Select value={facilityId} onValueChange={(v) => setFacilityId(v || 'all')}>
+                <SelectTrigger className="w-full bg-white border-slate-200 rounded-none shadow-sm focus:ring-0 focus:border-blood h-10 font-medium text-slate-700">
+                  <SelectValue placeholder="Tất cả cơ sở y tế">
+                    {facilityId === 'all' ? 'Tất cả cơ sở y tế' : facilities.find(f => f.facility_id.toString() === facilityId)?.facility_name || 'Tất cả cơ sở y tế'}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent className="rounded-none">
+                  <SelectItem value="all">Tất cả cơ sở y tế</SelectItem>
+                  {facilities.map(f => (
+                    <SelectItem key={f.facility_id} value={f.facility_id.toString()}>
+                      {f.facility_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           
           <div className="flex items-center bg-white border border-slate-200 rounded-none shadow-sm h-10 px-3 group focus-within:border-blood transition-colors">
             <span className="text-sm text-slate-500 mr-2 font-medium">Từ</span>

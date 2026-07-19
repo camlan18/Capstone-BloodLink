@@ -54,11 +54,7 @@ export class CreateFacilityDto {
   @Type(() => Number)
   province_id?: number;
 
-  @ApiProperty({ example: 1, description: 'ID Quận/Huyện', required: false })
-  @IsOptional()
-  @IsInt()
-  @Type(() => Number)
-  district_id?: number;
+
 
   @ApiProperty({ example: 1, description: 'ID Xã/Phường', required: false })
   @IsOptional()

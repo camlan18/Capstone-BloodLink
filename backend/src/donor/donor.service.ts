@@ -1,5 +1,6 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { PaginationDto } from '../common/pagination.dto';
 import { BookDonationSlotDto } from './dto/donor.dto';
 import { RecordDonationDto, UpdateSlotStatusDto, UpdateDonorProfileDto } from './dto/donor.dto';
@@ -8,6 +9,8 @@ import { NotificationsService, NotificationType } from '../notifications/notific
 
 @Injectable()
 export class DonorService {
+  private readonly logger = new Logger(DonorService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly notificationsService: NotificationsService,
@@ -111,12 +114,110 @@ export class DonorService {
   }
 
   async bookDonationSlot(userId: number, data: BookDonationSlotDto) {
+    if (!data.schedule_id && (!data.request_id || !data.specific_date || !data.facility_id)) {
+      throw new BadRequestException('Vui lòng chọn lịch hiến máu hoặc cung cấp thông tin yêu cầu và ngày.');
+    }
+
+    let finalScheduleId = data.schedule_id;
+    let bloodRequest: any = null;
+
+    // 1. Nếu đang đăng ký cho một yêu cầu cụ thể
+    if (data.request_id) {
+      bloodRequest = await this.prisma.blood_requests.findUnique({
+        where: { request_id: data.request_id },
+        include: { component: true, blood_type: true }
+      });
+
+      if (!bloodRequest) throw new NotFoundException('Không tìm thấy yêu cầu máu này');
+
+      // 1.1. Kiểm tra tính tương thích nhóm máu
+      const donorProfile = await this.prisma.donor_profiles.findUnique({
+        where: { user_id: userId }
+      });
+      if (!donorProfile || !donorProfile.blood_type_id) {
+        throw new BadRequestException('Vui lòng cập nhật nhóm máu trong hồ sơ trước khi hiến máu cho yêu cầu.');
+      }
+
+      const compatibility = await this.prisma.blood_compatibility.findFirst({
+        where: {
+          component_id: bloodRequest.component_id,
+          recipient_blood_type_id: bloodRequest.blood_type_id,
+          donor_blood_type_id: donorProfile.blood_type_id
+        }
+      });
+
+      if (!compatibility || !compatibility.is_compatible) {
+        throw new BadRequestException('Nhóm máu của bạn không phù hợp để hiến cho yêu cầu này.');
+      }
+
+      // 1.1.5 Kiểm tra số lượng người đã đăng ký hiến cho yêu cầu này
+      const matchCount = await this.prisma.blood_request_donor_matches.count({
+        where: {
+          request_id: data.request_id,
+          match_status: 'ACCEPTED'
+        }
+      });
+
+      if (matchCount >= 3) {
+        throw new BadRequestException('Yêu cầu này đã đủ số lượng người hiến. Xin cảm ơn lòng hảo tâm của bạn.');
+      }
+
+      // 1.2. Xử lý tạo lịch ngầm định (Lịch khẩn cấp luôn tạo mới 1 slot riêng biệt cho người này)
+      if (!finalScheduleId && data.facility_id && data.specific_date) {
+        const specificDate = new Date(data.specific_date);
+        const startTime = new Date(specificDate);
+        const endTime = new Date(specificDate);
+        
+        if (data.expected_time) {
+          const [hh, mm] = data.expected_time.split(':');
+          startTime.setHours(Number(hh), Number(mm) || 0, 0, 0);
+          endTime.setHours(Number(hh) + 1, Number(mm) || 0, 0, 0);
+        } else {
+          startTime.setHours(7, 0, 0, 0);
+          endTime.setHours(17, 0, 0, 0);
+        }
+
+        const newSchedule = await this.prisma.facility_donation_schedules.create({
+          data: {
+            facility_id: data.facility_id,
+            date: specificDate,
+            start_time: startTime,
+            end_time: endTime,
+            max_donors: 1, // Lịch riêng chỉ 1 chỗ cho lượt đăng ký này
+            current_donors: 0,
+            status: 'OPEN'
+          }
+        });
+        finalScheduleId = newSchedule.schedule_id;
+      }
+    }
+
+    if (!finalScheduleId) {
+      throw new BadRequestException('Không thể xác định lịch hiến máu.');
+    }
+
     const schedule = await this.prisma.facility_donation_schedules.findUnique({
-      where: { schedule_id: data.schedule_id },
+      where: { schedule_id: finalScheduleId },
     });
 
     if (!schedule) {
       throw new NotFoundException('Lịch hiến máu không tồn tại');
+    }
+
+    // Kiểm tra quy tắc khoảng cách hiến máu (next_eligible_date)
+    const donorProfile = await this.prisma.donor_profiles.findUnique({
+      where: { user_id: userId }
+    });
+    
+    if (donorProfile && donorProfile.next_eligible_date) {
+      const scheduleDate = new Date(schedule.date);
+      scheduleDate.setHours(0, 0, 0, 0);
+      const nextDate = new Date(donorProfile.next_eligible_date);
+      nextDate.setHours(0, 0, 0, 0);
+      
+      if (scheduleDate < nextDate) {
+        throw new BadRequestException(`Bạn chưa đủ điều kiện thời gian để hiến máu tiếp. Ngày có thể hiến tiếp theo là ${nextDate.toLocaleDateString('vi-VN')}`);
+      }
     }
 
     if (schedule.current_donors >= schedule.max_donors) {
@@ -128,26 +229,44 @@ export class DonorService {
     }
 
     const existing = await this.prisma.donor_availability_slots.findFirst({
-      where: { user_id: userId, schedule_id: data.schedule_id, is_active: true },
+      where: { user_id: userId, schedule_id: finalScheduleId, is_active: true },
     });
 
     if (existing) {
       throw new BadRequestException('Bạn đã đăng ký lịch này rồi');
     }
 
+    // Đánh dấu notes nếu có request_id
+    let slotNotes = data.notes || '';
+    if (bloodRequest) {
+      const rqNote = `Đăng ký hiến máu cho yêu cầu: ${bloodRequest.patient_name} (Mã: ${bloodRequest.request_code})`;
+      slotNotes = slotNotes ? `${slotNotes} | ${rqNote}` : rqNote;
+    }
+
     const slot = await this.prisma.donor_availability_slots.create({
       data: {
         user_id: userId,
-        schedule_id: data.schedule_id,
-        notes: data.notes,
+        schedule_id: finalScheduleId,
+        notes: slotNotes,
         status: 'CONFIRMED',
       },
     });
 
     await this.prisma.facility_donation_schedules.update({
-      where: { schedule_id: data.schedule_id },
+      where: { schedule_id: finalScheduleId },
       data: { current_donors: { increment: 1 } },
     });
+
+    // 2. Nếu là đăng ký cho yêu cầu, tạo record match
+    if (bloodRequest) {
+      await this.prisma.blood_request_donor_matches.create({
+        data: {
+          request_id: bloodRequest.request_id,
+          donor_user_id: userId,
+          match_status: 'ACCEPTED'
+        }
+      });
+    }
 
     const user = await this.prisma.users.findUnique({ where: { user_id: userId } });
 
@@ -296,7 +415,7 @@ export class DonorService {
 
   // --- FACILITY ADMIN ROUTES ---
 
-  async getSlots(query: PaginationDto) {
+  async getSlots(query: PaginationDto, user: any) {
     const page = query.page || 1;
     const limit = query.limit || 20;
     const skip = (page - 1) * limit;
@@ -308,6 +427,12 @@ export class DonorService {
     if (query.search) {
       where.user = {
         full_name: { contains: query.search }
+      };
+    }
+    
+    if (user.role_code === 'HOSPITAL_STAFF') {
+      where.schedule = {
+        facility_id: user.facility_id || -1
       };
     }
 
@@ -322,7 +447,7 @@ export class DonorService {
         },
         orderBy: { specific_date: 'desc' },
       }),
-      this.prisma.donor_availability_slots.count(),
+      this.prisma.donor_availability_slots.count({ where }),
     ]);
 
     return {
@@ -331,10 +456,21 @@ export class DonorService {
     };
   }
 
-  async createAdminSlot(dto: any) {
+  async createAdminSlot(dto: any, user: any) {
+    // Nếu là STAFF, kiểm tra xem lịch có thuộc cơ sở của họ không
+    if (user.role_code === 'HOSPITAL_STAFF') {
+      const schedule = await this.prisma.facility_donation_schedules.findUnique({
+        where: { schedule_id: Number(dto.schedule_id) }
+      });
+      if (schedule?.facility_id !== user.facility_id) {
+        throw new BadRequestException('Bạn không có quyền đăng ký cho lịch của cơ sở khác');
+      }
+    }
+
     return await this.prisma.donor_availability_slots.create({
       data: {
         user_id: Number(dto.user_id),
+        schedule_id: dto.schedule_id ? Number(dto.schedule_id) : undefined,
         specific_date: dto.specific_date ? new Date(dto.specific_date) : null,
         notes: dto.notes,
         status: 'PENDING'
@@ -342,9 +478,16 @@ export class DonorService {
     });
   }
 
-  async updateSlotStatus(slotId: number, dto: UpdateSlotStatusDto) {
-    const slot = await this.prisma.donor_availability_slots.findUnique({ where: { slot_id: slotId } });
+  async updateSlotStatus(slotId: number, dto: UpdateSlotStatusDto, user: any) {
+    const slot = await this.prisma.donor_availability_slots.findUnique({ 
+      where: { slot_id: slotId },
+      include: { schedule: true }
+    });
     if (!slot) throw new NotFoundException('Slot không tồn tại');
+
+    if (user.role_code === 'HOSPITAL_STAFF' && slot.schedule?.facility_id !== user.facility_id) {
+      throw new BadRequestException('Bạn không có quyền cập nhật slot của cơ sở khác');
+    }
 
     const updatedSlot = await this.prisma.donor_availability_slots.update({
       where: { slot_id: slotId },
@@ -366,25 +509,53 @@ export class DonorService {
     return updatedSlot;
   }
 
-  async recordDonation(facilityUserId: number, dto: RecordDonationDto) {
+  async recordDonation(user: any, dto: RecordDonationDto) {
+    const facilityId = user.role_code === 'HOSPITAL_STAFF' ? user.facility_id : dto.facility_id;
+    if (!facilityId) throw new BadRequestException('Cơ sở y tế không hợp lệ');
+
     return await this.prisma.$transaction(async (tx) => {
       const donationCode = `DON-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+
+      let requestId: number | null = null;
+      let matchedRequest: any = null;
+      if (dto.request_code) {
+         matchedRequest = await tx.blood_requests.findUnique({
+            where: { request_code: dto.request_code }
+         });
+         if (matchedRequest) {
+            requestId = matchedRequest.request_id;
+         }
+      }
 
       const donation = await tx.donations.create({
         data: {
           donation_code: donationCode,
           donor_user_id: dto.donor_user_id,
-          facility_id: dto.facility_id,
+          facility_id: facilityId,
           blood_type_id: dto.blood_type_id,
           component_id: dto.component_id,
           volume_ml: dto.volume_ml,
           donation_date: new Date(dto.donation_date),
           status_code: 'COMPLETED',
-          staff_user_id: facilityUserId,
+          staff_user_id: user.user_id,
           health_check_passed: dto.health_check_passed !== undefined ? dto.health_check_passed : true,
           result_notes: dto.result_notes,
+          request_id: requestId,
         }
       });
+
+      if (requestId && dto.health_check_passed !== false && matchedRequest) {
+          const newFulfilled = matchedRequest.units_fulfilled + 1;
+          let newStatusId = matchedRequest.status_id;
+          if (newFulfilled >= matchedRequest.units_needed) {
+             const completedStatus = await tx.blood_request_statuses.findFirst({ where: { status_code: 'COMPLETED' } });
+             if (completedStatus) newStatusId = completedStatus.status_id;
+          }
+          await tx.blood_requests.update({
+             where: { request_id: requestId },
+             data: { units_fulfilled: newFulfilled, status_id: newStatusId }
+          });
+      }
 
       if (dto.health_check_passed !== false) {
         // Mặc định hạn sử dụng máu là 35 ngày
@@ -401,7 +572,7 @@ export class DonorService {
             volume_ml: dto.volume_ml,
             collection_date: new Date(dto.donation_date),
             expiry_date: expiryDate,
-            status_code: 'AVAILABLE',
+            status_code: requestId ? 'RESERVED' : 'AVAILABLE',
             source_donation_id: donation.donation_id
           }
         });
@@ -412,37 +583,133 @@ export class DonorService {
             transaction_type: 'IN',
             reference_type: 'DONATION',
             reference_id: donation.donation_id,
-            performed_by: facilityUserId,
+            performed_by: user.user_id,
             notes: 'Nhập kho từ lượt hiến máu'
           }
         });
-      }
 
-      const intervalRule = await tx.donation_interval_rules.findUnique({
-        where: { component_id: dto.component_id }
-      });
-      const minIntervalDays = intervalRule ? intervalRule.min_interval_days : 84;
+        if (requestId) {
+          await tx.blood_request_inventory_allocations.create({
+            data: { 
+              request_id: requestId, 
+              inventory_id: inventory.inventory_id, 
+              allocated_by: user.user_id 
+            }
+          });
 
-      const nextDate = new Date(dto.donation_date);
-      nextDate.setDate(nextDate.getDate() + minIntervalDays);
-
-      await tx.donor_profiles.updateMany({
-        where: { user_id: dto.donor_user_id },
-        data: {
-          total_donations: { increment: 1 },
-          last_donation_date: new Date(dto.donation_date),
-          next_eligible_date: nextDate,
+          await tx.inventory_transactions.create({
+            data: {
+              inventory_id: inventory.inventory_id,
+              transaction_type: 'RESERVE',
+              reference_type: 'REQUEST',
+              reference_id: requestId,
+              performed_by: user.user_id,
+              notes: 'Tự động cấp phát cho yêu cầu máu khẩn cấp'
+            }
+          });
         }
-      });
+
+        // Cập nhật hồ sơ hiến máu (Chỉ áp dụng khi hiến thành công)
+        const intervalRule = await tx.donation_interval_rules.findUnique({
+          where: { component_id: dto.component_id }
+        });
+        const minIntervalDays = intervalRule ? intervalRule.min_interval_days : 84;
+
+        const nextDate = new Date(dto.donation_date);
+        nextDate.setDate(nextDate.getDate() + minIntervalDays);
+
+        const existingProfile = await tx.donor_profiles.findUnique({
+          where: { user_id: dto.donor_user_id }
+        });
+
+        if (existingProfile) {
+          await tx.donor_profiles.update({
+            where: { user_id: dto.donor_user_id },
+            data: {
+              total_donations: { increment: 1 },
+              first_donation_date: existingProfile.first_donation_date ? existingProfile.first_donation_date : new Date(dto.donation_date),
+              last_donation_date: new Date(dto.donation_date),
+              next_eligible_date: nextDate,
+            }
+          });
+        }
+
+        // Tạo sẵn nhắc nhở
+        const upcomingDate = new Date(nextDate);
+        upcomingDate.setDate(upcomingDate.getDate() - 3);
+
+        await tx.donation_reminders.createMany({
+          data: [
+            {
+              user_id: dto.donor_user_id,
+              donation_id: donation.donation_id,
+              component_id: dto.component_id,
+              reminder_type: 'UPCOMING_ELIGIBLE',
+              reminder_date: upcomingDate,
+              message: `Sắp tới hạn có thể hiến máu! Ngày hiến máu tiếp theo của bạn là ${nextDate.toLocaleDateString('vi-VN')}. Hãy chuẩn bị sức khỏe thật tốt nhé!`,
+            },
+            {
+              user_id: dto.donor_user_id,
+              donation_id: donation.donation_id,
+              component_id: dto.component_id,
+              reminder_type: 'NOW_ELIGIBLE',
+              reminder_date: nextDate,
+              message: `Bạn đã đủ điều kiện thời gian để tiếp tục hiến máu! Hãy đặt lịch hiến máu ngay hôm nay để cứu giúp người bệnh.`,
+            }
+          ]
+        });
+      }
 
       return donation;
     });
   }
 
+  // --- CRON JOBS ---
+  @Cron(CronExpression.EVERY_DAY_AT_8AM)
+  async handleCronDonationReminders() {
+    this.logger.log('Bắt đầu kiểm tra và gửi nhắc nhở hiến máu...');
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    try {
+      const reminders = await this.prisma.donation_reminders.findMany({
+        where: {
+          is_sent: false,
+          reminder_date: { lte: today },
+        }
+      });
+
+      if (reminders.length > 0) {
+        for (const reminder of reminders) {
+          await this.notificationsService.createNotification({
+            user_ids: [reminder.user_id],
+            title: reminder.reminder_type === 'UPCOMING_ELIGIBLE' ? 'Sắp tới hạn hiến máu' : 'Đã đến hạn hiến máu',
+            message: reminder.message,
+            notification_type: NotificationType.INFO,
+            reference_type: 'DONATION',
+            reference_id: reminder.donation_id || undefined
+          });
+
+          await this.prisma.donation_reminders.update({
+            where: { reminder_id: reminder.reminder_id },
+            data: { 
+              is_sent: true,
+              sent_at: new Date()
+            }
+          });
+        }
+        this.logger.log(`Đã gửi ${reminders.length} nhắc nhở hiến máu.`);
+      }
+    } catch (error) {
+      this.logger.error('Lỗi khi chạy cron gửi nhắc nhở hiến máu', error);
+    }
+  }
+
   // --- EXCEL FEATURE ---
 
-  async exportExcel(query: any): Promise<Buffer> {
-    const list = await this.getSlots({ ...query, limit: 10000 });
+  async exportExcel(query: any, user: any): Promise<Buffer> {
+    const list = await this.getSlots({ ...query, limit: 10000 }, user);
     const data = list.data.map((item: any) => ({
       'Họ tên': item.user?.full_name || '',
       'Ngày (YYYY-MM-DD)': item.specific_date ? new Date(item.specific_date).toLocaleDateString('vi-VN') : '',
@@ -461,7 +728,7 @@ export class DonorService {
     return ExcelUtil.generateTemplate(headers, 'Template_LichHen');
   }
 
-  async importExcel(buffer: Buffer, staffId: number) {
+  async importExcel(buffer: Buffer, user: any) {
     const data = ExcelUtil.parseExcel(buffer);
     let success = 0;
     let failed = 0;

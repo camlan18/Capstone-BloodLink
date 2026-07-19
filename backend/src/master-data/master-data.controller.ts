@@ -54,14 +54,10 @@ export class MasterDataController {
     return await this.masterDataService.getProvinces();
   }
 
-  @Public()
-  @Get('provinces/:id/districts')
-  async getDistricts(@Param('id', ParseIntPipe) id: number) {
-    return await this.masterDataService.getDistricts(id);
-  }
+
 
   @Public()
-  @Get('districts/:id/wards')
+  @Get('provinces/:id/wards')
   async getWards(@Param('id', ParseIntPipe) id: number) {
     return await this.masterDataService.getWards(id);
   }

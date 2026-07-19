@@ -49,19 +49,7 @@ export enum MatchStatus {
   CANCELLED = 'CANCELLED',
 }
 
-export enum RequestStatusCode {
-  PENDING = 'pending',
-  CHECKING_STOCK = 'checking_stock',
-  ALLOCATED_STOCK = 'allocated_stock',
-  MATCHING_DONORS = 'matching_donors',
-  DONOR_CONTACTED = 'donor_contacted',
-  SCHEDULED = 'scheduled',
-  IN_PROGRESS = 'in_progress',
-  PARTIALLY_FULFILLED = 'partially_fulfilled',
-  COMPLETED = 'completed',
-  CANCELLED = 'cancelled',
-  EXPIRED = 'expired',
-}
+
 
 export enum OtpTypeCode {
   REGISTER_VERIFY = 'register_verify',

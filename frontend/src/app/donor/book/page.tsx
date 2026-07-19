@@ -3,7 +3,8 @@ import { useEffect, useState } from 'react';
 import { donorService } from '@/lib/services/donor';
 import { authService } from '@/lib/services/auth';
 import { useAuthStore } from '@/lib/stores';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { bloodRequestService } from '@/lib/services/bloodRequest';
 import {
   format,
   addMonths,
@@ -22,9 +23,10 @@ import {
   differenceInDays
 } from 'date-fns';
 import { vi } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, ArrowRight, CheckCircle2, MapPin, Users, AlertCircle, XCircle, Info, User } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, ArrowRight, CheckCircle2, MapPin, Users, AlertCircle, XCircle, Info, User, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import { BaseModal } from '@/components/ui/BaseModal';
+import { BloodRequestDetailModal } from '@/components/BloodRequestDetailModal';
 
 const getStatusBadge = (status: string) => {
   switch (status) {
@@ -46,7 +48,13 @@ const getStatusBadge = (status: string) => {
 export default function BookDonationPage() {
   const { user, donorProfile, setUser, setDonorProfile } = useAuthStore();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const requestId = searchParams.get('request');
+  const facilityIdParam = searchParams.get('facility');
+
   const [currentMonth, setCurrentMonth] = useState(new Date());
+  
+  const [requestContext, setRequestContext] = useState<any>(null);
   
   const [mySlots, setMySlots] = useState<any[]>([]);
   const [schedules, setSchedules] = useState<any[]>([]);
@@ -57,10 +65,13 @@ export default function BookDonationPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [availableSchedulesOnDate, setAvailableSchedulesOnDate] = useState<any[]>([]);
   const [notes, setNotes] = useState('');
+  const [expectedTime, setExpectedTime] = useState('');
   const [isSubmitting, setIsSubmitting] = useState<number | null>(null);
   const [isConsentChecked, setIsConsentChecked] = useState(false);
   const [viewingTermsHtml, setViewingTermsHtml] = useState<string>('');
   const [isTermsModalOpen, setIsTermsModalOpen] = useState(false);
+  const [selectedRequestCode, setSelectedRequestCode] = useState<string | null>(null);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
   // Xem chi tiết lịch đã đặt
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
@@ -74,17 +85,25 @@ export default function BookDonationPage() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [slotsRes, schedRes, donorRes, authRes, historyRes] = await Promise.all([
+      const [slotsRes, schedRes, donorRes, authRes, historyRes, reqRes] = await Promise.all([
         donorService.getMySlots().catch(() => null),
         donorService.getSchedules().catch(() => null),
         donorService.getProfile().catch(() => null),
         authService.getProfile().catch(() => null),
-        donorService.getHistory().catch(() => null)
+        donorService.getHistory().catch(() => null),
+        requestId ? bloodRequestService.getAllRequests().then((res: any) => {
+           let list = [];
+           if (res && Array.isArray(res.data)) list = res.data;
+           else if (res && res.data && Array.isArray(res.data.data)) list = res.data.data;
+           else if (Array.isArray(res)) list = res;
+           return list.find((r: any) => r.request_id === Number(requestId)) || null;
+        }).catch(() => null) : Promise.resolve(null)
       ]);
       
       if (slotsRes && slotsRes.data) setMySlots(slotsRes.data);
       if (schedRes && schedRes.data) setSchedules(schedRes.data);
       if (historyRes && historyRes.data) setMyHistory(historyRes.data);
+      if (reqRes) setRequestContext(reqRes);
       
       if (donorRes && donorRes.data) {
         setDonorProfile(donorRes.data);
@@ -111,6 +130,23 @@ export default function BookDonationPage() {
 
     const openSchedules = schedules.filter(sch => isSameDay(parseISO(sch.date), day));
     if (openSchedules.length === 0) {
+      if (requestContext && facilityIdParam) {
+        // Cho phép tạo lịch ngầm định cho yêu cầu
+        setAvailableSchedulesOnDate([{
+          is_implicit: true,
+          facility: requestContext.facility || { facility_name: requestContext.hospital_name, address: requestContext.address },
+          max_donors: 999,
+          current_donors: 0,
+          start_time: '07:00',
+          end_time: '17:00'
+        }]);
+        setSelectedDate(day);
+        setNotes('');
+        setExpectedTime('');
+        setIsConsentChecked(false);
+        setIsModalOpen(true);
+        return;
+      }
       toast.error('Hiện chưa có cơ sở nào mở lịch hiến máu vào ngày này.');
       return;
     }
@@ -118,15 +154,30 @@ export default function BookDonationPage() {
     setAvailableSchedulesOnDate(openSchedules);
     setSelectedDate(day);
     setNotes('');
+    setExpectedTime('');
     setIsConsentChecked(false);
     setIsModalOpen(true);
   };
 
-  const handleSubmitBooking = async (scheduleId: number) => {
+  const handleSubmitBooking = async (scheduleId?: number) => {
     try {
-      setIsSubmitting(scheduleId);
+      setIsSubmitting(scheduleId || -1);
+      
+      // Client-side validation if requestContext exists
+      if (requestContext) {
+         if (availableSchedulesOnDate.some(s => s.is_implicit) && !expectedTime) {
+           toast.error('Vui lòng chọn Khung giờ dự kiến đến hiến.');
+           setIsSubmitting(null);
+           return;
+         }
+      }
+
       await donorService.bookSlot({
         schedule_id: scheduleId,
+        request_id: requestContext ? Number(requestId) : undefined,
+        facility_id: requestContext ? Number(facilityIdParam) : undefined,
+        specific_date: selectedDate ? format(selectedDate, 'yyyy-MM-dd') : undefined,
+        expected_time: expectedTime,
         notes
       });
       
@@ -192,7 +243,7 @@ export default function BookDonationPage() {
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-8">
-      <div className="mb-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      <div className="mb-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-navy">Lịch Hiến Máu</h1>
           <p className="text-slate-500 text-sm mt-1">Chọn ngày có sẵn trên lịch để xem các cơ sở đang tiếp nhận</p>
@@ -216,6 +267,27 @@ export default function BookDonationPage() {
         </div>
       </div>
 
+      {requestContext && (
+        <div className="mb-6 bg-blood/10 border border-blood/20 p-4 rounded-xl flex items-start gap-4">
+           <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shrink-0 shadow-sm">
+              <AlertCircle className="w-6 h-6 text-blood" />
+           </div>
+           <div>
+              <h3 className="font-bold text-blood text-lg">Đang đăng ký hiến máu cho Yêu cầu khẩn cấp</h3>
+              <p className="text-sm text-slate-700 mt-1 font-medium">
+                Bệnh nhân: <span className="font-bold">{requestContext.patient_name}</span> | 
+                Cần: <span className="font-bold">{requestContext.units_needed} đơn vị {requestContext.blood_type?.abo}{requestContext.blood_type?.rh_factor}</span>
+                {requestContext.required_before && (
+                  <> | Cần trước: <span className="font-bold text-red-600">{format(new Date(requestContext.required_before), 'dd/MM/yyyy')}</span></>
+                )}
+              </p>
+              <p className="text-xs text-slate-500 mt-1">
+                Vui lòng chọn một ngày trên lịch. Hệ thống sẽ tự động đăng ký lịch ưu tiên cho cơ sở <strong>{requestContext.facility?.facility_name || requestContext.hospital_name}</strong>.
+              </p>
+           </div>
+        </div>
+      )}
+
       <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
         <div className="grid grid-cols-7 border-b border-slate-200 bg-slate-50">
           {weekDays.map(day => (
@@ -237,17 +309,27 @@ export default function BookDonationPage() {
             const isCurrentMonth = isSameMonth(day, monthStart);
             const isPast = isBefore(day, startOfDay(new Date()));
             
+            let isAfterRequiredDate = false;
+            if (requestContext?.required_before) {
+               const requiredDate = startOfDay(new Date(requestContext.required_before));
+               if (isBefore(requiredDate, day)) {
+                  isAfterRequiredDate = true;
+               }
+            }
+            
             const mySlot = mySlots.find(s => s.schedule && isSameDay(parseISO(s.schedule.date), day));
             const openSchedulesCount = schedules.filter(sch => isSameDay(parseISO(sch.date), day)).length;
+
+            const isDisabled = (isPast && !mySlot) || isAfterRequiredDate;
 
             return (
               <div 
                 key={day.toString()}
-                onClick={() => handleDayClick(day)}
+                onClick={() => !isDisabled && handleDayClick(day)}
                 className={`
                   min-h-[140px] p-3 border-b border-r border-slate-100 relative group transition-colors flex flex-col items-center
                   ${!isCurrentMonth ? 'bg-slate-50/50 text-slate-400' : 'bg-white text-navy'}
-                  ${isPast && !mySlot ? 'opacity-50 cursor-not-allowed bg-slate-50' : 'cursor-pointer hover:bg-blood/5'}
+                  ${isDisabled ? 'opacity-50 cursor-not-allowed bg-slate-50' : 'cursor-pointer hover:bg-blood/5'}
                   ${(idx + 1) % 7 === 0 ? 'border-r-0' : ''}
                 `}
               >
@@ -313,46 +395,88 @@ export default function BookDonationPage() {
             const isFull = sch.current_donors >= sch.max_donors;
             
             return (
-              <div key={sch.schedule_id} className={`p-3 transition-all rounded-xl `}>
-                <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-5">
+              <div key={sch.schedule_id} className="transition-all bg-white">
+                <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-6">
                   <div className="flex-1">
-                    <h4 className="font-bold text-slate-800 text-lg leading-tight mb-2">{sch.facility?.facility_name}</h4>
+                    <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wide">Cơ sở y tế / Bệnh viện</label>
+                    <h4 className="font-bold text-navy text-lg leading-tight mb-2">{sch.facility?.facility_name}</h4>
                     <div className="flex items-start gap-2 text-sm text-slate-500">
                       <MapPin className="w-4 h-4 shrink-0 mt-0.5 text-slate-400" />
                       <span className="line-clamp-2 leading-relaxed">{sch.facility?.address}</span>
                     </div>
                   </div>
-                  <span className={`px-3 py-1.5 rounded-md text-xs font-bold whitespace-nowrap ${isFull ? 'bg-slate-100 text-slate-500' : 'bg-blue-50 text-blue-700 border border-blue-100'}`}>
-                    {isFull ? 'Đã kín chỗ' : `Còn ${sch.max_donors - sch.current_donors} chỗ`}
+                  <span className={`px-3 py-1.5 rounded-sm text-xs font-bold whitespace-nowrap border ${sch.is_implicit ? 'bg-amber-50 text-amber-700 border-amber-200' : isFull ? 'bg-slate-50 text-slate-500 border-slate-200' : 'bg-blue-50 text-blue-700 border-blue-200'}`}>
+                    {sch.is_implicit ? 'Lịch khẩn cấp' : isFull ? 'Đã kín chỗ' : `Còn ${sch.max_donors - sch.current_donors} chỗ`}
                   </span>
                 </div>
                 
-                <div className="flex flex-wrap items-center gap-3 text-sm font-medium mb-6">
-                  <div className="flex items-center gap-2 text-slate-700 bg-slate-50 px-3 py-2 rounded-lg border border-slate-100">
-                    <Clock className="w-4 h-4 text-slate-400" />
-                    {sch.start_time?.includes('T') ? sch.start_time.substring(11, 16) : sch.start_time} - {sch.end_time?.includes('T') ? sch.end_time.substring(11, 16) : sch.end_time}
+                {!sch.is_implicit && (
+                  <div className="flex flex-wrap items-center gap-3 text-sm font-medium mb-5">
+                    <div className="flex items-center gap-2 text-slate-700 bg-slate-50 px-3 py-2 rounded-sm border border-slate-100">
+                      <Clock className="w-4 h-4 text-slate-400" />
+                      {sch.start_time?.includes('T') ? sch.start_time.substring(11, 16) : sch.start_time} - {sch.end_time?.includes('T') ? sch.end_time.substring(11, 16) : sch.end_time}
+                    </div>
+                    <div className="flex items-center gap-2 text-slate-700 bg-slate-50 px-3 py-2 rounded-sm border border-slate-100">
+                      <Users className="w-4 h-4 text-slate-400" />
+                      {sch.current_donors}/{sch.max_donors} người
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2 text-slate-700 bg-slate-50 px-3 py-2 rounded-lg border border-slate-100">
-                    <Users className="w-4 h-4 text-slate-400" />
-                    {sch.current_donors}/{sch.max_donors} người
-                  </div>
-                </div>
+                )}
 
                 {!isFull && (
-                  <div className="space-y-5">
+                  <div className="flex flex-col gap-5">
                     
+                    {sch.is_implicit && (
+                      <div className="relative border-t border-slate-100 pt-4 mt-1">
+                        <label className="block text-xs font-bold text-slate-600 mb-2 uppercase tracking-wide">Khung giờ dự kiến đến hiến <span className="text-red-500">*</span></label>
+                        <select 
+                           value={expectedTime} 
+                           onChange={e => setExpectedTime(e.target.value)}
+                           className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-sm text-sm font-medium text-navy focus:outline-none focus:ring-1 focus:ring-blood focus:border-blood transition-colors cursor-pointer"
+                        >
+                           <option value="" disabled>-- Chọn khung giờ --</option>
+                           {[
+                             { value: '07:00', label: '07:00 Sáng' },
+                             { value: '08:00', label: '08:00 Sáng' },
+                             { value: '09:00', label: '09:00 Sáng' },
+                             { value: '10:00', label: '10:00 Sáng' },
+                             { value: '11:00', label: '11:00 Sáng' },
+                             { value: '13:30', label: '13:30 Chiều' },
+                             { value: '14:30', label: '14:30 Chiều' },
+                             { value: '15:30', label: '15:30 Chiều' },
+                             { value: '16:30', label: '16:30 Chiều' }
+                           ].map(opt => {
+                             let disabled = false;
+                             if (selectedDate && isToday(selectedDate)) {
+                               const [h, m] = opt.value.split(':').map(Number);
+                               const now = new Date();
+                               if (h < now.getHours() || (h === now.getHours() && m < now.getMinutes())) {
+                                 disabled = true;
+                               }
+                             }
+                             return (
+                               <option key={opt.value} value={opt.value} disabled={disabled} className={disabled ? 'text-slate-300' : 'text-slate-700'}>
+                                 {opt.label} {disabled ? '(Đã qua)' : ''}
+                               </option>
+                             );
+                           })}
+                        </select>
+                      </div>
+                    )}
+
                     {/* Ghi chú & Xác nhận */}
-                    <div className="relative">
+                    <div className="relative border-t border-slate-100 pt-4 mt-1">
+                      <label className="block text-xs font-bold text-slate-600 mb-2 uppercase tracking-wide">Ghi chú cho cơ sở y tế (Tùy chọn)</label>
                       <input 
                         type="text" 
-                        placeholder="Ghi chú cho cơ sở y tế (Tùy chọn)" 
+                        placeholder="Nhập ghi chú..." 
                         value={notes}
                         onChange={e => setNotes(e.target.value)}
-                        className="w-full px-4 py-3 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-slate-400 focus:border-slate-400 placeholder:text-slate-400 transition-colors"
+                        className="w-full px-4 py-3 bg-white border border-slate-200 rounded-sm text-sm focus:outline-none focus:ring-1 focus:ring-slate-400 focus:border-slate-400 placeholder:text-slate-400 transition-colors"
                       />
                     </div>
 
-                    <div className="flex items-center gap-2 bg-blue-50/50 p-3 rounded-lg border border-blue-100/50">
+                    <div className="flex items-center gap-2 bg-blue-50/50 p-3 rounded-sm border border-blue-100/50">
                       <Info className="w-4 h-4 text-blue-600 shrink-0" />
                       <span className="text-sm text-slate-600">
                         Vui lòng đọc kỹ <button 
@@ -384,13 +508,13 @@ export default function BookDonationPage() {
 
                     <button
                       onClick={() => handleSubmitBooking(sch.schedule_id)}
-                      disabled={isSubmitting !== null || !isConsentChecked}
-                      className="w-full py-3.5 bg-blood text-white font-bold rounded-lg hover:bg-blood-dark transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed mt-2"
+                      disabled={isSubmitting !== null || !isConsentChecked || (sch.is_implicit && !expectedTime)}
+                      className="w-full py-3.5 bg-blood text-white font-bold rounded-sm hover:bg-blood-dark transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed mt-2"
                     >
-                      {isSubmitting === sch.schedule_id ? (
+                      {isSubmitting === (sch.schedule_id || -1) ? (
                         <><span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></span> Đang xử lý</>
                       ) : (
-                        'Xác nhận đăng ký'
+                        sch.is_implicit ? 'Xác nhận hiến máu khẩn cấp' : 'Xác nhận đăng ký'
                       )}
                     </button>
                   </div>
@@ -411,25 +535,25 @@ export default function BookDonationPage() {
         hideFooter
       >
         {selectedMySlot && selectedMySlot.schedule && (
-          <div className="space-y-4">
-            <div className="bg-white p-4 rounded-xl">
-              <div className="flex justify-between items-start mb-2">
-                <h4 className="font-bold text-navy">{selectedMySlot.schedule.facility?.facility_name}</h4>
+          <div className="flex flex-col gap-4">
+            <div className="bg-white">
+              <div className="flex justify-between items-start gap-4 mb-2">
+                <h4 className="font-bold text-navy text-lg">{selectedMySlot.schedule.facility?.facility_name}</h4>
                 {(() => {
                   const statusConfig = getStatusBadge(selectedMySlot.status);
                   return (
-                    <span className={`flex items-center gap-1 px-2.5 py-1 rounded text-xs font-bold ${statusConfig.color} border`}>
+                    <span className={`flex items-center gap-1 px-2.5 py-1 rounded-sm text-xs font-bold ${statusConfig.color} border shrink-0 whitespace-nowrap`}>
                       {statusConfig.icon} {statusConfig.text}
                     </span>
                   );
                 })()}
               </div>
-              <div className="flex items-start gap-2 text-sm text-slate-500 mb-3">
-                <MapPin className="w-4 h-4 mt-0.5" />
-                <span>{selectedMySlot.schedule.facility?.address}</span>
+              <div className="flex items-start gap-2 text-sm text-slate-500 mb-4">
+                <MapPin className="w-4 h-4 shrink-0 mt-0.5 text-slate-400" />
+                <span className="leading-relaxed">{selectedMySlot.schedule.facility?.address}</span>
               </div>
-              <div className="flex items-center gap-2 text-sm text-slate-500 bg-slate-50 p-2 rounded-lg inline-flex">
-                <Clock className="w-4 h-4 text-emerald-600" />
+              <div className="flex items-center gap-2 text-sm text-slate-700 bg-slate-50 px-3 py-2 rounded-sm border border-slate-100 w-fit">
+                <Clock className="w-4 h-4 text-slate-400" />
                 <span className="font-semibold">{selectedMySlot.schedule.start_time?.includes('T') ? selectedMySlot.schedule.start_time.substring(11, 16) : selectedMySlot.schedule.start_time} - {selectedMySlot.schedule.end_time?.includes('T') ? selectedMySlot.schedule.end_time.substring(11, 16) : selectedMySlot.schedule.end_time}</span>
               </div>
             </div>
@@ -472,17 +596,35 @@ export default function BookDonationPage() {
               const daysLeft = differenceInDays(parseISO(selectedMySlot.schedule.date), startOfDay(new Date()));
               const canCancel = daysLeft > 2;
               
+              const matchRQ = selectedMySlot.notes?.match(/Mã:\s*(R[EQ]+-[A-Za-z0-9\-]+)/i);
+              const extractedCode = matchRQ ? matchRQ[1] : null;
+
               return (
-                <div className="pt-4 border-t border-slate-200 mt-4">
+                <div className="flex flex-col gap-4 pt-4 border-t border-slate-100">
+                  {extractedCode && (
+                    <div className="bg-blue-50 border border-blue-100 rounded-sm p-4 text-center">
+                      <p className="text-sm text-blue-800 mb-3 font-medium">Lượt đăng ký này dành cho một Yêu cầu máu khẩn cấp.</p>
+                      <button
+                        onClick={() => {
+                          setSelectedRequestCode(extractedCode);
+                          setIsDetailModalOpen(true);
+                        }}
+                        className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-white border border-blue-200 text-blue-700 font-bold rounded-sm shadow-sm hover:bg-blue-50 transition-colors text-sm"
+                      >
+                        <FileText className="w-4 h-4" /> Xem chi tiết yêu cầu
+                      </button>
+                    </div>
+                  )}
+
                   {!canCancel ? (
-                    <div className="text-sm text-orange-600 bg-orange-50 p-3 rounded-lg border border-orange-200 text-center font-medium">
+                    <div className="text-sm text-orange-600 bg-orange-50 p-3 rounded-sm border border-orange-200 text-center font-medium">
                       Bạn không thể hủy lịch này do đã quá sát ngày hiến máu (Ít hơn 2 ngày).
                     </div>
                   ) : (
                     <button
                       onClick={() => handleCancelBooking(selectedMySlot.slot_id)}
                       disabled={isCanceling}
-                      className="w-full py-3 border-2 border-red-200 text-red-600 hover:bg-red-50 font-bold rounded-xl transition-colors flex items-center justify-center gap-2 disabled:opacity-50 shadow-sm"
+                      className="w-full py-3 border border-red-200 text-red-600 hover:bg-red-50 font-bold rounded-sm transition-colors flex items-center justify-center gap-2 disabled:opacity-50 shadow-sm"
                     >
                       {isCanceling ? (
                         <><span className="w-5 h-5 border-2 border-red-600 border-t-transparent rounded-full animate-spin"></span> Đang xử lý</>
@@ -520,6 +662,11 @@ export default function BookDonationPage() {
           </button>
         </div>
       </BaseModal>
+      <BloodRequestDetailModal 
+        requestCode={selectedRequestCode}
+        isOpen={isDetailModalOpen}
+        onClose={() => setIsDetailModalOpen(false)}
+      />
     </div>
   );
 }

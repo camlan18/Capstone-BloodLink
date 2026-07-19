@@ -5,6 +5,11 @@ import { ResponseInterceptor } from './common/response.interceptor';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
 async function bootstrap() {
+  // Polyfill for BigInt serialization
+  (BigInt.prototype as any).toJSON = function () {
+    return this.toString();
+  };
+
   const app = await NestFactory.create(AppModule);
   
   // Enable CORS

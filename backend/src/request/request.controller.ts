@@ -17,7 +17,7 @@ export class RequestController {
   @Roles(RoleCode.FACILITY_ADMIN, RoleCode.ADMIN, RoleCode.STAFF)
   @Post()
   async createRequest(@Req() req: any, @Body() dto: CreateRequestDto) {
-    return await this.requestService.createRequest(dto, req.user.user_id);
+    return await this.requestService.createRequest(dto, req.user);
   }
 
   @Public()
@@ -33,10 +33,16 @@ export class RequestController {
     return await this.requestService.getRequests(query);
   }
 
-  @Roles(RoleCode.ADMIN, RoleCode.STAFF)
+  @Public()
+  @Get('public/code/:code')
+  async getPublicRequestByCode(@Param('code') code: string) {
+    return await this.requestService.getRequestByCode(code);
+  }
+
+  @Roles(RoleCode.ADMIN, RoleCode.FACILITY_ADMIN)
   @Post(':id/process')
   async processRequest(@Req() req: any, @Param('id', ParseIntPipe) id: number) {
-    return await this.requestService.processRequest(id, req.user.user_id);
+    return await this.requestService.processRequest(id, req.user);
   }
 
   @Get('my')
@@ -53,14 +59,14 @@ export class RequestController {
 
   @Roles(RoleCode.ADMIN, RoleCode.STAFF, RoleCode.FACILITY_ADMIN)
   @Get()
-  async getRequests(@Query() query: any) {
-    return await this.requestService.getRequests(query);
+  async getRequests(@Query() query: any, @Req() req: any) {
+    return await this.requestService.getRequests(query, req.user);
   }
 
   @Roles(RoleCode.ADMIN, RoleCode.STAFF, RoleCode.FACILITY_ADMIN)
   @Get('export')
-  async exportExcel(@Query() query: any, @Res() res: Response) {
-    const buffer = await this.requestService.exportExcel(query);
+  async exportExcel(@Query() query: any, @Res() res: Response, @Req() req: any) {
+    const buffer = await this.requestService.exportExcel(query, req.user);
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', 'attachment; filename=requests.xlsx');
     res.send(buffer);
@@ -80,62 +86,62 @@ export class RequestController {
   @UseInterceptors(FileInterceptor('file'))
   async importExcel(@UploadedFile() file: Express.Multer.File, @Req() req: any) {
     if (!file) throw new BadRequestException('Vui lòng chọn file Excel');
-    return await this.requestService.importExcel(file.buffer, req.user.user_id);
+    return await this.requestService.importExcel(file.buffer, req.user);
   }
 
   @Roles(RoleCode.ADMIN, RoleCode.STAFF, RoleCode.FACILITY_ADMIN)
   @Put(':id')
   async updateRequest(@Req() req: any, @Param('id', ParseIntPipe) id: number, @Body() dto: Partial<CreateRequestDto>) {
-    return await this.requestService.updateRequest(id, dto, req.user.user_id);
+    return await this.requestService.updateRequest(id, dto, req.user);
   }
 
   @Roles(RoleCode.ADMIN, RoleCode.STAFF, RoleCode.FACILITY_ADMIN)
   @Delete(':id')
   async deleteRequest(@Req() req: any, @Param('id', ParseIntPipe) id: number) {
-    return await this.requestService.deleteRequest(id);
+    return await this.requestService.deleteRequest(id, req.user);
   }
 
   @Roles(RoleCode.ADMIN, RoleCode.STAFF, RoleCode.FACILITY_ADMIN)
   @Post(':id/cancel')
   async cancelRequest(@Req() req: any, @Param('id', ParseIntPipe) id: number) {
-    return await this.requestService.cancelRequest(id, req.user.user_id);
+    return await this.requestService.cancelRequest(id, req.user);
   }
 
   // --- MATCHING & ALLOCATION (ADMIN ONLY) ---
 
-  @Roles(RoleCode.ADMIN, RoleCode.STAFF)
+  @Roles(RoleCode.ADMIN, RoleCode.FACILITY_ADMIN)
   @Get(':id/matches')
-  async getMatches(@Param('id', ParseIntPipe) id: number) {
-    return await this.requestService.getMatches(id);
+  async getMatches(@Req() req: any, @Param('id', ParseIntPipe) id: number) {
+    return await this.requestService.getMatches(id, req.user);
   }
 
-  @Roles(RoleCode.ADMIN, RoleCode.STAFF)
+  @Roles(RoleCode.ADMIN, RoleCode.FACILITY_ADMIN)
   @Post(':id/matches/find')
-  async findDonorMatches(@Param('id', ParseIntPipe) id: number) {
-    return await this.requestService.findDonorMatches(id);
+  async findDonorMatches(@Req() req: any, @Param('id', ParseIntPipe) id: number) {
+    return await this.requestService.findDonorMatches(id, req.user);
   }
 
-  @Roles(RoleCode.ADMIN, RoleCode.STAFF)
+  @Roles(RoleCode.ADMIN, RoleCode.FACILITY_ADMIN)
   @Put('matches/:matchId/status')
-  async updateMatchStatus(@Param('matchId', ParseIntPipe) matchId: number, @Body() dto: UpdateMatchStatusDto) {
-    return await this.requestService.updateMatchStatus(matchId, dto.status);
+  async updateMatchStatus(@Req() req: any, @Param('matchId', ParseIntPipe) matchId: number, @Body() dto: UpdateMatchStatusDto) {
+    return await this.requestService.updateMatchStatus(matchId, dto.status, req.user);
   }
 
-  @Roles(RoleCode.ADMIN, RoleCode.STAFF)
+  @Roles(RoleCode.ADMIN, RoleCode.FACILITY_ADMIN)
   @Get(':id/allocations')
-  async getAllocations(@Param('id', ParseIntPipe) id: number) {
-    return await this.requestService.getAllocations(id);
+  async getAllocations(@Req() req: any, @Param('id', ParseIntPipe) id: number) {
+    return await this.requestService.getAllocations(id, req.user);
   }
 
-  @Roles(RoleCode.ADMIN, RoleCode.STAFF)
+  @Roles(RoleCode.ADMIN, RoleCode.FACILITY_ADMIN)
   @Post(':id/allocations')
   async allocateInventory(@Req() req: any, @Param('id', ParseIntPipe) id: number, @Body() dto: AllocateInventoryDto) {
-    return await this.requestService.allocateInventory(id, dto.inventory_ids, req.user.user_id);
+    return await this.requestService.allocateInventory(id, dto.inventory_ids, req.user);
   }
 
-  @Roles(RoleCode.ADMIN, RoleCode.STAFF)
+  @Roles(RoleCode.ADMIN, RoleCode.FACILITY_ADMIN)
   @Delete('allocations/:allocationId')
   async releaseAllocation(@Req() req: any, @Param('allocationId', ParseIntPipe) allocationId: number) {
-    return await this.requestService.releaseAllocation(allocationId, req.user.user_id);
+    return await this.requestService.releaseAllocation(allocationId, req.user);
   }
 }

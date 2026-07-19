@@ -21,5 +21,8 @@ export const bloodRequestService = {
   },
   getMyRequestDetails: async (id: number) => {
     return apiClient.get<any, ApiResponse<any>>(`/requests/my/${id}`);
+  },
+  getRequestByCode: async (code: string) => {
+    return apiClient.get<any, ApiResponse<any>>(`/requests/public/code/${code}`);
   }
 };

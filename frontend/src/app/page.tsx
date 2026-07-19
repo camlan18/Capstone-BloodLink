@@ -90,7 +90,7 @@ export default function HomePage() {
             {/* Search / CTA Buttons */}
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-slide-up">
               <Link
-                href="/register"
+                href="/donor/book"
                 className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 bg-white text-blood font-bold rounded-md hover:bg-slate-50 transition-all hover:shadow-xl shadow-lg text-base"
               >
                 <UserPlus className="h-5 w-5" />
