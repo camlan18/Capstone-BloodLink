@@ -9,9 +9,12 @@ import { toast } from 'sonner';
 import { Plus, Edit, Trash2, Eye, Calendar as CalendarIcon, MapPin } from 'lucide-react';
 import { DataTable, Column, ActionItem } from '@/components/ui/DataTable';
 import { BaseModal } from '@/components/ui/BaseModal';
+import { BloodRequestDetailModal } from '@/components/BloodRequestDetailModal';
 import dynamic from 'next/dynamic';
 import 'react-quill-new/dist/quill.snow.css';
 import { format, parseISO } from 'date-fns';
+import { useAuthStore } from '@/lib/stores';
+import { FileText } from 'lucide-react';
 
 const ReactQuill = dynamic(() => import('react-quill-new'), { ssr: false });
 
@@ -23,6 +26,9 @@ export default function AdminSchedulesPage() {
   const [limit, setLimit] = useState(10);
   const [loading, setLoading] = useState(true);
 
+  const currentUser = useAuthStore(state => state.user);
+  const isStaff = currentUser?.role?.role_code === 'HOSPITAL_STAFF' || currentUser?.role?.role_code === 'STAFF' || (typeof currentUser?.role === 'string' && ['HOSPITAL_STAFF', 'STAFF'].includes(currentUser.role));
+
   // Filters
   const [filterFacility, setFilterFacility] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
@@ -32,6 +38,8 @@ export default function AdminSchedulesPage() {
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [currentView, setCurrentView] = useState<FacilityDonationSchedule | null>(null);
+  const [selectedRequestCode, setSelectedRequestCode] = useState<string | null>(null);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
   const [formData, setFormData] = useState({
     facility_id: '',
@@ -86,7 +94,7 @@ export default function AdminSchedulesPage() {
 
   const openCreateModal = () => {
     setFormData({
-      facility_id: '',
+      facility_id: isStaff && currentUser?.facility_id ? currentUser.facility_id.toString() : '',
       date: format(new Date(), 'yyyy-MM-dd'),
       start_time: '08:00',
       end_time: '17:00',
@@ -239,7 +247,11 @@ export default function AdminSchedulesPage() {
       key: 'time',
       title: 'Thời gian',
       render: (row) => {
-        const d = row.date ? new Date(row.date) : null;
+        let d: Date | null = null;
+        if (row.date) {
+          const parsed = new Date(row.date);
+          if (!isNaN(parsed.getTime())) d = parsed;
+        }
         
         const formatTime = (timeStr: string) => {
           try {
@@ -343,22 +355,24 @@ export default function AdminSchedulesPage() {
           onSearch={() => {}}
           toolbarFilters={
             <>
-              <div className="w-[180px]">
-                <Select value={filterFacility} onValueChange={v => setFilterFacility(v || 'all')}>
-                  <SelectTrigger className="bg-white border-slate-200 text-slate-800">
-                    <SelectValue placeholder="Tất cả cơ sở">
-                      {filterFacility === 'all' ? 'Tất cả cơ sở' :
-                       facilities.find(f => f.facility_id.toString() === filterFacility)?.facility_name || 'Tất cả cơ sở'}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Tất cả cơ sở</SelectItem>
-                    {facilities.map(f => (
-                      <SelectItem key={f.facility_id} value={f.facility_id.toString()}>{f.facility_name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              {!isStaff && (
+                <div className="w-[180px]">
+                  <Select value={filterFacility} onValueChange={v => setFilterFacility(v || 'all')}>
+                    <SelectTrigger className="bg-white border-slate-200 text-slate-800">
+                      <SelectValue placeholder="Tất cả cơ sở">
+                        {filterFacility === 'all' ? 'Tất cả cơ sở' :
+                         facilities.find(f => f.facility_id.toString() === filterFacility)?.facility_name || 'Tất cả cơ sở'}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Tất cả cơ sở</SelectItem>
+                      {facilities.map(f => (
+                        <SelectItem key={f.facility_id} value={f.facility_id.toString()}>{f.facility_name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
 
               <div className="w-[180px]">
                 <Select value={filterStatus} onValueChange={v => setFilterStatus(v || 'all')}>
@@ -395,21 +409,23 @@ export default function AdminSchedulesPage() {
       >
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-slate-700 mb-1">Cơ sở y tế <span className="text-red-500">*</span></label>
-              <Select value={formData.facility_id} onValueChange={(val) => setFormData({...formData, facility_id: val || ''})}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Chọn cơ sở y tế">
-                    {formData.facility_id ? facilities.find(f => f.facility_id.toString() === formData.facility_id)?.facility_name : 'Chọn cơ sở y tế'}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {facilities.map(f => (
-                    <SelectItem key={f.facility_id} value={f.facility_id.toString()}>{f.facility_name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {!isStaff && (
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-slate-700 mb-1">Cơ sở y tế <span className="text-red-500">*</span></label>
+                <Select value={formData.facility_id} onValueChange={(val) => setFormData({...formData, facility_id: val || ''})}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Chọn cơ sở y tế">
+                      {formData.facility_id ? facilities.find(f => f.facility_id.toString() === formData.facility_id)?.facility_name : 'Chọn cơ sở y tế'}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {facilities.map(f => (
+                      <SelectItem key={f.facility_id} value={f.facility_id.toString()}>{f.facility_name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Ngày tổ chức <span className="text-red-500">*</span></label>
@@ -534,7 +550,11 @@ export default function AdminSchedulesPage() {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm text-center">
                     <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Ngày</p>
-                    <p className="text-lg font-bold text-slate-800">{currentView.date ? format(new Date(currentView.date), 'dd/MM/yyyy') : '---'}</p>
+                    <p className="text-lg font-bold text-slate-800">
+                      {currentView.date && !isNaN(new Date(currentView.date).getTime()) 
+                        ? format(new Date(currentView.date), 'dd/MM/yyyy') 
+                        : '---'}
+                    </p>
                   </div>
                   <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm text-center">
                     <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Khung giờ</p>
@@ -627,23 +647,42 @@ export default function AdminSchedulesPage() {
                       ) : scheduleDonors.length === 0 ? (
                         <tr><td colSpan={6} className="text-center py-8 text-slate-500">Chưa có ai đăng ký hoặc không có dữ liệu phù hợp</td></tr>
                       ) : (
-                        scheduleDonors.map((slot: any) => (
-                          <tr key={slot.slot_id} className="hover:bg-slate-50">
-                            <td className="px-4 py-3">
-                              <div className="font-medium text-slate-800">{slot.user?.full_name}</div>
-                              <div className="text-xs text-slate-500">{slot.user?.email}</div>
-                            </td>
-                            <td className="px-4 py-3 text-slate-700">{slot.user?.phone || '-'}</td>
+                        scheduleDonors.map((slot: any) => {
+                          const matchRQ = slot.notes?.match(/Mã:\s*(R[EQ]+-[A-Za-z0-9\-]+)/i);
+                          const extractedCode = matchRQ ? matchRQ[1] : null;
+
+                          return (
+                            <tr key={slot.slot_id} className="hover:bg-slate-50">
+                              <td className="px-4 py-3">
+                                <div className="font-medium text-slate-800">{slot.user?.full_name}</div>
+                                <div className="text-xs text-slate-500">{slot.user?.email}</div>
+                                {extractedCode && (
+                                  <button
+                                    onClick={() => {
+                                      setSelectedRequestCode(extractedCode);
+                                      setIsDetailModalOpen(true);
+                                    }}
+                                    className="mt-2 inline-flex items-center justify-center gap-1.5 px-2 py-1 bg-blue-50 border border-blue-200 text-blue-700 font-semibold rounded-sm hover:bg-blue-100 transition-colors text-[10px] uppercase tracking-wider"
+                                  >
+                                    <FileText className="w-3 h-3" /> Chi tiết YC ({extractedCode})
+                                  </button>
+                                )}
+                              </td>
+                              <td className="px-4 py-3 text-slate-700">{slot.user?.phone || '-'}</td>
                             <td className="px-4 py-3 font-semibold text-blood">{slot.user?.blood_type?.blood_type_code || '-'}</td>
-                            <td className="px-4 py-3 text-slate-600">{format(new Date(slot.created_at), 'HH:mm dd/MM/yyyy')}</td>
+                            <td className="px-4 py-3 text-slate-600">
+                              {slot.created_at && !isNaN(new Date(slot.created_at).getTime()) 
+                                ? format(new Date(slot.created_at), 'HH:mm dd/MM/yyyy') 
+                                : '---'}
+                            </td>
                             <td className="px-4 py-3">
-                              <span className={`px-2 py-1 rounded text-xs font-semibold
-                                ${slot.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-700' :
-                                  slot.status === 'EXAMINED_PASSED' ? 'bg-blue-100 text-blue-700' :
-                                  slot.status === 'ARRIVED' ? 'bg-purple-100 text-purple-700' :
-                                  slot.status === 'CONFIRMED' ? 'bg-amber-100 text-amber-700' :
-                                  (slot.status === 'CANCELLED' || slot.status === 'EXAMINED_FAILED') ? 'bg-red-100 text-red-700' :
-                                  'bg-slate-100 text-slate-700'}`}>
+                              <span className={`px-2.5 py-1 rounded-full text-xs font-semibold border
+                                ${slot.status === 'COMPLETED' ? 'bg-emerald-50 text-emerald-600 border-emerald-200' :
+                                  slot.status === 'EXAMINED_PASSED' ? 'bg-blue-50 text-blue-600 border-blue-200' :
+                                  slot.status === 'ARRIVED' ? 'bg-purple-50 text-purple-600 border-purple-200' :
+                                  slot.status === 'CONFIRMED' ? 'bg-amber-50 text-amber-600 border-amber-200' :
+                                  (slot.status === 'CANCELLED' || slot.status === 'EXAMINED_FAILED') ? 'bg-red-50 text-red-600 border-red-200' :
+                                  'bg-slate-50 text-slate-600 border-slate-200'}`}>
                                 {slot.status === 'COMPLETED' ? 'Đã hiến' : 
                                  slot.status === 'EXAMINED_PASSED' ? 'Khám đạt' : 
                                  slot.status === 'EXAMINED_FAILED' ? 'Không đạt' : 
@@ -676,7 +715,8 @@ export default function AdminSchedulesPage() {
                               </Select>
                             </td>
                           </tr>
-                        ))
+                        );
+                      })
                       )}
                     </tbody>
                   </table>
@@ -690,6 +730,12 @@ export default function AdminSchedulesPage() {
           </div>
         )}
       </BaseModal>
+
+      <BloodRequestDetailModal 
+        requestCode={selectedRequestCode}
+        isOpen={isDetailModalOpen}
+        onClose={() => setIsDetailModalOpen(false)}
+      />
     </div>
   );
 }

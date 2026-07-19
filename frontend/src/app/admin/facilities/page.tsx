@@ -43,7 +43,6 @@ export default function AdminFacilitiesPage() {
     longitude: '',
     logo_url: '',
     province_id: '',
-    district_id: '',
     ward_id: '',
     is_primary: false,
     is_active: true
@@ -91,7 +90,7 @@ export default function AdminFacilitiesPage() {
     setEditingItem(null);
     setFormData({
       facility_code: '', facility_name: '', short_name: '', address: '', phone: '', email: '', website: '',
-      latitude: '', longitude: '', logo_url: '', province_id: '', district_id: '', ward_id: '', is_primary: false, is_active: true
+      latitude: '', longitude: '', logo_url: '', province_id: '', ward_id: '', is_primary: false, is_active: true
     });
     setIsModalOpen(true);
   };
@@ -110,7 +109,6 @@ export default function AdminFacilitiesPage() {
       longitude: item.longitude?.toString() || '',
       logo_url: item.logo_url || '',
       province_id: item.province_id?.toString() || '',
-      district_id: item.district_id?.toString() || '',
       ward_id: item.ward_id?.toString() || '',
       is_primary: item.is_primary || false,
       is_active: item.is_active !== false,
@@ -141,7 +139,6 @@ export default function AdminFacilitiesPage() {
       const payload = {
         ...formData,
         province_id: formData.province_id ? Number(formData.province_id) : undefined,
-        district_id: formData.district_id ? Number(formData.district_id) : undefined,
         ward_id: formData.ward_id ? Number(formData.ward_id) : undefined,
         latitude: formData.latitude ? Number(formData.latitude) : undefined,
         longitude: formData.longitude ? Number(formData.longitude) : undefined,

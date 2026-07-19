@@ -26,7 +26,7 @@ export class ExcelUtil {
    * Đọc file Excel từ buffer thành mảng object
    */
   static parseExcel(buffer: Buffer): any[] {
-    const workbook = xlsx.read(buffer, { type: 'buffer' });
+    const workbook = xlsx.read(buffer, { type: 'buffer', cellDates: true });
     const sheetName = workbook.SheetNames[0];
     const worksheet = workbook.Sheets[sheetName];
     return xlsx.utils.sheet_to_json(worksheet);

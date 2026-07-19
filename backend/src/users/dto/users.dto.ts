@@ -118,11 +118,6 @@ export class CreateUserAdminDto {
   @IsOptional()
   @IsInt()
   @Type(() => Number)
-  district_id?: number;
-
-  @IsOptional()
-  @IsInt()
-  @Type(() => Number)
   ward_id?: number;
 
   @IsOptional()
@@ -141,6 +136,11 @@ export class CreateUserAdminDto {
   @IsOptional()
   @IsBoolean()
   is_email_verified?: boolean;
+
+  @IsOptional()
+  @IsInt()
+  @Type(() => Number)
+  facility_id?: number;
 
   @ApiProperty({ example: 1, description: 'ID của quyền (Role)' })
   @IsInt()
@@ -205,11 +205,6 @@ export class UpdateUserAdminDto {
   @IsOptional()
   @IsInt()
   @Type(() => Number)
-  district_id?: number;
-
-  @IsOptional()
-  @IsInt()
-  @Type(() => Number)
   ward_id?: number;
 
   @IsOptional()
@@ -228,6 +223,11 @@ export class UpdateUserAdminDto {
   @IsOptional()
   @IsBoolean()
   is_email_verified?: boolean;
+
+  @IsOptional()
+  @IsInt()
+  @Type(() => Number)
+  facility_id?: number;
 
   @ApiProperty({ example: 2, description: 'ID của quyền (Role)', required: false })
   @IsOptional()

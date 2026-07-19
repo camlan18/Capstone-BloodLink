@@ -125,16 +125,11 @@ export class MasterDataService {
     });
   }
 
-  async getDistricts(provinceId: number) {
-    return await this.prisma.districts.findMany({
-      where: { province_id: provinceId },
-      orderBy: { district_name: 'asc' },
-    });
-  }
 
-  async getWards(districtId: number) {
+
+  async getWards(provinceId: number) {
     return await this.prisma.wards.findMany({
-      where: { district_id: districtId },
+      where: { province_id: provinceId },
       orderBy: { ward_name: 'asc' },
     });
   }
@@ -209,7 +204,7 @@ export class MasterDataService {
   async getFacilityById(id: number) {
     const facility = await this.prisma.medical_facilities.findUnique({
       where: { facility_id: id },
-      include: { province: true, district: true, ward: true }
+      include: { province: true, ward: true }
     });
     if (!facility) throw new NotFoundException('Cơ sở y tế không tồn tại');
     return facility;
@@ -369,6 +364,18 @@ export class MasterDataService {
   }
 
   async createBloodCompatibility(dto: CreateBloodCompatibilityDto) {
+    const existing = await this.prisma.blood_compatibility.findFirst({
+      where: {
+        component_id: dto.component_id,
+        donor_blood_type_id: dto.donor_blood_type_id,
+        recipient_blood_type_id: dto.recipient_blood_type_id
+      }
+    });
+
+    if (existing) {
+      throw new BadRequestException('Quy tắc tương thích này đã tồn tại trong hệ thống!');
+    }
+
     return await this.prisma.blood_compatibility.create({
       data: {
         component_id: dto.component_id,
@@ -381,6 +388,19 @@ export class MasterDataService {
   }
 
   async updateBloodCompatibility(id: number, dto: UpdateBloodCompatibilityDto) {
+    const existing = await this.prisma.blood_compatibility.findFirst({
+      where: {
+        component_id: dto.component_id,
+        donor_blood_type_id: dto.donor_blood_type_id,
+        recipient_blood_type_id: dto.recipient_blood_type_id,
+        compatibility_id: { not: id }
+      }
+    });
+
+    if (existing) {
+      throw new BadRequestException('Quy tắc tương thích này đã tồn tại trong hệ thống!');
+    }
+
     return await this.prisma.blood_compatibility.update({
       where: { compatibility_id: id },
       data: {

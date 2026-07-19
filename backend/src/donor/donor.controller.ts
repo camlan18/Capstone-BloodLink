@@ -61,14 +61,14 @@ export class DonorController {
   // --- FACILITY ADMIN ROUTES ---
   @Roles(RoleCode.ADMIN, RoleCode.STAFF, RoleCode.FACILITY_ADMIN)
   @Get('slots')
-  async getSlots(@Query() query: PaginationDto) {
-    return await this.donorService.getSlots(query);
+  async getSlots(@Query() query: PaginationDto, @Req() req: any) {
+    return await this.donorService.getSlots(query, req.user);
   }
 
   @Roles(RoleCode.ADMIN, RoleCode.STAFF, RoleCode.FACILITY_ADMIN)
   @Get('slots/export')
-  async exportExcel(@Query() query: any, @Res() res: Response) {
-    const buffer = await this.donorService.exportExcel(query);
+  async exportExcel(@Query() query: any, @Res() res: Response, @Req() req: any) {
+    const buffer = await this.donorService.exportExcel(query, req.user);
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', 'attachment; filename=donations.xlsx');
     res.send(buffer);
@@ -88,24 +88,24 @@ export class DonorController {
   @UseInterceptors(FileInterceptor('file'))
   async importExcel(@UploadedFile() file: Express.Multer.File, @Req() req: any) {
     if (!file) throw new BadRequestException('Vui lòng chọn file Excel');
-    return await this.donorService.importExcel(file.buffer, req.user.user_id);
+    return await this.donorService.importExcel(file.buffer, req.user);
   }
 
   @Roles(RoleCode.ADMIN, RoleCode.STAFF, RoleCode.FACILITY_ADMIN)
   @Post('slots')
-  async createSlot(@Body() dto: any) {
-    return await this.donorService.createAdminSlot(dto);
+  async createSlot(@Body() dto: any, @Req() req: any) {
+    return await this.donorService.createAdminSlot(dto, req.user);
   }
 
   @Roles(RoleCode.ADMIN, RoleCode.STAFF, RoleCode.FACILITY_ADMIN)
   @Put('slots/:id/status')
-  async updateSlotStatus(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateSlotStatusDto) {
-    return await this.donorService.updateSlotStatus(id, dto);
+  async updateSlotStatus(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateSlotStatusDto, @Req() req: any) {
+    return await this.donorService.updateSlotStatus(id, dto, req.user);
   }
 
   @Roles(RoleCode.ADMIN, RoleCode.STAFF, RoleCode.FACILITY_ADMIN)
   @Post('donations')
   async recordDonation(@Req() req: any, @Body() dto: RecordDonationDto) {
-    return await this.donorService.recordDonation(req.user.user_id, dto);
+    return await this.donorService.recordDonation(req.user, dto);
   }
 }

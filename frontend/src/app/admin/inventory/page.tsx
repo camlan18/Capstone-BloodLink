@@ -11,8 +11,9 @@ import { Loader2, Plus, Trash2, Filter, Edit } from 'lucide-react';
 import { format } from 'date-fns';
 import { DataTable, Column, ActionItem } from '@/components/ui/DataTable';
 import { BaseModal } from '@/components/ui/BaseModal';
-import { ExcelImportModal } from '@/components/ui/ExcelImportModal';
 import { ExportImportDropdown } from '@/components/ui/ExportImportDropdown';
+import { ExcelImportModal } from '@/components/ui/ExcelImportModal';
+import { useAuthStore } from '@/lib/stores';
 
 export default function AdminInventoryPage() {
   const [loading, setLoading] = useState(true);
@@ -23,6 +24,9 @@ export default function AdminInventoryPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(15);
   const [statusCode, setStatusCode] = useState<string>('AVAILABLE');
+  
+  const currentUser = useAuthStore(state => state.user);
+  const isStaff = currentUser?.role?.role_code === 'HOSPITAL_STAFF' || currentUser?.role?.role_code === 'STAFF' || (typeof currentUser?.role === 'string' && ['HOSPITAL_STAFF', 'STAFF'].includes(currentUser.role));
   const [bagCode, setBagCode] = useState('');
   const [filterBloodType, setFilterBloodType] = useState<string>('ALL');
   const [filterFacility, setFilterFacility] = useState<string>('ALL');
@@ -55,7 +59,7 @@ export default function AdminInventoryPage() {
   const handleOpenAddModal = () => {
     setEditingItem(null);
     setFormData({
-      facility_id: '',
+      facility_id: isStaff && currentUser?.facility_id ? currentUser.facility_id.toString() : '',
       blood_type_id: '',
       component_id: bloodComponents.length > 0 ? bloodComponents[0].component_id.toString() : '9',
       bag_code: generateBagCode(),
@@ -234,14 +238,23 @@ export default function AdminInventoryPage() {
       render: (item) => <span className="text-slate-800">{item.volume_ml}</span>
     },
     {
+      key: 'facility',
+      title: 'Cơ sở chứa máu',
+      render: (item) => <span className="text-slate-800">{item.facility?.facility_name || '---'}</span>
+    },
+    {
       key: 'dates',
       title: 'Ngày lấy / Hết hạn',
-      render: (item) => (
-        <div>
-          <div className="text-slate-800">{format(new Date(item.collection_date), 'dd/MM/yyyy')}</div>
-          <div className="text-xs text-slate-500">HSD: {format(new Date(item.expiry_date), 'dd/MM/yyyy')}</div>
-        </div>
-      )
+      render: (item) => {
+        const cDate = item.collection_date ? new Date(item.collection_date) : null;
+        const eDate = item.expiry_date ? new Date(item.expiry_date) : null;
+        return (
+          <div>
+            <div className="text-slate-800">{cDate && !isNaN(cDate.getTime()) ? format(cDate, 'dd/MM/yyyy') : '---'}</div>
+            <div className="text-xs text-slate-500">HSD: {eDate && !isNaN(eDate.getTime()) ? format(eDate, 'dd/MM/yyyy') : '---'}</div>
+          </div>
+        );
+      }
     },
     {
       key: 'status',
@@ -345,18 +358,20 @@ export default function AdminInventoryPage() {
                   placeholder="Nhóm máu"
                 />
               </div>
-              <div className="w-[200px]">
-                <SearchableSelect
-                  value={filterFacility}
-                  onValueChange={v => { setFilterFacility(v); setPage(1); }}
-                  options={[
-                    { value: 'ALL', label: 'Tất cả cơ sở' },
-                    ...facilities.map(f => ({ value: f.facility_id.toString(), label: f.facility_name }))
-                  ]}
-                  triggerClassName="bg-white border-slate-200 text-slate-800"
-                  placeholder="Cơ sở"
-                />
-              </div>
+              {!isStaff && (
+                <div className="w-[200px]">
+                  <SearchableSelect
+                    value={filterFacility}
+                    onValueChange={v => { setFilterFacility(v); setPage(1); }}
+                    options={[
+                      { value: 'ALL', label: 'Tất cả cơ sở' },
+                      ...facilities.map(f => ({ value: f.facility_id.toString(), label: f.facility_name }))
+                    ]}
+                    triggerClassName="bg-white border-slate-200 text-slate-800"
+                    placeholder="Cơ sở"
+                  />
+                </div>
+              )}
             </div>
           }
         />
@@ -393,15 +408,17 @@ export default function AdminInventoryPage() {
               <label className="block text-sm font-medium text-slate-700 mb-1">Thể tích (ml)</label>
               <Input type="number" value={formData.volume_ml} onChange={e => setFormData({...formData, volume_ml: e.target.value})} required />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Cơ sở thu nhận</label>
-              <SearchableSelect
-                value={formData.facility_id}
-                onValueChange={v => setFormData({...formData, facility_id: v})}
-                options={facilities.map(f => ({ value: f.facility_id.toString(), label: f.facility_name }))}
-                placeholder="Chọn cơ sở"
-              />
-            </div>
+            {!isStaff && (
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Cơ sở thu nhận</label>
+                <SearchableSelect
+                  value={formData.facility_id}
+                  onValueChange={v => setFormData({...formData, facility_id: v})}
+                  options={facilities.map(f => ({ value: f.facility_id.toString(), label: f.facility_name }))}
+                  placeholder="Chọn cơ sở"
+                />
+              </div>
+            )}
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Ngày lấy</label>
               <Input type="date" value={formData.collection_date} onChange={e => setFormData({...formData, collection_date: e.target.value})} required />

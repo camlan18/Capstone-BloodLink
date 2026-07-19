@@ -23,6 +23,10 @@ export interface User {
     role_code: string;
     role_name: string;
   };
+  facility_id?: number;
+  facility?: {
+    facility_name: string;
+  };
 }
 
 export interface DonorProfile {

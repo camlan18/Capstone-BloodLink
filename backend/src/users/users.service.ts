@@ -26,8 +26,8 @@ export class UsersService {
         role: true,
         blood_type: true,
         province: true,
-        district: true,
         ward: true,
+        facility: true,
       },
     });
     if (!user) throw new NotFoundException('User not found');
@@ -45,7 +45,6 @@ export class UsersService {
       avatar_url: data.avatar_url,
       address: data.address,
       province_id: data.province_id,
-      district_id: data.district_id,
       ward_id: data.ward_id,
       blood_type_id: data.blood_type_id,
     };
@@ -243,12 +242,12 @@ export class UsersService {
     if (dto.identity_card !== undefined) data.identity_card = dto.identity_card;
     if (dto.address !== undefined) data.address = dto.address;
     if (dto.province_id !== undefined) data.province_id = dto.province_id;
-    if (dto.district_id !== undefined) data.district_id = dto.district_id;
     if (dto.ward_id !== undefined) data.ward_id = dto.ward_id;
     if (dto.blood_type_id !== undefined) data.blood_type_id = dto.blood_type_id;
     if (dto.is_donor_registered !== undefined) data.is_donor_registered = dto.is_donor_registered;
     if (dto.is_available_for_donation !== undefined) data.is_available_for_donation = dto.is_available_for_donation;
     if (dto.is_email_verified !== undefined) data.is_email_verified = dto.is_email_verified;
+    if (dto.facility_id !== undefined) data.facility_id = dto.facility_id;
 
     if (dto.donor_profile) {
       data.donor_profile = {
@@ -282,7 +281,6 @@ export class UsersService {
       include: { 
         role: true,
         province: true,
-        district: true,
         ward: true,
         blood_type: true,
         donor_profile: {
@@ -316,12 +314,14 @@ export class UsersService {
     if (dto.identity_card !== undefined) data.identity_card = dto.identity_card;
     if (dto.address !== undefined) data.address = dto.address;
     if (dto.province_id !== undefined) data.province_id = dto.province_id;
-    if (dto.district_id !== undefined) data.district_id = dto.district_id;
     if (dto.ward_id !== undefined) data.ward_id = dto.ward_id;
     if (dto.blood_type_id !== undefined) data.blood_type_id = dto.blood_type_id;
     if (dto.is_donor_registered !== undefined) data.is_donor_registered = dto.is_donor_registered;
     if (dto.is_available_for_donation !== undefined) data.is_available_for_donation = dto.is_available_for_donation;
     if (dto.is_email_verified !== undefined) data.is_email_verified = dto.is_email_verified;
+    if (dto.facility_id !== undefined) {
+      data.facility_id = dto.facility_id === -1 ? null : dto.facility_id;
+    }
 
     if (dto.donor_profile) {
       data.donor_profile = {
@@ -451,6 +451,7 @@ export class UsersService {
             identity_card: row['CCCD']?.toString(),
             date_of_birth: dob,
             gender: gender,
+            facility_id: facilityId,
             is_active: true
           }
         });

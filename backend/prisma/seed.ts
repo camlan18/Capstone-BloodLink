@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
+import { seedLocations } from './seed-locations';
 
 const prisma = new PrismaClient();
 
@@ -35,7 +36,6 @@ async function main() {
   
   await prisma.medical_facilities.deleteMany();
   await prisma.wards.deleteMany();
-  await prisma.districts.deleteMany();
   await prisma.provinces.deleteMany();
   
   await prisma.blood_compatibility.deleteMany();
@@ -45,6 +45,8 @@ async function main() {
   await prisma.roles.deleteMany();
 
   console.log('Đã dọn dẹp xong. Bắt đầu seed Master Data...');
+
+  await seedLocations(prisma);
 
   // 1. Roles
   const rolesData = [
@@ -111,11 +113,14 @@ async function main() {
     await prisma.urgency_levels.create({ data: ug });
   }
 
-  // 6. Medical Facilities
+  // 6. Medical Facilities (with GPS for map)
   const facilities = [
-    { facility_code: 'BCTM_HCM', facility_name: 'Bệnh viện Truyền máu Huyết học TP.HCM', address: '118 Hồng Bàng, Q.5, TP.HCM', is_primary: true },
-    { facility_code: 'BV_CHORAY', facility_name: 'Bệnh viện Chợ Rẫy', address: '201B Nguyễn Chí Thanh, Q.5, TP.HCM', is_primary: false },
-    { facility_code: 'BV_TUDU', facility_name: 'Bệnh viện Từ Dũ', address: '284 Cống Quỳnh, Q.1, TP.HCM', is_primary: false }
+    { facility_code: 'BCTM_HCM', facility_name: 'Bệnh viện Truyền máu Huyết học TP.HCM', short_name: 'BV Huyết học', address: '118 Hồng Bàng, Phường 12, Quận 5, TP.HCM', phone: '028 3957 1342', is_primary: true, latitude: 10.7548, longitude: 106.6612 },
+    { facility_code: 'BV_CHORAY', facility_name: 'Bệnh viện Chợ Rẫy', short_name: 'Chợ Rẫy', address: '201B Nguyễn Chí Thanh, Phường 12, Quận 5, TP.HCM', phone: '028 3855 4137', is_primary: false, latitude: 10.7558, longitude: 106.6563 },
+    { facility_code: 'BV_TUDU', facility_name: 'Bệnh viện Từ Dũ', short_name: 'Từ Dũ', address: '284 Cống Quỳnh, Phường Phạm Ngũ Lão, Quận 1, TP.HCM', phone: '028 3839 5117', is_primary: false, latitude: 10.7676, longitude: 106.6909 },
+    { facility_code: 'BV_115', facility_name: 'Bệnh viện Nhân dân 115', short_name: 'BV 115', address: '527 Sư Vạn Hạnh, Phường 12, Quận 10, TP.HCM', phone: '028 3865 4249', is_primary: false, latitude: 10.7734, longitude: 106.6681 },
+    { facility_code: 'BV_NGOAIKHOAQT', facility_name: 'Bệnh viện Ngoại khoa Quốc tế', short_name: 'BV Ngoại khoa QT', address: '20 Điện Biên Phủ, Quận Bình Thạnh, TP.HCM', phone: '028 3512 0188', is_primary: false, latitude: 10.7918, longitude: 106.7050 },
+    { facility_code: 'BV_THUDUC', facility_name: 'Bệnh viện Thành phố Thủ Đức', short_name: 'BV Thủ Đức', address: '29 Phú Châu, Phường Tam Phú, TP. Thủ Đức, TP.HCM', phone: '028 3729 6070', is_primary: false, latitude: 10.8536, longitude: 106.7535 },
   ];
   for (const fc of facilities) {
     await prisma.medical_facilities.create({ data: fc });
@@ -179,6 +184,35 @@ async function main() {
       status_code: 'AVAILABLE'
     }
   });
+
+  // Blood Requests (sample for map)
+  const statusPending = await prisma.blood_request_statuses.findFirst({ where: { status_code: 'PENDING' }});
+  const statusApproved = await prisma.blood_request_statuses.findFirst({ where: { status_code: 'APPROVED' }});
+  const urgCritical = await prisma.urgency_levels.findFirst({ where: { urgency_code: 'CRITICAL' }});
+  const urgHigh = await prisma.urgency_levels.findFirst({ where: { urgency_code: 'HIGH' }});
+  const urgNormal = await prisma.urgency_levels.findFirst({ where: { urgency_code: 'NORMAL' }});
+  const facility3 = await prisma.medical_facilities.findFirst({ where: { facility_code: 'BV_TUDU' }});
+  const facility4 = await prisma.medical_facilities.findFirst({ where: { facility_code: 'BV_115' }});
+  const facility5 = await prisma.medical_facilities.findFirst({ where: { facility_code: 'BV_NGOAIKHOAQT' }});
+  const btB = await prisma.blood_types.findFirst({ where: { blood_type_code: 'B+' }});
+  const btAB = await prisma.blood_types.findFirst({ where: { blood_type_code: 'AB-' }});
+  const compRC = await prisma.blood_components.findFirst({ where: { component_code: 'RED_CELLS' }});
+  const compPlatelets = await prisma.blood_components.findFirst({ where: { component_code: 'PLATELETS' }});
+
+  const bloodRequestsData = [
+    { request_code: 'REQ-2025-001', facility_id: facility1!.facility_id, patient_name: 'Nguyễn Thanh Hùng', patient_phone: '0901111222', blood_type_id: btO!.blood_type_id, component_id: compWB!.component_id, units_needed: 3, urgency_id: urgCritical!.urgency_id, status_id: statusPending!.status_id, is_emergency: true, hospital_name: 'BV Huyết học', ward_room: 'Khoa Cấp cứu, Tầng 1', required_before: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000), clinical_notes: 'Bệnh nhân mất máu nặng do tai nạn giao thông, cần truyền máu khẩn cấp.' },
+    { request_code: 'REQ-2025-002', facility_id: facility1!.facility_id, patient_name: 'Trần Minh Phát', patient_phone: '0902333444', blood_type_id: btA!.blood_type_id, component_id: compRC!.component_id, units_needed: 2, urgency_id: urgHigh!.urgency_id, status_id: statusApproved!.status_id, is_emergency: false, hospital_name: 'BV Huyết học', ward_room: 'Khoa Nội, Phòng 302', required_before: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000), clinical_notes: 'Bệnh nhân thiếu máu mạn tính cần bổ sung hồng cầu.' },
+    { request_code: 'REQ-2025-003', facility_id: facility2!.facility_id, patient_name: 'Lê Thị Hồng Nhung', patient_phone: '0905555666', blood_type_id: btB!.blood_type_id, component_id: compWB!.component_id, units_needed: 4, urgency_id: urgCritical!.urgency_id, status_id: statusPending!.status_id, is_emergency: true, hospital_name: 'Chợ Rẫy', ward_room: 'Khoa Hồi sức, Tầng 2', required_before: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000), clinical_notes: 'Phẫu thuật tim khẩn, cần máu toàn phần nhóm B+ gấp.' },
+    { request_code: 'REQ-2025-004', facility_id: facility2!.facility_id, patient_name: 'Phạm Quốc Bảo', patient_phone: '0908777888', blood_type_id: btO!.blood_type_id, component_id: compPlatelets!.component_id, units_needed: 2, urgency_id: urgNormal!.urgency_id, status_id: statusApproved!.status_id, is_emergency: false, hospital_name: 'Chợ Rẫy', ward_room: 'Khoa Ung bướu, Phòng 205', required_before: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), clinical_notes: 'Hóa trị liệu, cần bổ sung tiểu cầu.' },
+    { request_code: 'REQ-2025-005', facility_id: facility3!.facility_id, patient_name: 'Võ Thị Mai Anh', patient_phone: '0909111222', blood_type_id: btAB!.blood_type_id, component_id: compWB!.component_id, units_needed: 2, urgency_id: urgHigh!.urgency_id, status_id: statusPending!.status_id, is_emergency: false, hospital_name: 'Từ Dũ', ward_room: 'Khoa Sản, Phòng 401', required_before: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000), clinical_notes: 'Sản phụ sinh mổ dự kiến, cần dự trữ máu AB-.' },
+    { request_code: 'REQ-2025-006', facility_id: facility4!.facility_id, patient_name: 'Đặng Văn Tài', patient_phone: '0912345678', blood_type_id: btA!.blood_type_id, component_id: compRC!.component_id, units_needed: 1, urgency_id: urgNormal!.urgency_id, status_id: statusPending!.status_id, is_emergency: false, hospital_name: 'BV 115', ward_room: 'Khoa Ngoại, Phòng 105', required_before: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000), clinical_notes: 'Phẫu thuật thay khớp háng, cần dự phòng máu.' },
+    { request_code: 'REQ-2025-007', facility_id: facility5!.facility_id, patient_name: 'Huỳnh Ngọc Trâm', patient_phone: '0918765432', blood_type_id: btO!.blood_type_id, component_id: compWB!.component_id, units_needed: 5, urgency_id: urgCritical!.urgency_id, status_id: statusPending!.status_id, is_emergency: true, hospital_name: 'BV Ngoại khoa QT', ward_room: 'Khoa Cấp cứu', required_before: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000), clinical_notes: 'Xuất huyết nội do vỡ lách, tình trạng nguy kịch.' },
+    { request_code: 'REQ-2025-008', facility_id: facility1!.facility_id, patient_name: 'Bùi Thanh Long', patient_phone: '0922334455', blood_type_id: btB!.blood_type_id, component_id: compPlatelets!.component_id, units_needed: 3, urgency_id: urgHigh!.urgency_id, status_id: statusApproved!.status_id, is_emergency: false, hospital_name: 'BV Huyết học', ward_room: 'Khoa Huyết học, Phòng 201', required_before: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000), clinical_notes: 'Sốt xuất huyết nặng, tiểu cầu giảm nghiêm trọng.' },
+  ];
+  
+  for (const req of bloodRequestsData) {
+    await prisma.blood_requests.create({ data: req });
+  }
 
   // Blogs
   const catKnowledge = await prisma.blog_categories.findFirst({ where: { slug: 'kien-thuc-hien-mau' }});

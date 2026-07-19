@@ -9,7 +9,6 @@ const apiClient = axios.create({
   },
 });
 
-// Thêm interceptor để đính kèm token vào mọi request nếu có
 apiClient.interceptors.request.use(
   (config) => {
     if (typeof window !== 'undefined') {
@@ -41,13 +40,11 @@ const processQueue = (error: any, token: string | null = null) => {
 
 apiClient.interceptors.response.use(
   (response) => {
-    // Backend trả về theo format ResponseInterceptor: { data, meta }
     return response.data;
   },
   async (error) => {
     const originalRequest = error.config;
 
-    // Không thử lại nếu là request gọi refresh-token
     if (originalRequest.url?.includes('/auth/refresh-token')) {
       return Promise.reject(error);
     }
@@ -82,7 +79,6 @@ apiClient.interceptors.response.use(
           refresh_token: refreshToken
         });
 
-        // Lấy token (tùy thuộc vào việc interceptor response bên NestJS bọc data)
         const newAccessToken = response.data?.data?.access_token || response.data?.access_token;
         const newRefreshToken = response.data?.data?.refresh_token || response.data?.refresh_token;
 

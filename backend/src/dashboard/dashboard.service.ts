@@ -5,7 +5,7 @@ import { PrismaService } from '../prisma/prisma.service';
 export class DashboardService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async getStats(startDateStr?: string, endDateStr?: string, facilityIdStr?: string) {
+  async getStats(startDateStr?: string, endDateStr?: string, facilityIdStr?: string, user?: any) {
     // Determine dates
     let startDate = new Date();
     startDate.setDate(startDate.getDate() - 7); // default 7 days ago
@@ -23,7 +23,10 @@ export class DashboardService {
       endDate.setHours(23, 59, 59, 999);
     }
 
-    const facilityId = facilityIdStr ? parseInt(facilityIdStr, 10) : undefined;
+    let facilityId = facilityIdStr ? parseInt(facilityIdStr, 10) : undefined;
+    if (user?.role_code === 'HOSPITAL_STAFF') {
+      facilityId = user.facility_id || -1;
+    }
 
     // Build common filter for facility if applicable (Note: not all tables have facility_id directly)
     // blood_donations -> schedule -> facility

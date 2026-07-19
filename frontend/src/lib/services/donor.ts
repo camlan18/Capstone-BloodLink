@@ -14,7 +14,7 @@ export const donorService = {
   getSchedules: async (facilityId?: string) => {
     return apiClient.get<any, any>(`/donor/schedules${facilityId ? `?facilityId=${facilityId}` : ''}`);
   },
-  bookSlot: async (data: { schedule_id: number, notes?: string }) => {
+  bookSlot: async (data: { schedule_id?: number, request_id?: number, facility_id?: number, specific_date?: string, expected_time?: string, notes?: string }) => {
     return apiClient.post<any, ApiResponse<any>>('/donor/book-slot', data);
   },
   cancelSlot: async (slotId: number) => {

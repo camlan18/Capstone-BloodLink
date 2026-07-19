@@ -3,10 +3,30 @@ import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class BookDonationSlotDto {
-  @ApiProperty({ example: 1, description: 'ID của lịch hiến máu (Facility Schedule)' })
+  @ApiProperty({ example: 1, description: 'ID của lịch hiến máu (Facility Schedule)', required: false })
   @IsInt()
-  @IsNotEmpty()
-  schedule_id: number;
+  @IsOptional()
+  schedule_id?: number;
+
+  @ApiProperty({ example: 10, description: 'ID của yêu cầu máu khẩn cấp', required: false })
+  @IsInt()
+  @IsOptional()
+  request_id?: number;
+
+  @ApiProperty({ example: 5, description: 'ID của cơ sở y tế (nếu chưa có lịch)', required: false })
+  @IsInt()
+  @IsOptional()
+  facility_id?: number;
+
+  @ApiProperty({ example: '2026-06-28', description: 'Ngày đăng ký (nếu tạo lịch tự động)', required: false })
+  @IsDateString()
+  @IsOptional()
+  specific_date?: string;
+
+  @ApiProperty({ example: '08:00', description: 'Giờ dự kiến đến (nếu tạo lịch tự động)', required: false })
+  @IsString()
+  @IsOptional()
+  expected_time?: string;
 
   @ApiProperty({ example: 'Tôi muốn hiến vào buổi sáng', description: 'Ghi chú thêm', required: false })
   @IsOptional()
@@ -65,6 +85,11 @@ export class RecordDonationDto {
   @IsString()
   @IsOptional()
   result_notes?: string;
+
+  @ApiProperty({ example: 'REQ-12345', description: 'Mã yêu cầu (nếu hiến khẩn cấp)', required: false })
+  @IsString()
+  @IsOptional()
+  request_code?: string;
 }
 
 export class UpdateDonorProfileDto {

@@ -24,14 +24,14 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
 
   const navItems = [
     { label: 'Tổng quan', href: '/admin', icon: LayoutDashboard, roles: ['ADMIN', 'STAFF', 'MODERATOR', 'HOSPITAL_STAFF'] },
-    { label: 'Quản lý Lịch hiến máu', href: '/admin/schedules', icon: Calendar, roles: ['ADMIN', 'STAFF'] },
-    { label: 'Quản lý Kho máu', href: '/admin/inventory', icon: Droplets, roles: ['ADMIN', 'STAFF'] },
-    { label: 'Quản lý Đăng ký hiến', href: '/admin/donations', icon: FileSearch, roles: ['ADMIN', 'STAFF'] },
+    { label: 'Lịch hiến máu', href: '/admin/schedules', icon: Calendar, roles: ['ADMIN', 'STAFF', 'HOSPITAL_STAFF'] },
+    { label: 'Kho máu', href: '/admin/inventory', icon: Droplets, roles: ['ADMIN', 'STAFF', 'HOSPITAL_STAFF'] },
+    { label: 'Đăng ký hiến', href: '/admin/donations', icon: FileSearch, roles: ['ADMIN', 'STAFF', 'HOSPITAL_STAFF'] },
     { label: 'Yêu cầu từ bệnh viện', href: '/admin/requests', icon: FileText, roles: ['ADMIN', 'STAFF', 'HOSPITAL_STAFF'] },
-    { label: 'Quản lý Người dùng', href: '/admin/users', icon: Users, roles: ['ADMIN'] },
+    { label: 'Người dùng', href: '/admin/users', icon: Users, roles: ['ADMIN'] },
     { label: 'Dữ liệu Máu', href: '/admin/blood-master-data', icon: HeartPulse, roles: ['ADMIN'] },
-    { label: 'Quản lý Cơ sở y tế', href: '/admin/facilities', icon: Building2, roles: ['ADMIN'] },
-    { label: 'Quản lý Bài viết', href: '/admin/posts', icon: Edit3, roles: ['ADMIN', 'MODERATOR'] },
+    { label: 'Cơ sở y tế', href: '/admin/facilities', icon: Building2, roles: ['ADMIN'] },
+    { label: 'Bài viết', href: '/admin/posts', icon: Edit3, roles: ['ADMIN', 'MODERATOR'] },
     { label: 'Tài liệu Giáo dục', href: '/admin/education', icon: BookOpen, roles: ['ADMIN', 'MODERATOR'] },
     { label: 'Thông báo', href: '/admin/notifications', icon: Bell, roles: ['ADMIN'] },
     { label: 'Cài đặt', href: '/admin/settings', icon: Settings, roles: ['ADMIN'] },
@@ -125,12 +125,18 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
                 <div className="hidden md:block text-left">
                   <p className="text-sm font-bold text-slate-800 leading-tight">{user?.full_name || 'Admin'}</p>
                   <p className="text-xs text-slate-500 uppercase font-semibold">{typeof user?.role === 'string' ? user.role : user?.role?.role_name || 'Quản trị viên'}</p>
+                  {user?.facility?.facility_name && (
+                    <p className="text-[10px] text-blood/80 font-medium truncate max-w-[150px]">{user.facility.facility_name}</p>
+                  )}
                 </div>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56 mt-1">
                 <div className="px-3 py-2 mb-1 border-b border-slate-100">
                   <p className="text-sm font-bold text-slate-900">{user?.full_name || 'Admin'}</p>
                   <p className="text-xs text-slate-500 truncate">{user?.email}</p>
+                  {user?.facility?.facility_name && (
+                    <p className="text-xs text-blood font-medium mt-1 truncate">{user.facility.facility_name}</p>
+                  )}
                 </div>
                 <DropdownMenuItem className="cursor-pointer py-2">
                   <User className="w-4 h-4 mr-2 text-slate-500" />

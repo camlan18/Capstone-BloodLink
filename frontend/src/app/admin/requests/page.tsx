@@ -15,6 +15,7 @@ import { ExcelImportModal } from '@/components/ui/ExcelImportModal';
 import { ExportImportDropdown } from '@/components/ui/ExportImportDropdown';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { useAuthStore } from '@/lib/stores';
 
 const getStatusColor = (code?: string) => {
   if (!code) return 'bg-slate-100 text-slate-600 border-slate-200';
@@ -40,6 +41,9 @@ export default function AdminRequestsPage() {
   // Filters
   const [statusId, setStatusId] = useState<string>('ALL');
   const [urgencyId, setUrgencyId] = useState<string>('ALL');
+  
+  const currentUser = useAuthStore(state => state.user);
+  const isStaff = currentUser?.role?.role_code === 'HOSPITAL_STAFF' || currentUser?.role?.role_code === 'STAFF' || (typeof currentUser?.role === 'string' && ['HOSPITAL_STAFF', 'STAFF'].includes(currentUser.role));
 
   // Master Data
   const [bloodTypes, setBloodTypes] = useState<any[]>([]);
@@ -80,7 +84,6 @@ export default function AdminRequestsPage() {
     hospital_name: '',
     ward_room: '',
     province_id: '',
-    district_id: '',
     ward_id: '',
     address: '',
     latitude: '',
@@ -198,7 +201,6 @@ export default function AdminRequestsPage() {
       hospital_name: req.hospital_name || '',
       ward_room: req.ward_room || '',
       province_id: req.province_id?.toString() || '',
-      district_id: req.district_id?.toString() || '',
       ward_id: req.ward_id?.toString() || '',
       address: req.address || '',
       latitude: req.latitude?.toString() || '',
@@ -217,7 +219,6 @@ export default function AdminRequestsPage() {
         hospital_name: facility.facility_name || '',
         address: facility.address || '',
         province_id: facility.province_id?.toString() || '',
-        district_id: facility.district_id?.toString() || '',
         ward_id: facility.ward_id?.toString() || '',
         latitude: facility.latitude?.toString() || '',
         longitude: facility.longitude?.toString() || '',
@@ -246,7 +247,6 @@ export default function AdminRequestsPage() {
         hospital_name: createData.hospital_name || undefined,
         ward_room: createData.ward_room || undefined,
         province_id: createData.province_id ? Number(createData.province_id) : undefined,
-        district_id: createData.district_id ? Number(createData.district_id) : undefined,
         ward_id: createData.ward_id ? Number(createData.ward_id) : undefined,
         address: createData.address || undefined,
         latitude: createData.latitude ? parseFloat(createData.latitude) : undefined,
@@ -267,7 +267,7 @@ export default function AdminRequestsPage() {
       setCreateData({ 
         facility_id: '', patient_name: '', blood_type_id: '', component_id: '', 
         units_needed: '1', urgency_id: '', clinical_notes: '', patient_phone: '', 
-        hospital_name: '', ward_room: '', province_id: '', district_id: '', 
+        hospital_name: '', ward_room: '', province_id: '', 
         ward_id: '', address: '', latitude: '', longitude: '', required_before: '' 
       });
       fetchData();
@@ -547,7 +547,12 @@ export default function AdminRequestsPage() {
             onExportClick={handleExport}
             onDownloadTemplateClick={handleDownloadTemplate}
           />
-          <Button onClick={() => setIsCreateOpen(true)} className="bg-blood hover:bg-blood-deep text-white shadow-none rounded-md px-4">
+          <Button onClick={() => {
+            setIsCreateOpen(true);
+            if (isStaff && currentUser?.facility_id) {
+              handleFacilityChange(currentUser.facility_id.toString());
+            }
+          }} className="bg-blood hover:bg-blood-deep text-white shadow-none rounded-md px-4">
             <Plus className="w-4 h-4 mr-2" /> Tạo yêu cầu mới
           </Button>
         </div>
@@ -628,7 +633,7 @@ export default function AdminRequestsPage() {
           setCreateData({ 
             facility_id: '', patient_name: '', blood_type_id: '', component_id: '', 
             units_needed: '1', urgency_id: '', clinical_notes: '', patient_phone: '', 
-            hospital_name: '', ward_room: '', province_id: '', district_id: '', 
+            hospital_name: '', ward_room: '', province_id: '', 
             ward_id: '', address: '', latitude: '', longitude: '', required_before: '' 
           }); 
         }}
@@ -638,17 +643,19 @@ export default function AdminRequestsPage() {
       >
         <form onSubmit={handleCreateSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Cơ sở y tế</label>
-              <SearchableSelect
-                value={createData.facility_id}
-                onValueChange={handleFacilityChange}
-                options={facilities.map(f => ({ value: f.facility_id.toString(), label: f.facility_name }))}
-                placeholder="Chọn cơ sở"
-                triggerClassName="w-full"
-              />
-            </div>
-            <div>
+            {!isStaff && (
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Cơ sở y tế</label>
+                <SearchableSelect
+                  value={createData.facility_id}
+                  onValueChange={handleFacilityChange}
+                  options={facilities.map(f => ({ value: f.facility_id.toString(), label: f.facility_name }))}
+                  placeholder="Chọn cơ sở"
+                  triggerClassName="w-full"
+                />
+              </div>
+            )}
+            <div className={isStaff ? 'col-span-2' : ''}>
               <label className="block text-sm font-medium text-slate-700 mb-1">Bệnh viện điều trị</label>
               <Input 
                 value={createData.hospital_name} 
@@ -766,7 +773,7 @@ export default function AdminRequestsPage() {
               setCreateData({ 
                 facility_id: '', patient_name: '', blood_type_id: '', component_id: '', 
                 units_needed: '1', urgency_id: '', clinical_notes: '', patient_phone: '', 
-                hospital_name: '', ward_room: '', province_id: '', district_id: '', 
+                hospital_name: '', ward_room: '', province_id: '', 
                 ward_id: '', address: '', latitude: '', longitude: '', required_before: '' 
               }); 
             }}>Hủy</Button>
@@ -967,7 +974,7 @@ export default function AdminRequestsPage() {
                             <div className="text-xs text-slate-500">{match.donor?.email}</div>
                           </td>
                           <td className="px-4 py-3 font-bold text-blood">{match.donor?.blood_type?.blood_type_code}</td>
-                          <td className="px-4 py-3 text-emerald-600 font-semibold">{match.match_score}%</td>
+                          <td className="px-4 py-3 text-emerald-600 font-semibold">{match.match_score ? Number(match.match_score).toFixed(0) : 0}%</td>
                           <td className="px-4 py-3">
                             <Select value={match.match_status} onValueChange={(v) => handleUpdateMatchStatus(match.match_id, v)}>
                               <SelectTrigger className="h-8 text-xs bg-white">

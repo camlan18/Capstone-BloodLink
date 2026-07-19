@@ -125,10 +125,7 @@ export const adminMasterDataService = {
   getProvinces: async () => {
     return await api.get('/master-data/provinces');
   },
-  getDistricts: async (provinceId: number) => {
-    return await api.get(`/master-data/provinces/${provinceId}/districts`);
-  },
-  getWards: async (districtId: number) => {
-    return await api.get(`/master-data/districts/${districtId}/wards`);
+  getWards: async (provinceId: number) => {
+    return await api.get(`/master-data/provinces/${provinceId}/wards`);
   }
 };

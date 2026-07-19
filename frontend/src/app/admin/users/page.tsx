@@ -37,15 +37,15 @@ export default function AdminUsersPage() {
 
   const [bloodTypes, setBloodTypes] = useState<any[]>([]);
   const [provinces, setProvinces] = useState<any[]>([]);
-  const [districts, setDistricts] = useState<any[]>([]);
   const [wards, setWards] = useState<any[]>([]);
   const [roles, setRoles] = useState<any[]>([]);
+  const [facilities, setFacilities] = useState<any[]>([]);
   const [modalTab, setModalTab] = useState<'info'|'donor'>('info');
 
   const [formData, setFormData] = useState({
     email: '', password: '', username: '', full_name: '', phone: '',
     date_of_birth: '', gender: '', identity_card: '', address: '',
-    province_id: '', district_id: '', ward_id: '', role_id: '',
+    province_id: '', ward_id: '', role_id: '', facility_id: '',
     is_active: true, is_email_verified: false,
     is_donor_registered: false, is_available_for_donation: false,
     
@@ -61,7 +61,15 @@ export default function AdminUsersPage() {
     fetchBloodTypes();
     fetchProvinces();
     fetchRoles();
+    fetchFacilities();
   }, [page, pageSize, keyword]);
+
+  const fetchFacilities = async () => {
+    try {
+      const res = await adminMasterDataService.getFacilities({ limit: 1000 });
+      if (res && res.data) setFacilities(Array.isArray(res.data) ? res.data : (res.data.data || []));
+    } catch (error) {}
+  };
 
   const fetchRoles = async () => {
     try {
@@ -86,19 +94,11 @@ export default function AdminUsersPage() {
 
   useEffect(() => {
     if (formData.province_id) {
-      adminMasterDataService.getDistricts(Number(formData.province_id)).then(res => {
-        if (res && res.data) setDistricts(res.data);
-      });
-    } else setDistricts([]);
-  }, [formData.province_id]);
-
-  useEffect(() => {
-    if (formData.district_id) {
-      adminMasterDataService.getWards(Number(formData.district_id)).then(res => {
+      adminMasterDataService.getWards(Number(formData.province_id)).then(res => {
         if (res && res.data) setWards(res.data);
       });
     } else setWards([]);
-  }, [formData.district_id]);
+  }, [formData.province_id]);
 
   const handleSearch = (val: string) => {
     setKeyword(val);
@@ -135,7 +135,7 @@ export default function AdminUsersPage() {
     setFormData({
       email: '', password: '', username: '', full_name: '', phone: '',
       date_of_birth: '', gender: '', identity_card: '', address: '',
-      province_id: '', district_id: '', ward_id: '', role_id: '',
+      province_id: '', ward_id: '', role_id: '', facility_id: '',
       is_active: true, is_email_verified: false,
       is_donor_registered: false, is_available_for_donation: false,
       
@@ -182,9 +182,9 @@ export default function AdminUsersPage() {
         identity_card: fullUser.identity_card || '',
         address: fullUser.address || '',
         province_id: fullUser.province_id?.toString() || '',
-        district_id: fullUser.district_id?.toString() || '',
         ward_id: fullUser.ward_id?.toString() || '',
         role_id: fullUser.role_id?.toString() || '',
+        facility_id: fullUser.facility_id?.toString() || '',
         is_active: fullUser.is_active ?? true,
         is_email_verified: fullUser.is_email_verified ?? false,
         is_donor_registered: fullUser.is_donor_registered ?? false,
@@ -230,8 +230,12 @@ export default function AdminUsersPage() {
       if (formData.identity_card) payload.identity_card = formData.identity_card;
       if (formData.address) payload.address = formData.address;
       if (formData.province_id) payload.province_id = Number(formData.province_id);
-      if (formData.district_id) payload.district_id = Number(formData.district_id);
       if (formData.ward_id) payload.ward_id = Number(formData.ward_id);
+      if (roles.find(r => r.role_id.toString() === formData.role_id)?.role_code === 'HOSPITAL_STAFF') {
+        payload.facility_id = formData.facility_id ? Number(formData.facility_id) : -1;
+      } else {
+        payload.facility_id = -1;
+      }
 
       // Map donor_profile fields
       if (formData.blood_type_id || formData.weight_kg || formData.height_cm || formData.health_notes || formData.total_donations) {
@@ -313,8 +317,8 @@ export default function AdminUsersPage() {
       key: 'role',
       title: 'Vai trò',
       render: (user) => {
-        const isStaff = user.role?.role_code === 'STAFF' || user.role?.role_code === 'HOSPITAL_STAFF';
-        const isAdmin = user.role?.role_code === 'ADMIN';
+        const isStaff = user.role?.role_code === 'STAFF' || user.role?.role_code === 'HOSPITAL_STAFF' || (typeof user.role === 'string' && ['HOSPITAL_STAFF', 'STAFF'].includes(user.role));
+        const isAdmin = user.role?.role_code === 'ADMIN' || (typeof user.role === 'string' && user.role === 'ADMIN');
         return (
           <span className={`px-2.5 py-1 rounded-full text-xs font-semibold
             ${isAdmin ? 'bg-purple-50 text-purple-600 border border-purple-200' : 
@@ -366,7 +370,7 @@ export default function AdminUsersPage() {
     ];
 
     // Prevent locking ANY Admin account (role_id === 1 or role_code === 'admin')
-    const isAdmin = user.role_id === 1 || user.role?.role_code?.toLowerCase() === 'admin';
+    const isAdmin = user.role_id === 1 || user.role?.role_code?.toLowerCase() === 'admin' || (typeof user.role === 'string' && user.role.toLowerCase() === 'admin');
     if (!isAdmin) {
       actions.push({
         label: user.is_active ? 'Khóa tài khoản' : 'Mở khóa',
@@ -477,6 +481,25 @@ export default function AdminUsersPage() {
                     </SelectContent>
                   </Select>
                 </div>
+                {roles.find(r => r.role_id.toString() === formData.role_id)?.role_code === 'HOSPITAL_STAFF' && (
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Cơ sở y tế (Bệnh viện) <span className="text-red-500">*</span></label>
+                    <Select value={formData.facility_id} onValueChange={v => setFormData({...formData, facility_id: v || ''})}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Chọn cơ sở y tế">
+                          {facilities.find(f => f.facility_id.toString() === formData.facility_id)?.facility_name || 'Chọn cơ sở y tế'}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {facilities.map((f) => (
+                          <SelectItem key={f.facility_id} value={f.facility_id.toString()}>
+                            {f.facility_name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
                 <div className="grid grid-cols-2 gap-4 pt-2">
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input type="checkbox" checked={formData.is_active} onChange={e => setFormData({...formData, is_active: e.target.checked})} className="w-4 h-4 text-blood rounded border-gray-300 focus:ring-blood" />
@@ -529,24 +552,17 @@ export default function AdminUsersPage() {
                   </div>
                 </div>
                 
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1">Tỉnh/Thành phố</label>
-                    <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2" value={formData.province_id} onChange={e => setFormData({...formData, province_id: e.target.value, district_id: '', ward_id: ''})}>
+                    <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2" value={formData.province_id} onChange={e => setFormData({...formData, province_id: e.target.value, ward_id: ''})}>
                       <option value="">Chọn tỉnh</option>
                       {provinces.map(p => <option key={p.province_id} value={p.province_id}>{p.province_name}</option>)}
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Quận/Huyện</label>
-                    <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2" value={formData.district_id} onChange={e => setFormData({...formData, district_id: e.target.value, ward_id: ''})} disabled={!formData.province_id}>
-                      <option value="">Chọn huyện</option>
-                      {districts.map(d => <option key={d.district_id} value={d.district_id}>{d.district_name}</option>)}
-                    </select>
-                  </div>
-                  <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1">Phường/Xã</label>
-                    <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2" value={formData.ward_id} onChange={e => setFormData({...formData, ward_id: e.target.value})} disabled={!formData.district_id}>
+                    <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2" value={formData.ward_id} onChange={e => setFormData({...formData, ward_id: e.target.value})} disabled={!formData.province_id}>
                       <option value="">Chọn xã</option>
                       {wards.map(w => <option key={w.ward_id} value={w.ward_id}>{w.ward_name}</option>)}
                     </select>
@@ -716,7 +732,7 @@ export default function AdminUsersPage() {
                   <div className="col-span-2">
                     <span className="text-slate-500 block mb-1 text-xs uppercase tracking-wider font-semibold">Địa chỉ</span>
                     <span className="font-medium text-slate-800">
-                      {[selectedUserDetail.address, selectedUserDetail.ward?.ward_name, selectedUserDetail.district?.district_name, selectedUserDetail.province?.province_name].filter(Boolean).join(', ') || '-'}
+                      {[selectedUserDetail.address, selectedUserDetail.ward?.ward_name, selectedUserDetail.province?.province_name].filter(Boolean).join(', ') || '-'}
                     </span>
                   </div>
                 </div>

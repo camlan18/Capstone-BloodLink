@@ -12,8 +12,10 @@ import { BaseModal } from '@/components/ui/BaseModal';
 import { ExcelImportModal } from '@/components/ui/ExcelImportModal';
 import { ExportImportDropdown } from '@/components/ui/ExportImportDropdown';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { BloodRequestDetailContent } from '@/components/BloodRequestDetailContent';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { DataTable, Column, ActionItem } from '@/components/ui/DataTable';
+import { useAuthStore } from '@/lib/stores';
 
 export default function AdminDonationsPage() {
   const [loading, setLoading] = useState(true);
@@ -21,6 +23,9 @@ export default function AdminDonationsPage() {
   const [meta, setMeta] = useState<any>({});
   const [users, setUsers] = useState<any[]>([]);
   
+  const currentUser = useAuthStore(state => state.user);
+  const isStaff = currentUser?.role?.role_code === 'HOSPITAL_STAFF' || currentUser?.role?.role_code === 'STAFF' || (typeof currentUser?.role === 'string' && ['HOSPITAL_STAFF', 'STAFF'].includes(currentUser.role));
+
   // DataTable state
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(15);
@@ -161,7 +166,7 @@ export default function AdminDonationsPage() {
       blood_type_id: (slot.user?.blood_type_id || slot.user?.donor_profile?.blood_type_id)?.toString() || '',
       component_id: '',
       volume_ml: '',
-      facility_id: slot.schedule?.facility_id?.toString() || (facilities.length > 0 ? facilities[0].facility_id.toString() : ''),
+      facility_id: slot.schedule?.facility_id?.toString() || (isStaff && currentUser?.facility_id ? currentUser.facility_id.toString() : (facilities.length > 0 ? facilities[0].facility_id.toString() : '')),
       donation_date: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
       health_check_passed: true,
       result_notes: '',
@@ -189,6 +194,14 @@ export default function AdminDonationsPage() {
 
     try {
       setRecording(true);
+      
+      const matchRQ = selectedSlot?.notes?.match(/Mã:\s*(R[EQ]+-[A-Za-z0-9\-]+)/i);
+      const reqCode = matchRQ ? matchRQ[1] : undefined;
+      
+      const newNotes = selectedSlot.notes 
+        ? (recordData.result_notes ? `${selectedSlot.notes} | ${recordData.result_notes}` : selectedSlot.notes)
+        : recordData.result_notes;
+
       if (recordData.health_check_passed) {
         await adminDonationService.recordDonation({
           facility_id: Number(recordData.facility_id),
@@ -199,11 +212,12 @@ export default function AdminDonationsPage() {
           donation_date: new Date(recordData.donation_date).toISOString(),
           health_check_passed: true,
           result_notes: recordData.result_notes,
+          request_code: reqCode
         });
-        await adminDonationService.updateSlotStatus(selectedSlot.slot_id, 'COMPLETED', recordData.result_notes);
+        await adminDonationService.updateSlotStatus(selectedSlot.slot_id, 'COMPLETED', newNotes);
         toast.success('Ghi nhận ca hiến máu thành công!');
       } else {
-        await adminDonationService.updateSlotStatus(selectedSlot.slot_id, 'EXAMINED_FAILED', recordData.result_notes);
+        await adminDonationService.updateSlotStatus(selectedSlot.slot_id, 'EXAMINED_FAILED', newNotes);
         toast.success('Đã cập nhật trạng thái không đạt yêu cầu sức khỏe!');
       }
       
@@ -247,12 +261,12 @@ export default function AdminDonationsPage() {
   };
 
   const getStatusBadgeClass = (status: string, notes?: string) => {
-    if (status === 'COMPLETED' || notes === 'COMPLETED') return 'bg-emerald-100 text-emerald-700';
-    if (status === 'EXAMINED_PASSED') return 'bg-blue-100 text-blue-700';
-    if (status === 'ARRIVED') return 'bg-purple-100 text-purple-700';
-    if (status === 'CONFIRMED') return 'bg-amber-100 text-amber-700';
-    if (status === 'CANCELLED' || status === 'EXAMINED_FAILED') return 'bg-red-100 text-red-700';
-    return 'bg-slate-100 text-slate-700';
+    if (status === 'COMPLETED' || notes === 'COMPLETED') return 'bg-emerald-50 text-emerald-600 border border-emerald-200';
+    if (status === 'EXAMINED_PASSED') return 'bg-blue-50 text-blue-600 border border-blue-200';
+    if (status === 'ARRIVED') return 'bg-purple-50 text-purple-600 border border-purple-200';
+    if (status === 'CONFIRMED') return 'bg-amber-50 text-amber-600 border border-amber-200';
+    if (status === 'CANCELLED' || status === 'EXAMINED_FAILED') return 'bg-red-50 text-red-600 border border-red-200';
+    return 'bg-slate-50 text-slate-600 border border-slate-200';
   };
 
   const columns: Column<any>[] = [
@@ -281,7 +295,7 @@ export default function AdminDonationsPage() {
       title: 'Trạng thái',
       render: (slot) => {
         return (
-          <span className={`px-2.5 py-1 rounded text-xs font-semibold ${getStatusBadgeClass(slot.status, slot.notes)}`}>
+          <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${getStatusBadgeClass(slot.status, slot.notes)}`}>
             {getStatusLabel(slot.status, slot.notes)}
           </span>
         );
@@ -435,24 +449,40 @@ export default function AdminDonationsPage() {
         size="4xl"
         hideFooter
       >
-        <div className="flex gap-4 border-b border-slate-200 mb-6">
-          <button 
-            type="button" 
-            className={`pb-2 px-1 border-b-2 text-sm font-medium ${activeTab === 'donor_info' ? 'border-blood text-blood' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'}`}
-            onClick={() => setActiveTab('donor_info')}
-          >
-            Thông tin người hiến
-          </button>
-          <button 
-            type="button" 
-            className={`pb-2 px-1 border-b-2 text-sm font-medium ${activeTab === 'donation_record' ? 'border-blood text-blood' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'}`}
-            onClick={() => setActiveTab('donation_record')}
-          >
-            Thông tin khám & Lấy máu
-          </button>
-        </div>
+        {(() => {
+          const matchRQ = selectedSlot?.notes?.match(/Mã:\s*(R[EQ]+-[A-Za-z0-9\-]+)/i);
+          const extractedCode = matchRQ ? matchRQ[1] : null;
 
-        <form onSubmit={handleRecordSubmit}>
+          return (
+            <>
+              <div className="flex gap-4 border-b border-slate-200 mb-6">
+                <button 
+                  type="button" 
+                  className={`pb-2 px-1 border-b-2 text-sm font-medium ${activeTab === 'donor_info' ? 'border-blood text-blood' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'}`}
+                  onClick={() => setActiveTab('donor_info')}
+                >
+                  Thông tin người hiến
+                </button>
+                <button 
+                  type="button" 
+                  className={`pb-2 px-1 border-b-2 text-sm font-medium ${activeTab === 'donation_record' ? 'border-blood text-blood' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'}`}
+                  onClick={() => setActiveTab('donation_record')}
+                >
+                  Thông tin khám & Lấy máu
+                </button>
+                {extractedCode && (
+                  <button 
+                    type="button" 
+                    className={`pb-2 px-1 border-b-2 text-sm font-medium ${activeTab === 'request_info' ? 'border-blood text-blood' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'}`}
+                    onClick={() => setActiveTab('request_info')}
+                  >
+                    Chi tiết yêu cầu
+                  </button>
+                )}
+              </div>
+
+              <div className="min-h-[250px] max-h-[60vh] overflow-y-auto pr-2">
+                <form id="record-donation-form" onSubmit={handleRecordSubmit}>
           {activeTab === 'donor_info' && (
             <div className="grid grid-cols-2 gap-6 bg-slate-50 p-4 rounded-lg border border-slate-100">
               <div>
@@ -580,15 +610,23 @@ export default function AdminDonationsPage() {
             </div>
           )}
 
+          {activeTab === 'request_info' && extractedCode && (
+            <BloodRequestDetailContent requestCode={extractedCode} />
+          )}
+          </form>
+          </div>
+
             <div className="flex items-center justify-end gap-3 mt-6 pt-4 border-t border-slate-100">
               <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>Hủy</Button>
-              <Button type="submit" disabled={recording} className="bg-blood hover:bg-blood/90 text-white min-w-[140px]">
+              <Button type="submit" form="record-donation-form" disabled={recording} className="bg-blood hover:bg-blood/90 text-white min-w-[140px]">
                 {recording ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
                 {recordData.health_check_passed ? 'Lưu & Nhập kho' : 'Cập nhật (Không đạt)'}
               </Button>
             </div>
-        </form>
-      </BaseModal>
+          </>
+        );
+      })()}
+    </BaseModal>
 
       <BaseModal 
         open={isDetailOpen} 
@@ -599,24 +637,39 @@ export default function AdminDonationsPage() {
       >
         {selectedSlot && (
           <div>
-            <div className="flex gap-4 border-b border-slate-200 mb-6">
-              <button 
-                type="button" 
-                className={`pb-2 px-1 border-b-2 text-sm font-medium ${detailActiveTab === 'donor_info' ? 'border-blood text-blood' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'}`}
-                onClick={() => setDetailActiveTab('donor_info')}
-              >
-                Thông tin người đăng ký
-              </button>
-              <button 
-                type="button" 
-                className={`pb-2 px-1 border-b-2 text-sm font-medium ${detailActiveTab === 'schedule_info' ? 'border-blood text-blood' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'}`}
-                onClick={() => setDetailActiveTab('schedule_info')}
-              >
-                Thông tin lịch hẹn
-              </button>
-            </div>
+            {(() => {
+              const matchRQ = selectedSlot.notes?.match(/Mã:\s*(R[EQ]+-[A-Za-z0-9\-]+)/i);
+              const extractedCode = matchRQ ? matchRQ[1] : null;
 
-            <div className="min-h-[250px]">
+              return (
+                <>
+                  <div className="flex gap-4 border-b border-slate-200 mb-6">
+                    <button 
+                      type="button" 
+                      className={`pb-2 px-1 border-b-2 text-sm font-medium ${detailActiveTab === 'donor_info' ? 'border-blood text-blood' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'}`}
+                      onClick={() => setDetailActiveTab('donor_info')}
+                    >
+                      Thông tin người đăng ký
+                    </button>
+                    <button 
+                      type="button" 
+                      className={`pb-2 px-1 border-b-2 text-sm font-medium ${detailActiveTab === 'schedule_info' ? 'border-blood text-blood' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'}`}
+                      onClick={() => setDetailActiveTab('schedule_info')}
+                    >
+                      Thông tin lịch hẹn
+                    </button>
+                    {extractedCode && (
+                      <button 
+                        type="button" 
+                        className={`pb-2 px-1 border-b-2 text-sm font-medium ${detailActiveTab === 'request_info' ? 'border-blood text-blood' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'}`}
+                        onClick={() => setDetailActiveTab('request_info')}
+                      >
+                        Chi tiết yêu cầu
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="min-h-[250px] max-h-[60vh] overflow-y-auto pr-2">
               {detailActiveTab === 'donor_info' && (
                 <div className="bg-slate-50 p-4 rounded-lg border border-slate-100">
                   <div className="grid grid-cols-2 gap-y-4 text-sm">
@@ -665,7 +718,7 @@ export default function AdminDonationsPage() {
                     </div>
                     <div>
                       <span className="text-slate-500 block mb-1 text-xs uppercase tracking-wider font-semibold">Trạng thái</span>
-                      <span className={`px-2.5 py-1 rounded text-xs font-semibold inline-block ${getStatusBadgeClass(selectedSlot.status, selectedSlot.notes)}`}>
+                      <span className={`px-2.5 py-1 rounded-full text-xs font-semibold inline-block ${getStatusBadgeClass(selectedSlot.status, selectedSlot.notes)}`}>
                         {getStatusLabel(selectedSlot.status, selectedSlot.notes)}
                       </span>
                     </div>
@@ -680,6 +733,10 @@ export default function AdminDonationsPage() {
                   </div>
                 </div>
               )}
+
+              {detailActiveTab === 'request_info' && extractedCode && (
+                <BloodRequestDetailContent requestCode={extractedCode} />
+              )}
             </div>
 
             <div className="pt-6 mt-6 flex justify-end gap-3 border-t border-slate-100">
@@ -693,9 +750,12 @@ export default function AdminDonationsPage() {
                 </Button>
               )}
             </div>
-          </div>
-        )}
-      </BaseModal>
+          </>
+        );
+      })()}
+    </div>
+  )}
+</BaseModal>
 
       <ExcelImportModal
         isOpen={isImportOpen}

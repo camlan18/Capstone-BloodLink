@@ -7,18 +7,10 @@ export class InventoryService {
   constructor(private readonly prisma: PrismaService) { }
 
 
-  async receiveBlood(dto: {
-    facility_id: number;
-    blood_type_id: number;
-    component_id: number;
-    bag_code: string;
-    volume_ml: number;
-    collection_date: Date;
-    expiry_date: Date;
-    source_donation_id?: number;
-    notes?: string;
-    staff_user_id: number;
-  }) {
+  async receiveBlood(dto: any, user: any) {
+    const facility_id = user.role_code === 'HOSPITAL_STAFF' ? user.facility_id : dto.facility_id;
+    if (!facility_id) throw new BadRequestException('Cơ sở y tế không được để trống');
+
     const existing = await this.prisma.blood_inventory.findUnique({
       where: { bag_code: dto.bag_code },
     });
@@ -29,7 +21,7 @@ export class InventoryService {
     return await this.prisma.$transaction(async (tx) => {
       const inventory = await tx.blood_inventory.create({
         data: {
-          facility_id: dto.facility_id,
+          facility_id: facility_id,
           blood_type_id: dto.blood_type_id,
           component_id: dto.component_id,
           bag_code: dto.bag_code,
@@ -58,7 +50,7 @@ export class InventoryService {
     });
   }
 
-  async updateBlood(inventoryId: number, dto: any, staffId: number) {
+  async updateBlood(inventoryId: number, dto: any, user: any) {
     const inventory = await this.prisma.blood_inventory.findUnique({
       where: { inventory_id: inventoryId },
     });
@@ -67,10 +59,14 @@ export class InventoryService {
       throw new NotFoundException('Không tìm thấy túi máu');
     }
 
+    if (user.role_code === 'HOSPITAL_STAFF' && inventory.facility_id !== user.facility_id) {
+      throw new BadRequestException('Bạn không có quyền sửa túi máu của cơ sở khác');
+    }
+
     return await this.prisma.blood_inventory.update({
       where: { inventory_id: inventoryId },
       data: {
-        facility_id: dto.facility_id !== undefined ? dto.facility_id : undefined,
+        facility_id: user.role_code === 'HOSPITAL_STAFF' ? undefined : (dto.facility_id !== undefined ? dto.facility_id : undefined),
         blood_type_id: dto.blood_type_id !== undefined ? dto.blood_type_id : undefined,
         component_id: dto.component_id !== undefined ? dto.component_id : undefined,
         bag_code: dto.bag_code !== undefined ? dto.bag_code : undefined,
@@ -85,10 +81,8 @@ export class InventoryService {
   /**
    * Tiêu hủy túi máu (Lỗi / Hết hạn)
    */
-  async discardBlood(inventoryId: number, staffId: number, reason: string) {
+  async discardBlood(inventoryId: number, user: any, reason: string) {
     return await this.prisma.$transaction(async (tx) => {
-      // Dùng pessimistic/optimistic lock không trực tiếp hỗ trợ native trong Prisma `$transaction(async)` 
-      // nhưng việc đọc và check status trong 1 block Isolation Level cao có thể đảm bảo an toàn.
       const inventory = await tx.blood_inventory.findUnique({
         where: { inventory_id: inventoryId },
       });
@@ -97,7 +91,11 @@ export class InventoryService {
         throw new NotFoundException('Không tìm thấy túi máu');
       }
 
-      if (inventory.status_code !== 'AVAILABLE') {
+      if (user.role_code === 'HOSPITAL_STAFF' && inventory.facility_id !== user.facility_id) {
+        throw new BadRequestException('Bạn không có quyền tiêu hủy túi máu của cơ sở khác');
+      }
+
+      if (inventory.status_code !== 'AVAILABLE' && inventory.status_code !== 'EXPIRED') {
         throw new BadRequestException(`Túi máu đang ở trạng thái ${inventory.status_code}, không thể tiêu hủy.`);
       }
 
@@ -114,7 +112,7 @@ export class InventoryService {
           transaction_type: 'OUT',
           quantity: 1,
           reference_type: 'DISCARD',
-          performed_by: staffId,
+          performed_by: user.user_id,
           notes: reason,
         },
       });
@@ -126,12 +124,15 @@ export class InventoryService {
   /**
    * Thống kê kho máu (Group By Facility, Blood Type, Component)
    */
-  async getInventoryStats() {
+  async getInventoryStats(user: any) {
+    const where: any = { status_code: 'AVAILABLE' };
+    if (user.role_code === 'HOSPITAL_STAFF') {
+      where.facility_id = user.facility_id || -1;
+    }
+
     const stats = await this.prisma.blood_inventory.groupBy({
       by: ['facility_id', 'blood_type_id', 'component_id'],
-      where: {
-        status_code: 'AVAILABLE',
-      },
+      where,
       _count: {
         inventory_id: true,
       },
@@ -143,13 +144,17 @@ export class InventoryService {
     return stats;
   }
 
-  async getInventoryList(query: any) {
+  async getInventoryList(query: any, user: any) {
     const page = Number(query.page) || 1;
     const limit = Number(query.limit) || 20;
     const skip = (page - 1) * limit;
 
     const where: any = {};
-    if (query.facility_id) where.facility_id = Number(query.facility_id);
+    if (user.role_code === 'HOSPITAL_STAFF') {
+      where.facility_id = user.facility_id || -1;
+    } else if (query.facility_id) {
+      where.facility_id = Number(query.facility_id);
+    }
     if (query.status_code) where.status_code = query.status_code;
     if (query.blood_type_id) where.blood_type_id = Number(query.blood_type_id);
     if (query.bag_code) where.bag_code = { contains: query.bag_code };
@@ -177,8 +182,8 @@ export class InventoryService {
 
   // --- EXCEL FEATURE ---
 
-  async exportExcel(query: any): Promise<Buffer> {
-    const list = await this.getInventoryList({ ...query, limit: 10000 });
+  async exportExcel(query: any, user: any): Promise<Buffer> {
+    const list = await this.getInventoryList({ ...query, limit: 10000 }, user);
     const data = list.data.map((item: any) => ({
       'Mã túi máu': item.bag_code,
       'Nhóm máu': item.blood_type?.blood_type_code || '',
@@ -187,7 +192,7 @@ export class InventoryService {
       'Cơ sở thu nhận': item.facility?.facility_name || '',
       'Ngày lấy': new Date(item.collection_date).toLocaleDateString('vi-VN'),
       'Ngày hết hạn': new Date(item.expiry_date).toLocaleDateString('vi-VN'),
-      'Trạng thái': item.status
+      'Trạng thái': item.status_code
     }));
     return ExcelUtil.generateExcel(data, 'KhoMau');
   }
@@ -212,7 +217,11 @@ export class InventoryService {
 
     for (const row of data) {
       try {
-        const facilityId = Number(row['Mã cơ sở (ID)']);
+        const user = await this.prisma.users.findUnique({ where: { user_id: staffId }, include: { role: true } });
+        let facilityId = Number(row['Mã cơ sở (ID)']);
+        if (user?.role?.role_code === 'HOSPITAL_STAFF') {
+          facilityId = user.facility_id || -1;
+        }
         const bloodTypeId = Number(row['Mã nhóm máu (ID)']);
         const componentId = Number(row['Mã thành phần (ID)']);
         const bagCode = row['Mã túi máu'];
@@ -235,7 +244,7 @@ export class InventoryService {
           continue;
         }
 
-        await this.prisma.blood_inventory.create({
+        const newInv = await this.prisma.blood_inventory.create({
           data: {
             facility_id: facilityId,
             blood_type_id: bloodTypeId,
@@ -247,6 +256,17 @@ export class InventoryService {
             status_code: 'AVAILABLE'
           }
         });
+
+        await this.prisma.inventory_transactions.create({
+          data: {
+            inventory_id: newInv.inventory_id,
+            transaction_type: 'IN',
+            quantity: 1,
+            performed_by: staffId,
+            notes: 'Nhập kho từ file Excel'
+          }
+        });
+
         success++;
       } catch (err) {
         failed++;

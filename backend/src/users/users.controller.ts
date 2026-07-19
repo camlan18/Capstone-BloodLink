@@ -39,7 +39,7 @@ export class UsersController {
   }
 
   // Admin Only
-  @Roles(RoleCode.ADMIN)
+  @Roles(RoleCode.ADMIN, RoleCode.FACILITY_ADMIN, RoleCode.STAFF)
   @Get()
   async getAllUsers(@Query() query: UserFilterDto) {
     return await this.usersService.getAllUsers(query);
