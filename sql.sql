@@ -1,4 +1,4 @@
-﻿
+
 SET NOCOUNT ON;
 SET XACT_ABORT ON;
 SET QUOTED_IDENTIFIER ON;
@@ -269,6 +269,7 @@ CREATE TABLE dbo.users (
     ward_id                     INT NULL,
     latitude                    DECIMAL(10,7) NULL,
     longitude                   DECIMAL(10,7) NULL,
+    facility_id                 INT NULL,
     blood_type_id               INT NULL,
     is_donor_registered         BIT NOT NULL CONSTRAINT df_users_is_donor_registered DEFAULT (0),
     is_available_for_donation   BIT NOT NULL CONSTRAINT df_users_is_available_for_donation DEFAULT (0),
@@ -284,6 +285,7 @@ CREATE TABLE dbo.users (
     CONSTRAINT fk_users_province FOREIGN KEY (province_id) REFERENCES dbo.provinces(province_id),
     CONSTRAINT fk_users_district FOREIGN KEY (district_id) REFERENCES dbo.districts(district_id),
     CONSTRAINT fk_users_ward FOREIGN KEY (ward_id) REFERENCES dbo.wards(ward_id),
+    CONSTRAINT fk_users_facility FOREIGN KEY (facility_id) REFERENCES dbo.medical_facilities(facility_id),
     CONSTRAINT ck_users_gender CHECK (gender IS NULL OR gender IN ('M','F','O'))
 );
 

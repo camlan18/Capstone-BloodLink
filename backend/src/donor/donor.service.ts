@@ -1,6 +1,5 @@
-import { Injectable, BadRequestException, NotFoundException, Logger } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { Cron, CronExpression } from '@nestjs/schedule';
 import { PaginationDto } from '../common/pagination.dto';
 import { BookDonationSlotDto } from './dto/donor.dto';
 import { RecordDonationDto, UpdateSlotStatusDto, UpdateDonorProfileDto } from './dto/donor.dto';
@@ -9,8 +8,6 @@ import { NotificationsService, NotificationType } from '../notifications/notific
 
 @Injectable()
 export class DonorService {
-  private readonly logger = new Logger(DonorService.name);
-
   constructor(
     private readonly prisma: PrismaService,
     private readonly notificationsService: NotificationsService,
@@ -202,22 +199,6 @@ export class DonorService {
 
     if (!schedule) {
       throw new NotFoundException('Lịch hiến máu không tồn tại');
-    }
-
-    // Kiểm tra quy tắc khoảng cách hiến máu (next_eligible_date)
-    const donorProfile = await this.prisma.donor_profiles.findUnique({
-      where: { user_id: userId }
-    });
-    
-    if (donorProfile && donorProfile.next_eligible_date) {
-      const scheduleDate = new Date(schedule.date);
-      scheduleDate.setHours(0, 0, 0, 0);
-      const nextDate = new Date(donorProfile.next_eligible_date);
-      nextDate.setHours(0, 0, 0, 0);
-      
-      if (scheduleDate < nextDate) {
-        throw new BadRequestException(`Bạn chưa đủ điều kiện thời gian để hiến máu tiếp. Ngày có thể hiến tiếp theo là ${nextDate.toLocaleDateString('vi-VN')}`);
-      }
     }
 
     if (schedule.current_donors >= schedule.max_donors) {
@@ -608,102 +589,34 @@ export class DonorService {
             }
           });
         }
+      }
 
-        // Cập nhật hồ sơ hiến máu (Chỉ áp dụng khi hiến thành công)
-        const intervalRule = await tx.donation_interval_rules.findUnique({
-          where: { component_id: dto.component_id }
-        });
-        const minIntervalDays = intervalRule ? intervalRule.min_interval_days : 84;
+      const intervalRule = await tx.donation_interval_rules.findUnique({
+        where: { component_id: dto.component_id }
+      });
+      const minIntervalDays = intervalRule ? intervalRule.min_interval_days : 84;
 
-        const nextDate = new Date(dto.donation_date);
-        nextDate.setDate(nextDate.getDate() + minIntervalDays);
+      const nextDate = new Date(dto.donation_date);
+      nextDate.setDate(nextDate.getDate() + minIntervalDays);
 
-        const existingProfile = await tx.donor_profiles.findUnique({
-          where: { user_id: dto.donor_user_id }
-        });
+      const existingProfile = await tx.donor_profiles.findUnique({
+        where: { user_id: dto.donor_user_id }
+      });
 
-        if (existingProfile) {
-          await tx.donor_profiles.update({
-            where: { user_id: dto.donor_user_id },
-            data: {
-              total_donations: { increment: 1 },
-              first_donation_date: existingProfile.first_donation_date ? existingProfile.first_donation_date : new Date(dto.donation_date),
-              last_donation_date: new Date(dto.donation_date),
-              next_eligible_date: nextDate,
-            }
-          });
-        }
-
-        // Tạo sẵn nhắc nhở
-        const upcomingDate = new Date(nextDate);
-        upcomingDate.setDate(upcomingDate.getDate() - 3);
-
-        await tx.donation_reminders.createMany({
-          data: [
-            {
-              user_id: dto.donor_user_id,
-              donation_id: donation.donation_id,
-              component_id: dto.component_id,
-              reminder_type: 'UPCOMING_ELIGIBLE',
-              reminder_date: upcomingDate,
-              message: `Sắp tới hạn có thể hiến máu! Ngày hiến máu tiếp theo của bạn là ${nextDate.toLocaleDateString('vi-VN')}. Hãy chuẩn bị sức khỏe thật tốt nhé!`,
-            },
-            {
-              user_id: dto.donor_user_id,
-              donation_id: donation.donation_id,
-              component_id: dto.component_id,
-              reminder_type: 'NOW_ELIGIBLE',
-              reminder_date: nextDate,
-              message: `Bạn đã đủ điều kiện thời gian để tiếp tục hiến máu! Hãy đặt lịch hiến máu ngay hôm nay để cứu giúp người bệnh.`,
-            }
-          ]
+      if (existingProfile) {
+        await tx.donor_profiles.update({
+          where: { user_id: dto.donor_user_id },
+          data: {
+            total_donations: { increment: 1 },
+            first_donation_date: existingProfile.first_donation_date ? existingProfile.first_donation_date : new Date(dto.donation_date),
+            last_donation_date: new Date(dto.donation_date),
+            next_eligible_date: nextDate,
+          }
         });
       }
 
       return donation;
     });
-  }
-
-  // --- CRON JOBS ---
-  @Cron(CronExpression.EVERY_DAY_AT_8AM)
-  async handleCronDonationReminders() {
-    this.logger.log('Bắt đầu kiểm tra và gửi nhắc nhở hiến máu...');
-    
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    try {
-      const reminders = await this.prisma.donation_reminders.findMany({
-        where: {
-          is_sent: false,
-          reminder_date: { lte: today },
-        }
-      });
-
-      if (reminders.length > 0) {
-        for (const reminder of reminders) {
-          await this.notificationsService.createNotification({
-            user_ids: [reminder.user_id],
-            title: reminder.reminder_type === 'UPCOMING_ELIGIBLE' ? 'Sắp tới hạn hiến máu' : 'Đã đến hạn hiến máu',
-            message: reminder.message,
-            notification_type: NotificationType.INFO,
-            reference_type: 'DONATION',
-            reference_id: reminder.donation_id || undefined
-          });
-
-          await this.prisma.donation_reminders.update({
-            where: { reminder_id: reminder.reminder_id },
-            data: { 
-              is_sent: true,
-              sent_at: new Date()
-            }
-          });
-        }
-        this.logger.log(`Đã gửi ${reminders.length} nhắc nhở hiến máu.`);
-      }
-    } catch (error) {
-      this.logger.error('Lỗi khi chạy cron gửi nhắc nhở hiến máu', error);
-    }
   }
 
   // --- EXCEL FEATURE ---

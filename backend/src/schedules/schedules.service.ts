@@ -54,15 +54,9 @@ export class SchedulesService implements OnModuleInit {
     if (query.date) where.date = new Date(query.date);
 
     if (user.role_code === 'HOSPITAL_STAFF') {
-      if (!user.facility_id) {
-        return { data: [], meta: { total: 0, page, limit, totalPages: 0 } };
-      }
       where.facility_id = user.facility_id;
     } else if (query.facility_id) {
-      const parsedId = Number(query.facility_id);
-      if (!isNaN(parsedId)) {
-        where.facility_id = parsedId;
-      }
+      where.facility_id = Number(query.facility_id);
     }
 
     const [data, total] = await Promise.all([
@@ -90,7 +84,6 @@ export class SchedulesService implements OnModuleInit {
   async getScheduleById(id: number, user: any) {
     const where: any = { schedule_id: id };
     if (user.role_code === 'HOSPITAL_STAFF') {
-      if (!user.facility_id) throw new NotFoundException('Lịch hiến máu không tồn tại hoặc bạn không có quyền xem');
       where.facility_id = user.facility_id;
     }
 
@@ -136,10 +129,7 @@ export class SchedulesService implements OnModuleInit {
 
   async updateSchedule(id: number, dto: UpdateScheduleDto, user: any) {
     const where: any = { schedule_id: id };
-    if (user.role_code === 'HOSPITAL_STAFF') {
-      if (!user.facility_id) throw new NotFoundException('Lịch hiến máu không tồn tại hoặc bạn không có quyền sửa');
-      where.facility_id = user.facility_id;
-    }
+    if (user.role_code === 'HOSPITAL_STAFF') where.facility_id = user.facility_id;
 
     const schedule = await this.prisma.facility_donation_schedules.findFirst({ where });
     if (!schedule) throw new NotFoundException('Lịch hiến máu không tồn tại hoặc bạn không có quyền sửa');
@@ -190,10 +180,7 @@ export class SchedulesService implements OnModuleInit {
 
   async deleteSchedule(id: number, user: any) {
     const where: any = { schedule_id: id };
-    if (user.role_code === 'HOSPITAL_STAFF') {
-      if (!user.facility_id) throw new NotFoundException('Lịch hiến máu không tồn tại');
-      where.facility_id = user.facility_id;
-    }
+    if (user.role_code === 'HOSPITAL_STAFF') where.facility_id = user.facility_id;
 
     const schedule = await this.prisma.facility_donation_schedules.findFirst({ 
       where,

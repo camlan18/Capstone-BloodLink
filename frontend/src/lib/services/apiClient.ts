@@ -9,6 +9,7 @@ const apiClient = axios.create({
   },
 });
 
+// Thêm interceptor để đính kèm token vào mọi request nếu có
 apiClient.interceptors.request.use(
   (config) => {
     if (typeof window !== 'undefined') {
@@ -40,18 +41,20 @@ const processQueue = (error: any, token: string | null = null) => {
 
 apiClient.interceptors.response.use(
   (response) => {
+    // Backend trả về theo format ResponseInterceptor: { data, meta }
     return response.data;
   },
   async (error) => {
     const originalRequest = error.config;
 
+    // Không thử lại nếu là request gọi refresh-token
     if (originalRequest.url?.includes('/auth/refresh-token')) {
       return Promise.reject(error);
     }
 
     if (error.response && error.response.status === 401 && !originalRequest._retry) {
       if (isRefreshing) {
-        return new Promise(function (resolve, reject) {
+        return new Promise(function(resolve, reject) {
           failedQueue.push({ resolve, reject });
         }).then(token => {
           originalRequest.headers['Authorization'] = 'Bearer ' + token;
@@ -78,7 +81,8 @@ apiClient.interceptors.response.use(
         const response = await axios.post(`${apiClient.defaults.baseURL}/auth/refresh-token`, {
           refresh_token: refreshToken
         });
-
+        
+        // Lấy token (tùy thuộc vào việc interceptor response bên NestJS bọc data)
         const newAccessToken = response.data?.data?.access_token || response.data?.access_token;
         const newRefreshToken = response.data?.data?.refresh_token || response.data?.refresh_token;
 
@@ -87,7 +91,7 @@ apiClient.interceptors.response.use(
         if (typeof window !== 'undefined') {
           localStorage.setItem('access_token', newAccessToken);
           if (newRefreshToken) localStorage.setItem('refresh_token', newRefreshToken);
-
+          
           const newUser = response.data?.data?.user || response.data?.user;
           if (newUser) {
             useAuthStore.getState().setUser(newUser);
