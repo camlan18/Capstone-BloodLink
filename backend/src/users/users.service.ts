@@ -36,17 +36,19 @@ export class UsersService {
   }
 
   async updateProfile(userId: number, data: any) {
+    this.validateUserPayload(data, true);
+
     // Only allow updating safe fields
     const safeData = {
-      full_name: data.full_name,
-      phone: data.phone,
+      full_name: data.full_name?.trim(),
+      phone: data.phone?.trim() || null,
       date_of_birth: data.date_of_birth ? new Date(data.date_of_birth) : undefined,
       gender: data.gender,
       avatar_url: data.avatar_url,
       address: data.address,
-      province_id: data.province_id,
-      ward_id: data.ward_id,
-      blood_type_id: data.blood_type_id,
+      province_id: data.province_id !== undefined ? (data.province_id && data.province_id > 0 ? data.province_id : null) : undefined,
+      ward_id: data.ward_id !== undefined ? (data.ward_id && data.ward_id > 0 ? data.ward_id : null) : undefined,
+      blood_type_id: data.blood_type_id !== undefined ? (data.blood_type_id && data.blood_type_id > 0 ? data.blood_type_id : null) : undefined,
     };
 
     // Remove undefined
@@ -219,35 +221,157 @@ export class UsersService {
     return { message: 'Đổi mật khẩu thành công' };
   }
 
+  private validateUserPayload(dto: any, isUpdate = false) {
+    // 1. Họ và tên
+    if (dto.full_name !== undefined) {
+      const name = dto.full_name?.trim();
+      if (!name) {
+        throw new BadRequestException('Họ và tên không được để trống');
+      }
+      if (name.length < 2) {
+        throw new BadRequestException('Họ và tên phải có ít nhất 2 ký tự');
+      }
+      const nameRegex = /^[a-zA-ZÀ-ỹ\s'.-]+$/u;
+      if (!nameRegex.test(name)) {
+        throw new BadRequestException('Họ và tên không được chứa ký tự đặc biệt hoặc số');
+      }
+    }
+
+    // 2. Email
+    if (dto.email !== undefined) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(dto.email.trim())) {
+        throw new BadRequestException('Định dạng email không hợp lệ');
+      }
+    }
+
+    // 3. Số điện thoại
+    if (dto.phone) {
+      const cleanPhone = dto.phone.replace(/[\s.-]/g, '');
+      const phoneRegex = /^(0|\+84)(3|5|7|8|9)[0-9]{8}$/;
+      if (!phoneRegex.test(cleanPhone)) {
+        throw new BadRequestException('Số điện thoại không hợp lệ (Phải là SĐT Việt Nam gồm 10 chữ số, VD: 0901234567)');
+      }
+    }
+
+    // 4. CCCD / CMND
+    if (dto.identity_card) {
+      const cleanCccd = dto.identity_card.trim();
+      const cccdRegex = /^[0-9]{9}$|^[0-9]{12}$/;
+      if (!cccdRegex.test(cleanCccd)) {
+        throw new BadRequestException('CCCD/CMND không hợp lệ (Phải là dãy 9 hoặc 12 chữ số)');
+      }
+    }
+
+    // 5. Ngày sinh & Độ tuổi hiến máu (Từ đủ 18 đến 65 tuổi theo Thông tư 26/2013/TT-BYT)
+    if (dto.date_of_birth) {
+      const dob = new Date(dto.date_of_birth);
+      const now = new Date();
+      if (isNaN(dob.getTime())) {
+        throw new BadRequestException('Ngày sinh không đúng định dạng');
+      }
+      if (dob > now) {
+        throw new BadRequestException('Ngày sinh không thể là ngày trong tương lai');
+      }
+
+      let age = now.getFullYear() - dob.getFullYear();
+      const monthDiff = now.getMonth() - dob.getMonth();
+      if (monthDiff < 0 || (monthDiff === 0 && now.getDate() < dob.getDate())) {
+        age--;
+      }
+
+      if (age < 18) {
+        throw new BadRequestException(`Người dùng chưa đủ 18 tuổi (${age} tuổi). Theo quy định y tế về hiến máu (Thông tư 26/2013/TT-BYT), người tham gia phải từ đủ 18 tuổi trở lên.`);
+      }
+      if (age > 65) {
+        throw new BadRequestException(`Người dùng đã vượt quá độ tuổi cho phép (${age} tuổi). Độ tuổi tối đa theo quy định hiến máu là 60 - 65 tuổi.`);
+      }
+    }
+
+    // 6. Mật khẩu
+    if (!isUpdate && dto.password && dto.password.length < 6) {
+      throw new BadRequestException('Mật khẩu phải có ít nhất 6 ký tự');
+    }
+
+    // 7. Hồ sơ hiến máu (nếu có)
+    if (dto.donor_profile) {
+      const dp = dto.donor_profile;
+      if (dp.weight_kg !== undefined && dp.weight_kg !== null && dp.weight_kg !== '') {
+        const weight = Number(dp.weight_kg);
+        if (isNaN(weight) || weight < 42 || weight > 200) {
+          throw new BadRequestException('Cân nặng không hợp lệ (Theo tiêu chuẩn hiến máu, cân nặng tối thiểu từ 42kg với nữ và 45kg với nam)');
+        }
+      }
+      if (dp.height_cm !== undefined && dp.height_cm !== null && dp.height_cm !== '') {
+        const height = Number(dp.height_cm);
+        if (isNaN(height) || height < 100 || height > 250) {
+          throw new BadRequestException('Chiều cao không hợp lệ (Trong khoảng 100cm - 250cm)');
+        }
+      }
+      if (dp.emergency_contact_phone) {
+        const cleanEPhone = dp.emergency_contact_phone.replace(/[\s.-]/g, '');
+        const phoneRegex = /^(0|\+84)(3|5|7|8|9)[0-9]{8}$/;
+        if (!phoneRegex.test(cleanEPhone)) {
+          throw new BadRequestException('Số điện thoại liên hệ khẩn cấp không hợp lệ');
+        }
+      }
+      if (dp.first_donation_date && dto.date_of_birth) {
+        const firstDate = new Date(dp.first_donation_date);
+        const dob = new Date(dto.date_of_birth);
+        if (firstDate < dob) {
+          throw new BadRequestException('Ngày hiến máu đầu tiên không thể trước ngày sinh');
+        }
+      }
+      if (dp.last_donation_date && dp.first_donation_date) {
+        const lastDate = new Date(dp.last_donation_date);
+        const firstDate = new Date(dp.first_donation_date);
+        if (lastDate < firstDate) {
+          throw new BadRequestException('Lần hiến gần nhất không thể trước lần hiến đầu tiên');
+        }
+      }
+    }
+  }
+
   async createUserAdmin(dto: CreateUserAdminDto) {
+    this.validateUserPayload(dto, false);
+
     const existingUser = await this.prisma.users.findUnique({ where: { email: dto.email } });
     if (existingUser) throw new BadRequestException('Email đã tồn tại');
+
+    if (dto.identity_card) {
+      const existingCccd = await this.prisma.users.findFirst({ where: { identity_card: dto.identity_card.trim() } });
+      if (existingCccd) throw new BadRequestException('CCCD/CMND này đã được đăng ký cho một tài khoản khác');
+    }
 
     const rawPassword = dto.password || 'Blood@123456';
     const salt = await bcrypt.genSalt(10);
     const hash = await bcrypt.hash(rawPassword, salt);
 
     const data: any = {
-      email: dto.email,
+      email: dto.email.trim(),
       password_hash: hash,
-      full_name: dto.full_name,
+      full_name: dto.full_name.trim(),
       role_id: dto.role_id,
-      is_email_verified: true,
-      is_active: true,
+      is_email_verified: dto.is_email_verified !== undefined ? dto.is_email_verified : true,
+      is_active: dto.is_active !== undefined ? dto.is_active : true,
     };
     if (dto.username !== undefined) data.username = dto.username;
-    if (dto.phone !== undefined) data.phone = dto.phone;
+    if (dto.phone !== undefined) data.phone = dto.phone?.trim() || null;
     if (dto.date_of_birth !== undefined) data.date_of_birth = dto.date_of_birth ? new Date(dto.date_of_birth) : null;
     if (dto.gender !== undefined) data.gender = dto.gender;
-    if (dto.identity_card !== undefined) data.identity_card = dto.identity_card;
+    if (dto.identity_card !== undefined) data.identity_card = dto.identity_card?.trim() || null;
     if (dto.address !== undefined) data.address = dto.address;
-    if (dto.province_id !== undefined) data.province_id = dto.province_id;
-    if (dto.ward_id !== undefined) data.ward_id = dto.ward_id;
-    if (dto.blood_type_id !== undefined) data.blood_type_id = dto.blood_type_id;
+    if (dto.province_id !== undefined) data.province_id = dto.province_id && dto.province_id > 0 ? dto.province_id : null;
+    if (dto.ward_id !== undefined) data.ward_id = dto.ward_id && dto.ward_id > 0 ? dto.ward_id : null;
+    if (dto.blood_type_id !== undefined) data.blood_type_id = dto.blood_type_id && dto.blood_type_id > 0 ? dto.blood_type_id : null;
     if (dto.is_donor_registered !== undefined) data.is_donor_registered = dto.is_donor_registered;
     if (dto.is_available_for_donation !== undefined) data.is_available_for_donation = dto.is_available_for_donation;
-    if (dto.is_email_verified !== undefined) data.is_email_verified = dto.is_email_verified;
-    if (dto.facility_id !== undefined) data.facility_id = dto.facility_id;
+    if (dto.facility_id !== undefined) data.facility_id = dto.facility_id && dto.facility_id > 0 ? dto.facility_id : null;
+
+    const role = await this.prisma.roles.findUnique({ where: { role_id: dto.role_id } });
+    if (role?.role_code === 'HOSPITAL_STAFF' && (!data.facility_id || data.facility_id <= 0)) {
+      throw new BadRequestException('Vai trò Nhân viên bệnh viện bắt buộc phải chọn Cơ sở y tế trực thuộc');
+    }
 
     if (dto.donor_profile) {
       data.donor_profile = {
@@ -298,6 +422,22 @@ export class UsersService {
   }
 
   async updateUserAdmin(userId: number, dto: UpdateUserAdminDto) {
+    this.validateUserPayload(dto, true);
+
+    if (dto.email) {
+      const existingEmail = await this.prisma.users.findFirst({
+        where: { email: dto.email.trim(), user_id: { not: userId } }
+      });
+      if (existingEmail) throw new BadRequestException('Email đã tồn tại trên hệ thống');
+    }
+
+    if (dto.identity_card) {
+      const existingCccd = await this.prisma.users.findFirst({
+        where: { identity_card: dto.identity_card.trim(), user_id: { not: userId } }
+      });
+      if (existingCccd) throw new BadRequestException('CCCD/CMND này đã được đăng ký cho một tài khoản khác');
+    }
+
     const data: any = {};
     if (dto.password) {
       const salt = await bcrypt.genSalt(10);
@@ -305,22 +445,28 @@ export class UsersService {
     }
     if (dto.role_id !== undefined) data.role_id = dto.role_id;
     if (dto.is_active !== undefined) data.is_active = dto.is_active;
-    if (dto.full_name !== undefined) data.full_name = dto.full_name;
+    if (dto.full_name !== undefined) data.full_name = dto.full_name?.trim();
     if (dto.username !== undefined) data.username = dto.username;
-    if (dto.phone !== undefined) data.phone = dto.phone;
-    if (dto.email !== undefined) data.email = dto.email;
+    if (dto.phone !== undefined) data.phone = dto.phone?.trim() || null;
+    if (dto.email !== undefined) data.email = dto.email?.trim();
     if (dto.date_of_birth !== undefined) data.date_of_birth = dto.date_of_birth ? new Date(dto.date_of_birth) : null;
     if (dto.gender !== undefined) data.gender = dto.gender;
-    if (dto.identity_card !== undefined) data.identity_card = dto.identity_card;
+    if (dto.identity_card !== undefined) data.identity_card = dto.identity_card?.trim() || null;
     if (dto.address !== undefined) data.address = dto.address;
-    if (dto.province_id !== undefined) data.province_id = dto.province_id;
-    if (dto.ward_id !== undefined) data.ward_id = dto.ward_id;
-    if (dto.blood_type_id !== undefined) data.blood_type_id = dto.blood_type_id;
+    if (dto.province_id !== undefined) data.province_id = dto.province_id && dto.province_id > 0 ? dto.province_id : null;
+    if (dto.ward_id !== undefined) data.ward_id = dto.ward_id && dto.ward_id > 0 ? dto.ward_id : null;
+    if (dto.blood_type_id !== undefined) data.blood_type_id = dto.blood_type_id && dto.blood_type_id > 0 ? dto.blood_type_id : null;
     if (dto.is_donor_registered !== undefined) data.is_donor_registered = dto.is_donor_registered;
     if (dto.is_available_for_donation !== undefined) data.is_available_for_donation = dto.is_available_for_donation;
     if (dto.is_email_verified !== undefined) data.is_email_verified = dto.is_email_verified;
-    if (dto.facility_id !== undefined) {
-      data.facility_id = dto.facility_id === -1 ? null : dto.facility_id;
+    if (dto.facility_id !== undefined) data.facility_id = dto.facility_id && dto.facility_id > 0 ? dto.facility_id : null;
+
+    const targetRoleId = dto.role_id || (await this.prisma.users.findUnique({ where: { user_id: userId } }))?.role_id;
+    if (targetRoleId) {
+      const role = await this.prisma.roles.findUnique({ where: { role_id: targetRoleId } });
+      if (role?.role_code === 'HOSPITAL_STAFF' && dto.facility_id !== undefined && (!data.facility_id || data.facility_id <= 0)) {
+        throw new BadRequestException('Vai trò Nhân viên bệnh viện bắt buộc phải chọn Cơ sở y tế trực thuộc');
+      }
     }
 
     if (dto.donor_profile) {
@@ -436,7 +582,7 @@ export class UsersService {
 
         const hashedPassword = await bcrypt.hash(password.toString(), 10);
         
-        const facilityId = row['Facility (ID)'] ? Number(row['Facility (ID)']) : null;
+        const facilityId = row['Facility (ID)'] && Number(row['Facility (ID)']) > 0 ? Number(row['Facility (ID)']) : null;
         const dobStr = row['Ngày sinh (YYYY-MM-DD)'];
         const dob = dobStr ? new Date(dobStr) : null;
         const gender = row['Giới tính (M/F)'] === 'M' ? 'M' : row['Giới tính (M/F)'] === 'F' ? 'F' : 'O';

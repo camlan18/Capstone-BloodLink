@@ -21,6 +21,10 @@ export const adminInventoryService = {
     return await api.post(`/inventory/${id}/discard`, { reason });
   },
 
+  transferBlood: async (id: number, data: { to_facility_id: number, notes?: string }) => {
+    return await api.post(`/inventory/${id}/transfer`, data);
+  },
+
   exportExcel: async (params?: any) => {
     const res = await api.get('/inventory/export', { params, responseType: 'blob' });
     const url = window.URL.createObjectURL(new Blob([res as any]));

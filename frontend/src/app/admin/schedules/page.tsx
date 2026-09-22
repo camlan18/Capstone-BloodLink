@@ -27,7 +27,7 @@ export default function AdminSchedulesPage() {
   const [loading, setLoading] = useState(true);
 
   const currentUser = useAuthStore(state => state.user);
-  const isStaff = currentUser?.role?.role_code === 'HOSPITAL_STAFF' || currentUser?.role?.role_code === 'STAFF' || (typeof currentUser?.role === 'string' && ['HOSPITAL_STAFF', 'STAFF'].includes(currentUser.role));
+  const isStaff = currentUser?.role?.role_code === 'HOSPITAL_STAFF' || (typeof currentUser?.role === 'string' && currentUser.role === 'HOSPITAL_STAFF');
 
   // Filters
   const [filterFacility, setFilterFacility] = useState<string>('all');
@@ -238,7 +238,7 @@ export default function AdminSchedulesPage() {
       title: 'Cơ sở y tế',
       render: (row) => (
         <div>
-          <p className="font-semibold text-slate-800">{row.facility?.name}</p>
+          <p className="font-semibold text-slate-800">{row.facility?.name || (row.facility as any)?.facility_name || 'Không xác định'}</p>
           <p className="text-xs text-slate-500 line-clamp-1">{row.facility?.address}</p>
         </div>
       )

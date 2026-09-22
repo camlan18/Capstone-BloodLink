@@ -1,11 +1,17 @@
-import { Injectable, BadRequestException, NotFoundException, InternalServerErrorException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException, InternalServerErrorException, Logger } from '@nestjs/common';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { ExcelUtil } from '../common/utils/excel.util';
+import { NotificationsService, NotificationType } from '../notifications/notifications.service';
 
 @Injectable()
 export class InventoryService {
-  constructor(private readonly prisma: PrismaService) { }
+  private readonly logger = new Logger(InventoryService.name);
 
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notificationsService: NotificationsService,
+  ) { }
 
   async receiveBlood(dto: any, user: any) {
     const facility_id = user.role_code === 'HOSPITAL_STAFF' ? user.facility_id : dto.facility_id;
@@ -114,6 +120,52 @@ export class InventoryService {
           reference_type: 'DISCARD',
           performed_by: user.user_id,
           notes: reason,
+        },
+      });
+
+      return updated;
+    });
+  }
+
+  /**
+   * B10: Chuyển máu giữa cơ sở
+   */
+  async transferBlood(inventoryId: number, toFacilityId: number, user: any, notes: string) {
+    return await this.prisma.$transaction(async (tx) => {
+      const inventory = await tx.blood_inventory.findUnique({
+        where: { inventory_id: inventoryId },
+      });
+
+      if (!inventory) {
+        throw new NotFoundException('Không tìm thấy túi máu');
+      }
+
+      if (user.role_code === 'HOSPITAL_STAFF' && inventory.facility_id !== user.facility_id) {
+        throw new BadRequestException('Bạn không có quyền chuyển túi máu của cơ sở khác');
+      }
+
+      if (inventory.status_code !== 'AVAILABLE') {
+        throw new BadRequestException(`Túi máu đang ở trạng thái ${inventory.status_code}, không thể chuyển.`);
+      }
+
+      if (inventory.facility_id === toFacilityId) {
+        throw new BadRequestException('Cơ sở đích trùng với cơ sở hiện tại');
+      }
+
+      const updated = await tx.blood_inventory.update({
+        where: { inventory_id: inventoryId },
+        data: { facility_id: toFacilityId },
+      });
+
+      await tx.inventory_transactions.create({
+        data: {
+          inventory_id: inventoryId,
+          transaction_type: 'TRANSFER',
+          quantity: 1,
+          reference_type: 'FACILITY',
+          reference_id: toFacilityId,
+          performed_by: user.user_id,
+          notes: notes || 'Chuyển máu giữa các cơ sở',
         },
       });
 
@@ -274,5 +326,59 @@ export class InventoryService {
     }
 
     return { message: `Import hoàn tất. Thành công: ${success}, Thất bại/Bỏ qua: ${failed}` };
+  }
+
+  // --- CRON JOB: Tự động đánh dấu túi máu hết hạn ---
+  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
+  async handleCronExpireInventory() {
+    this.logger.log('Kiểm tra túi máu hết hạn...');
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    try {
+      const expiredBags = await this.prisma.blood_inventory.findMany({
+        where: {
+          expiry_date: { lt: today },
+          status_code: 'AVAILABLE'
+        }
+      });
+
+      if (expiredBags.length === 0) {
+        this.logger.log('Không có túi máu nào hết hạn.');
+        return;
+      }
+
+      for (const bag of expiredBags) {
+        await this.prisma.blood_inventory.update({
+          where: { inventory_id: bag.inventory_id },
+          data: { status_code: 'EXPIRED' }
+        });
+
+        await this.prisma.inventory_transactions.create({
+          data: {
+            inventory_id: bag.inventory_id,
+            transaction_type: 'EXPIRE',
+            quantity: 1,
+            reference_type: 'SYSTEM_CRON',
+            notes: `Tự động đánh dấu hết hạn (expiry: ${bag.expiry_date.toISOString().split('T')[0]})`
+          }
+        });
+      }
+
+      this.logger.log(`Đã đánh dấu ${expiredBags.length} túi máu hết hạn.`);
+
+      // Thông báo admin nếu có nhiều túi hết hạn
+      if (expiredBags.length >= 1) {
+        await this.notificationsService.notifyAdmins(
+          'Cảnh báo: Túi máu hết hạn',
+          `Hệ thống vừa tự động đánh dấu ${expiredBags.length} túi máu đã hết hạn sử dụng. Vui lòng kiểm tra và xử lý tiêu hủy.`,
+          NotificationType.WARNING,
+          'INVENTORY'
+        );
+      }
+    } catch (error) {
+      this.logger.error('Lỗi khi chạy cron expire inventory', error);
+    }
   }
 }

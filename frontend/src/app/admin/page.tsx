@@ -9,6 +9,9 @@ import { useAuthStore } from '@/lib/stores';
 
 export default function AdminDashboardPage() {
   const { user } = useAuthStore();
+  const userRole = typeof user?.role === 'string' ? user.role : user?.role?.role_code;
+  const isMod = userRole?.toUpperCase() === 'MODERATOR';
+
   const [stats, setStats] = useState<any[]>([]);
   const [alerts, setAlerts] = useState<any[]>([]);
   const [chartData, setChartData] = useState<any[]>([]);
@@ -49,73 +52,112 @@ export default function AdminDashboardPage() {
       const rawAlerts = res.data?.alerts || {};
       const rawChart = res.data?.chartData || [];
 
-      // Map to UI stats
-      setStats([
-        { 
-          title: 'Lượt hiến máu', 
-          value: rawStats.todayDonations?.toString() || '0', 
-          icon: Users, 
-          bgColor: 'bg-[#EAF9EE]', textColor: 'text-[#28A745]', borderColor: 'border-[#28A745]/20'
-        },
-        { 
-          title: 'Máu thu nhận (ml)', 
-          value: (rawStats.totalVolume || 0).toLocaleString(), 
-          icon: Droplets, 
-          bgColor: 'bg-[#FFE8E8]', textColor: 'text-[#D32F2F]', borderColor: 'border-[#D32F2F]/20'
-        },
-        { 
-          title: 'Người đăng ký mới', 
-          value: rawStats.newDonors?.toString() || '0', 
-          icon: HeartPulse, 
-          bgColor: 'bg-[#E8F0FE]', textColor: 'text-[#1A73E8]', borderColor: 'border-[#1A73E8]/20'
-        },
-        { 
-          title: 'Chiến dịch đang mở', 
-          value: rawStats.activeCampaigns?.toString() || '0', 
-          icon: Activity, 
-          bgColor: 'bg-[#F3E5F5]', textColor: 'text-[#8E24AA]', borderColor: 'border-[#8E24AA]/20'
-        },
-        { 
-          title: 'Yêu cầu từ bệnh viện', 
-          value: rawStats.pendingRequests?.toString() || '0', 
-          icon: FileSearch, 
-          bgColor: 'bg-[#FDF3E5]', textColor: 'text-[#F57C00]', borderColor: 'border-[#F57C00]/20'
-        },
-        { 
-          title: 'Tổng người hiến', 
-          value: rawStats.totalDonors?.toLocaleString() || '0', 
-          icon: Users, 
-          bgColor: 'bg-[#E0F7FA]', textColor: 'text-[#00ACC1]', borderColor: 'border-[#00ACC1]/20'
-        },
-      ]);
 
-      // Map to UI Alerts
-      setAlerts([
-        {
-          title: 'Kho máu mức thấp',
-          value: rawAlerts.lowInventory || 'Không có',
-          icon: Droplets,
-          bgColor: 'bg-[#FFF5F5]', textColor: 'text-[#DC3545]', borderColor: 'border-[#DC3545]/20'
-        },
-        {
-          title: 'Yêu cầu khẩn cấp',
-          value: rawAlerts.emergencyRequests?.toString() || '0',
-          icon: FileText,
-          bgColor: 'bg-[#FFFDF5]', textColor: 'text-[#FFC107]', borderColor: 'border-[#FFC107]/20'
-        },
-        {
-          title: 'Bình luận chờ duyệt',
-          value: rawAlerts.pendingComments?.toString() || '0',
-          icon: FileSearch,
-          bgColor: 'bg-[#F5FAFF]', textColor: 'text-[#0D6EFD]', borderColor: 'border-[#0D6EFD]/20'
-        },
-        {
-          title: 'Lịch hẹn sắp tới',
-          value: rawAlerts.upcomingSchedules?.toString() || '0',
-          icon: Clock,
-          bgColor: 'bg-[#F8F5FF]', textColor: 'text-[#6610F2]', borderColor: 'border-[#6610F2]/20'
-        }
-      ]);
+
+      if (isMod) {
+        setStats([
+          { 
+            title: 'Bài viết', 
+            value: rawStats.posts?.toString() || '0', 
+            icon: FileText, 
+            bgColor: 'bg-[#EAF9EE]', textColor: 'text-[#28A745]', borderColor: 'border-[#28A745]/20'
+          },
+          { 
+            title: 'Danh mục bài viết', 
+            value: rawStats.categories?.toString() || '0', 
+            icon: Activity, 
+            bgColor: 'bg-[#FFE8E8]', textColor: 'text-[#D32F2F]', borderColor: 'border-[#D32F2F]/20'
+          },
+          { 
+            title: 'Tài liệu giáo dục', 
+            value: rawStats.documents?.toString() || '0', 
+            icon: FileText, 
+            bgColor: 'bg-[#E8F0FE]', textColor: 'text-[#1A73E8]', borderColor: 'border-[#1A73E8]/20'
+          },
+          { 
+            title: 'Tổng bình luận', 
+            value: rawStats.comments?.toString() || '0', 
+            icon: Users, 
+            bgColor: 'bg-[#F3E5F5]', textColor: 'text-[#8E24AA]', borderColor: 'border-[#8E24AA]/20'
+          },
+        ]);
+        setAlerts([
+          {
+            title: 'Bình luận chờ duyệt',
+            value: rawAlerts.pendingComments?.toString() || '0',
+            icon: FileSearch,
+            bgColor: 'bg-[#FFF5F5]', textColor: 'text-[#DC3545]', borderColor: 'border-[#DC3545]/20'
+          }
+        ]);
+      } else {
+        // Map to UI stats
+        setStats([
+          { 
+            title: 'Lượt hiến máu', 
+            value: rawStats.todayDonations?.toString() || '0', 
+            icon: Users, 
+            bgColor: 'bg-[#EAF9EE]', textColor: 'text-[#28A745]', borderColor: 'border-[#28A745]/20'
+          },
+          { 
+            title: 'Máu thu nhận (ml)', 
+            value: (rawStats.totalVolume || 0).toLocaleString(), 
+            icon: Droplets, 
+            bgColor: 'bg-[#FFE8E8]', textColor: 'text-[#D32F2F]', borderColor: 'border-[#D32F2F]/20'
+          },
+          { 
+            title: 'Người đăng ký mới', 
+            value: rawStats.newDonors?.toString() || '0', 
+            icon: HeartPulse, 
+            bgColor: 'bg-[#E8F0FE]', textColor: 'text-[#1A73E8]', borderColor: 'border-[#1A73E8]/20'
+          },
+          { 
+            title: 'Chiến dịch đang mở', 
+            value: rawStats.activeCampaigns?.toString() || '0', 
+            icon: Activity, 
+            bgColor: 'bg-[#F3E5F5]', textColor: 'text-[#8E24AA]', borderColor: 'border-[#8E24AA]/20'
+          },
+          { 
+            title: 'Yêu cầu từ bệnh viện', 
+            value: rawStats.pendingRequests?.toString() || '0', 
+            icon: FileSearch, 
+            bgColor: 'bg-[#FDF3E5]', textColor: 'text-[#F57C00]', borderColor: 'border-[#F57C00]/20'
+          },
+          { 
+            title: 'Tổng người hiến', 
+            value: rawStats.totalDonors?.toLocaleString() || '0', 
+            icon: Users, 
+            bgColor: 'bg-[#E0F7FA]', textColor: 'text-[#00ACC1]', borderColor: 'border-[#00ACC1]/20'
+          },
+        ]);
+
+        // Map to UI Alerts
+        setAlerts([
+          {
+            title: 'Kho máu mức thấp',
+            value: rawAlerts.lowInventory || 'Không có',
+            icon: Droplets,
+            bgColor: 'bg-[#FFF5F5]', textColor: 'text-[#DC3545]', borderColor: 'border-[#DC3545]/20'
+          },
+          {
+            title: 'Yêu cầu khẩn cấp',
+            value: rawAlerts.emergencyRequests?.toString() || '0',
+            icon: FileText,
+            bgColor: 'bg-[#FFFDF5]', textColor: 'text-[#FFC107]', borderColor: 'border-[#FFC107]/20'
+          },
+          {
+            title: 'Bình luận chờ duyệt',
+            value: rawAlerts.pendingComments?.toString() || '0',
+            icon: FileSearch,
+            bgColor: 'bg-[#F5FAFF]', textColor: 'text-[#0D6EFD]', borderColor: 'border-[#0D6EFD]/20'
+          },
+          {
+            title: 'Lịch hẹn sắp tới',
+            value: rawAlerts.upcomingSchedules?.toString() || '0',
+            icon: Clock,
+            bgColor: 'bg-[#F8F5FF]', textColor: 'text-[#6610F2]', borderColor: 'border-[#6610F2]/20'
+          }
+        ]);
+      }
 
       setChartData(rawChart);
 
@@ -130,9 +172,9 @@ export default function AdminDashboardPage() {
 
   useEffect(() => {
     fetchDashboardData();
-  }, [facilityId, startDate, endDate]);
+  }, [facilityId, startDate, endDate, isMod]);
 
-  const maxChartValue = Math.max(...chartData.map(d => d.count), 10); // Minimum 10 to avoid tiny bars
+  const maxChartValue = Math.max(...chartData.map(d => d.count), 10); 
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
@@ -144,7 +186,7 @@ export default function AdminDashboardPage() {
         </div>
         
         <div className="flex flex-wrap items-center gap-4">
-          {(!user || user.role === 'ADMIN' || user.role === 'STAFF') && (
+          {(!user || userRole === 'ADMIN' || userRole === 'STAFF') && (
             <div className="w-72">
               <Select value={facilityId} onValueChange={(v) => setFacilityId(v || 'all')}>
                 <SelectTrigger className="w-full bg-white border-slate-200 rounded-none shadow-sm focus:ring-0 focus:border-blood h-10 font-medium text-slate-700">
@@ -164,23 +206,25 @@ export default function AdminDashboardPage() {
             </div>
           )}
           
-          <div className="flex items-center bg-white border border-slate-200 rounded-none shadow-sm h-10 px-3 group focus-within:border-blood transition-colors">
-            <span className="text-sm text-slate-500 mr-2 font-medium">Từ</span>
-            <input 
-              type="date" 
-              className="text-sm border-none focus:outline-none focus:ring-0 text-slate-700 bg-transparent cursor-pointer" 
-              value={startDate ? new Date(startDate).toISOString().split('T')[0] : ''}
-              onChange={(e) => setStartDate(new Date(e.target.value).toISOString())}
-            />
-            <span className="text-slate-300 px-3">→</span>
-            <span className="text-sm text-slate-500 mr-2 font-medium">Đến</span>
-            <input 
-              type="date" 
-              className="text-sm border-none focus:outline-none focus:ring-0 text-slate-700 bg-transparent cursor-pointer" 
-              value={endDate ? new Date(endDate).toISOString().split('T')[0] : ''}
-              onChange={(e) => setEndDate(new Date(e.target.value).toISOString())}
-            />
-          </div>
+          {!isMod && (
+            <div className="flex items-center bg-white border border-slate-200 rounded-none shadow-sm h-10 px-3 group focus-within:border-blood transition-colors">
+              <span className="text-sm text-slate-500 mr-2 font-medium">Từ</span>
+              <input 
+                type="date" 
+                className="text-sm border-none focus:outline-none focus:ring-0 text-slate-700 bg-transparent cursor-pointer" 
+                value={startDate ? new Date(startDate).toISOString().split('T')[0] : ''}
+                onChange={(e) => setStartDate(new Date(e.target.value).toISOString())}
+              />
+              <span className="text-slate-300 px-3">→</span>
+              <span className="text-sm text-slate-500 mr-2 font-medium">Đến</span>
+              <input 
+                type="date" 
+                className="text-sm border-none focus:outline-none focus:ring-0 text-slate-700 bg-transparent cursor-pointer" 
+                value={endDate ? new Date(endDate).toISOString().split('T')[0] : ''}
+                onChange={(e) => setEndDate(new Date(e.target.value).toISOString())}
+              />
+            </div>
+          )}
         </div>
       </div>
 
@@ -223,35 +267,37 @@ export default function AdminDashboardPage() {
       </div>
 
       {/* Chart Area */}
-      <div className="bg-white rounded-none border border-slate-200 shadow-sm p-6 overflow-x-auto mt-6">
-        <div className="flex items-center gap-2 mb-8">
-          <TrendingUp className="w-5 h-5 text-slate-600" />
-          <h3 className="text-lg font-bold text-slate-800">Lượt hiến máu theo ngày</h3>
-        </div>
-        
-        {/* Dynamic Chart */}
-        <div className="h-64 flex items-end justify-between gap-2 px-4 pb-8 border-b border-slate-100 relative min-w-[600px]">
-          {chartData.map((data, i) => {
-            const heightPercent = Math.max((data.count / maxChartValue) * 100, 2); // At least 2% to show a tiny bar
-            return (
-              <div key={i} className="flex flex-col items-center gap-2 flex-1 relative group h-full justify-end">
-                <span className="text-xs text-slate-400 absolute -top-6 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap bg-white px-2 py-1 shadow-sm rounded-sm border border-slate-100 z-10">{data.count} lượt</span>
-                <div className="w-full bg-[#FFE8E8] transition-all hover:bg-[#D32F2F]" style={{ height: `${heightPercent}%` }}></div>
-                <div className="absolute -bottom-8 flex flex-col items-center">
-                  <span className="text-xs text-slate-500 font-medium">{data.date}</span>
+      {!isMod && (
+        <div className="bg-white rounded-none border border-slate-200 shadow-sm p-6 overflow-x-auto mt-6">
+          <div className="flex items-center gap-2 mb-8">
+            <TrendingUp className="w-5 h-5 text-slate-600" />
+            <h3 className="text-lg font-bold text-slate-800">Lượt hiến máu theo ngày</h3>
+          </div>
+          
+          {/* Dynamic Chart */}
+          <div className="h-64 flex items-end justify-between gap-2 px-4 pb-8 border-b border-slate-100 relative min-w-[600px]">
+            {chartData.map((data, i) => {
+              const heightPercent = Math.max((data.count / maxChartValue) * 100, 2); // At least 2% to show a tiny bar
+              return (
+                <div key={i} className="flex flex-col items-center gap-2 flex-1 relative group h-full justify-end">
+                  <span className="text-xs text-slate-400 absolute -top-6 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap bg-white px-2 py-1 shadow-sm rounded-sm border border-slate-100 z-10">{data.count} lượt</span>
+                  <div className="w-full bg-[#FFE8E8] transition-all hover:bg-[#D32F2F]" style={{ height: `${heightPercent}%` }}></div>
+                  <div className="absolute -bottom-8 flex flex-col items-center">
+                    <span className="text-xs text-slate-500 font-medium">{data.date}</span>
+                  </div>
                 </div>
+              );
+            })}
+            {chartData.length === 0 && (
+              <div className="absolute inset-0 flex items-center justify-center text-slate-400 text-sm">
+                Không có dữ liệu trong khoảng thời gian này
               </div>
-            );
-          })}
-          {chartData.length === 0 && (
-            <div className="absolute inset-0 flex items-center justify-center text-slate-400 text-sm">
-              Không có dữ liệu trong khoảng thời gian này
-            </div>
-          )}
-          {/* Base line */}
-          <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#D32F2F]"></div>
+            )}
+            {/* Base line */}
+            <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#D32F2F]"></div>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

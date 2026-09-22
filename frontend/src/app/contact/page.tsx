@@ -3,19 +3,32 @@ import { MainLayout } from '@/components/layout/MainLayout';
 import { Mail, MapPin, Phone, Send, MessageSquare } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import apiClient from '@/lib/services/apiClient';
 
 export default function ContactPage() {
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    // Simulate API call
-    setTimeout(() => {
-      setLoading(false);
+    try {
+      const formData = new FormData(e.target as HTMLFormElement);
+      const data = {
+        name: formData.get('name'),
+        phone: formData.get('phone'),
+        email: formData.get('email'),
+        subject: formData.get('subject'),
+        message: formData.get('message')
+      };
+      
+      await apiClient.post('/notifications/contact', data);
       toast.success('Cảm ơn bạn! Chúng tôi đã nhận được tin nhắn và sẽ phản hồi sớm nhất.');
       (e.target as HTMLFormElement).reset();
-    }, 1500);
+    } catch (error) {
+      toast.error('Đã xảy ra lỗi khi gửi tin nhắn. Vui lòng thử lại sau.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -89,33 +102,33 @@ export default function ContactPage() {
                 <div className="grid md:grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <label className="text-sm font-semibold text-slate-700">Họ và tên</label>
-                    <input required type="text" className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blood/20 focus:border-blood transition-all" placeholder="Nguyễn Văn A" />
+                    <input name="name" required type="text" className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blood/20 focus:border-blood transition-all" placeholder="Nguyễn Văn A" />
                   </div>
                   <div className="space-y-2">
                     <label className="text-sm font-semibold text-slate-700">Số điện thoại</label>
-                    <input required type="tel" className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blood/20 focus:border-blood transition-all" placeholder="0987654321" />
+                    <input name="phone" required type="tel" className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blood/20 focus:border-blood transition-all" placeholder="0987654321" />
                   </div>
                 </div>
                 
                 <div className="space-y-2">
                   <label className="text-sm font-semibold text-slate-700">Email</label>
-                  <input required type="email" className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blood/20 focus:border-blood transition-all" placeholder="email@example.com" />
+                  <input name="email" required type="email" className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blood/20 focus:border-blood transition-all" placeholder="email@example.com" />
                 </div>
 
                 <div className="space-y-2">
                   <label className="text-sm font-semibold text-slate-700">Chủ đề</label>
-                  <select className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blood/20 focus:border-blood transition-all">
+                  <select name="subject" required className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blood/20 focus:border-blood transition-all">
                     <option value="">Chọn chủ đề bạn quan tâm</option>
-                    <option value="donor">Hỗ trợ người hiến máu</option>
-                    <option value="facility">Hợp tác cơ sở y tế</option>
-                    <option value="feedback">Góp ý hệ thống</option>
-                    <option value="other">Khác</option>
+                    <option value="Hỗ trợ người hiến máu">Hỗ trợ người hiến máu</option>
+                    <option value="Hợp tác cơ sở y tế">Hợp tác cơ sở y tế</option>
+                    <option value="Góp ý hệ thống">Góp ý hệ thống</option>
+                    <option value="Khác">Khác</option>
                   </select>
                 </div>
 
                 <div className="space-y-2">
                   <label className="text-sm font-semibold text-slate-700">Nội dung tin nhắn</label>
-                  <textarea required rows={5} className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blood/20 focus:border-blood transition-all resize-none" placeholder="Vui lòng mô tả chi tiết vấn đề của bạn..."></textarea>
+                  <textarea name="message" required rows={5} className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blood/20 focus:border-blood transition-all resize-none" placeholder="Vui lòng mô tả chi tiết vấn đề của bạn..."></textarea>
                 </div>
 
                 <button disabled={loading} type="submit" className="w-full py-4 bg-blood text-white font-bold rounded-xl hover:bg-blood-dark hover:shadow-xl hover:shadow-blood/20 transition-all flex items-center justify-center gap-2">

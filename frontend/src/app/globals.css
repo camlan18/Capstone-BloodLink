@@ -225,3 +225,61 @@
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
 }
+
+/* Print Optimization for Blood Donation Certificate */
+@media print {
+  @page {
+    size: A4 landscape;
+    margin: 6mm;
+  }
+
+  html, body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+  }
+
+  /* Hide website headers, sidebars, navigation, footers and toast notifications */
+  header, footer, nav, aside, button, .toaster, [data-sonner-toaster], .print-hidden {
+    display: none !important;
+  }
+
+  /* Remove modal dimming backgrounds and frame restrictions */
+  div[class*="backdrop-blur"],
+  div[class*="bg-black/40"] {
+    background: transparent !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    position: static !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+  }
+
+  div[class*="max-h-[95vh]"] {
+    max-height: none !important;
+    box-shadow: none !important;
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    background: transparent !important;
+  }
+
+  /* Hide modal header bar when printing */
+  div[class*="border-b border-gray-100"] {
+    display: none !important;
+  }
+
+  /* Keep certificate full width in A4 landscape without breaking */
+  .blood-certificate-root {
+    width: 100% !important;
+    max-width: 278mm !important;
+    margin: 0 auto !important;
+    box-shadow: none !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+}

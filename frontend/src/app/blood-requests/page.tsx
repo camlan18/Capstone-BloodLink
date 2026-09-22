@@ -4,7 +4,7 @@ import { bloodRequestService } from '@/lib/services/bloodRequest';
 import { BloodRequest } from '@/types';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { BaseModal } from '@/components/ui/BaseModal';
-import { MapPin, Clock, Heart, Filter, ArrowRight, Activity, Droplet, UserPlus, User, Map as MapIcon, Plus, X } from 'lucide-react';
+import { MapPin, Clock, Heart, Filter, ArrowRight, Activity, Droplet, UserPlus, User, Map as MapIcon, Plus, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 
 export default function BloodRequestsPage() {
@@ -15,6 +15,10 @@ export default function BloodRequestsPage() {
   const [selectedUrgencies, setSelectedUrgencies] = useState<string[]>([]);
   const [selectedBloodTypes, setSelectedBloodTypes] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState<string>('urgentFirst');
+
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 6;
 
   // Detail Modal States
   const [selectedRequest, setSelectedRequest] = useState<any | null>(null);
@@ -48,12 +52,14 @@ export default function BloodRequestsPage() {
     setSelectedUrgencies(prev => 
       prev.includes(level) ? prev.filter(l => l !== level) : [...prev, level]
     );
+    setCurrentPage(1);
   };
 
   const toggleBloodType = (bt: string) => {
     setSelectedBloodTypes(prev => 
       prev.includes(bt) ? prev.filter(b => b !== bt) : [...prev, bt]
     );
+    setCurrentPage(1);
   };
 
   const formatDate = (dateStr?: string) => {
@@ -80,6 +86,9 @@ export default function BloodRequestsPage() {
       return timeA - timeB;
     }
   });
+
+  const totalPages = Math.ceil(filteredRequests.length / pageSize) || 1;
+  const paginatedRequests = filteredRequests.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   const activeFilters = selectedUrgencies.length + selectedBloodTypes.length;
 
@@ -202,8 +211,8 @@ export default function BloodRequestsPage() {
                   Array(5).fill(0).map((_, i) => (
                     <div key={i} className="animate-pulse bg-white border border-slate-200 rounded-sm h-28" />
                   ))
-                ) : filteredRequests.length > 0 ? (
-                  filteredRequests.map(req => {
+                ) : paginatedRequests.length > 0 ? (
+                  paginatedRequests.map(req => {
                     const urgStyle = getUrgencyStyle(req.urgency?.urgency_code);
                     const btStr = req.blood_type ? (req.blood_type.abo + req.blood_type.rh_factor).replace(/\s+/g, '') : '';
                     const donorsCount = req.registered_donors_count || 0;
@@ -307,6 +316,53 @@ export default function BloodRequestsPage() {
                   </div>
                 )}
               </div>
+
+              {/* Pagination Controls */}
+              {filteredRequests.length > pageSize && (
+                <div className="bg-white border border-slate-200 rounded-sm p-3.5 flex flex-col sm:flex-row items-center justify-between gap-3 mt-4">
+                  <span className="text-xs text-slate-500">
+                    Hiển thị <strong className="text-slate-800">{(currentPage - 1) * pageSize + 1}</strong> - <strong className="text-slate-800">{Math.min(currentPage * pageSize, filteredRequests.length)}</strong> trên tổng số <strong className="text-slate-800">{filteredRequests.length}</strong> yêu cầu
+                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => {
+                        setCurrentPage(p => Math.max(1, p - 1));
+                        window.scrollTo({ top: 150, behavior: 'smooth' });
+                      }}
+                      disabled={currentPage === 1}
+                      className="px-2.5 py-1.5 rounded-sm border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 transition-colors"
+                    >
+                      <ChevronLeft className="w-3.5 h-3.5" /> Trước
+                    </button>
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                      <button
+                        key={page}
+                        onClick={() => {
+                          setCurrentPage(page);
+                          window.scrollTo({ top: 150, behavior: 'smooth' });
+                        }}
+                        className={`w-8 h-8 rounded-sm text-xs font-bold transition-colors ${
+                          currentPage === page
+                            ? 'bg-blood text-white'
+                            : 'border border-slate-200 text-slate-700 hover:bg-slate-50'
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    ))}
+                    <button
+                      onClick={() => {
+                        setCurrentPage(p => Math.min(totalPages, p + 1));
+                        window.scrollTo({ top: 150, behavior: 'smooth' });
+                      }}
+                      disabled={currentPage === totalPages}
+                      className="px-2.5 py-1.5 rounded-sm border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 transition-colors"
+                    >
+                      Sau <ChevronRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Sidebar */}

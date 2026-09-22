@@ -320,8 +320,8 @@ export default function BlogPostsTab() {
                             const url = await uploadImage(file);
                             setFormData(prev => ({...prev, thumbnail_url: url}));
                             toast.success('Tải ảnh thành công', { id: toastId });
-                          } catch (err) {
-                            toast.error('Lỗi khi tải ảnh', { id: toastId });
+                          } catch (err: any) {
+                            toast.error('Lỗi khi tải ảnh: ' + (err?.response?.data?.message || err?.message || 'Không xác định'), { id: toastId });
                           }
                         }
                       }} 

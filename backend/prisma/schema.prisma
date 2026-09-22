@@ -136,6 +136,10 @@ model medical_facilities {
   latitude      Decimal?  @db.Decimal(10, 7)
   longitude     Decimal?  @db.Decimal(10, 7)
   logo_url      String?   @db.NVarChar(500)
+  seal_image_url      String?   @db.NVarChar(Max)
+  signature_image_url String?   @db.NVarChar(Max)
+  director_name       String?   @db.NVarChar(150)
+  director_title      String?   @db.NVarChar(100)
   is_primary    Boolean   @default(false)
   is_active     Boolean   @default(true)
   created_at    DateTime  @default(now()) @db.DateTime2
@@ -151,16 +155,17 @@ model medical_facilities {
 }
 
 model facility_donation_schedules {
-  schedule_id    Int      @id @default(autoincrement())
+  schedule_id    Int       @id @default(autoincrement())
   facility_id    Int
-  date           DateTime @db.Date
-  start_time     DateTime @db.Time
-  end_time       DateTime @db.Time
-  max_donors     Int      @default(50)
-  current_donors Int      @default(0)
-  status         String   @default("OPEN") @db.NVarChar(20)
-  terms_html     String?  @db.NVarChar(Max)
-  created_at     DateTime @default(now()) @db.DateTime2
+  date           DateTime  @db.Date
+  start_time     DateTime  @db.Time
+  end_time       DateTime  @db.Time
+  max_donors     Int       @default(50)
+  current_donors Int       @default(0)
+  status         String    @default("OPEN") @db.NVarChar(20)
+  terms_html     String?   @db.NVarChar(Max)
+  created_at     DateTime  @default(now()) @db.DateTime2
+  updated_at     DateTime? @db.DateTime2
 
   facility       medical_facilities         @relation(fields: [facility_id], references: [facility_id], onDelete: NoAction, onUpdate: NoAction)
   donor_availability_slots donor_availability_slots[]
@@ -269,7 +274,6 @@ model users {
   is_email_verified         Boolean   @default(false)
   created_at                DateTime  @default(now()) @db.DateTime2
   updated_at                DateTime? @db.DateTime2
-  refresh_token             String?   @db.NVarChar(500)
 
   role             roles       @relation(fields: [role_id], references: [role_id], onDelete: NoAction, onUpdate: NoAction)
   blood_type       blood_types? @relation(fields: [blood_type_id], references: [blood_type_id], onDelete: NoAction, onUpdate: NoAction)
@@ -293,7 +297,23 @@ model users {
   donations_staff                     donations[]                           @relation("DonationStaff")
   donation_reminders                  donation_reminders[]
   user_otps                           user_otps[]
+  user_sessions                       user_sessions[]
   notifications                       notifications[]
+  approved_certificates               donation_certificates[]               @relation("CertificateApprover")
+}
+
+model user_sessions {
+  session_id         BigInt    @id @default(autoincrement())
+  user_id            Int
+  refresh_token_hash String    @db.NVarChar(256)
+  device_info        String?   @db.NVarChar(500)
+  ip_address         String?   @db.NVarChar(45)
+  expires_at         DateTime  @db.DateTime2
+  revoked_at         DateTime? @db.DateTime2
+  created_at         DateTime  @default(now()) @db.DateTime2
+  last_used_at       DateTime? @db.DateTime2
+
+  user users @relation(fields: [user_id], references: [user_id], onDelete: Cascade, onUpdate: NoAction)
 }
 
 model donor_profiles {
@@ -318,18 +338,19 @@ model donor_profiles {
 }
 
 model donor_availability_slots {
-  slot_id       Int      @id @default(autoincrement())
+  slot_id       Int       @id @default(autoincrement())
   user_id       Int
   schedule_id   Int?
-  day_of_week   Int?     @db.TinyInt
+  day_of_week   Int?      @db.TinyInt
   specific_date DateTime? @db.Date
   start_time    DateTime? @db.Time
   end_time      DateTime? @db.Time
-  notes         String?  @db.NVarChar(300)
-  is_recurring  Boolean  @default(false)
-  status        String   @default("PENDING") @db.NVarChar(20)
-  is_active     Boolean  @default(true)
-  created_at    DateTime @default(now()) @db.DateTime2
+  notes         String?   @db.NVarChar(300)
+  is_recurring  Boolean   @default(false)
+  status        String    @default("PENDING") @db.NVarChar(20)
+  is_active     Boolean   @default(true)
+  created_at    DateTime  @default(now()) @db.DateTime2
+  updated_at    DateTime? @db.DateTime2
 
   user     users                        @relation(fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
   schedule facility_donation_schedules? @relation(fields: [schedule_id], references: [schedule_id], onDelete: NoAction, onUpdate: NoAction)
@@ -396,8 +417,6 @@ model blood_requests {
   latitude             Decimal?  @db.Decimal(10, 7)
   longitude            Decimal?  @db.Decimal(10, 7)
   required_before      DateTime? @db.DateTime2
-  fulfilled_from_stock Boolean   @default(false)
-  needs_donor_match    Boolean   @default(false)
   assigned_staff_id    Int?
   created_at           DateTime  @default(now()) @db.DateTime2
   updated_at           DateTime? @db.DateTime2
@@ -441,6 +460,7 @@ model blood_request_inventory_allocations {
   allocated_by  Int?
   released_at   DateTime? @db.DateTime2
   is_active     Boolean   @default(true)
+  updated_at    DateTime? @db.DateTime2
 
   request   blood_requests  @relation(fields: [request_id], references: [request_id], onDelete: NoAction, onUpdate: NoAction)
   inventory blood_inventory @relation(fields: [inventory_id], references: [inventory_id], onDelete: NoAction, onUpdate: NoAction)
@@ -458,6 +478,7 @@ model blood_request_donor_matches {
   responded_at  DateTime? @db.DateTime2
   staff_notes   String?   @db.NVarChar(500)
   created_at    DateTime  @default(now()) @db.DateTime2
+  updated_at    DateTime? @db.DateTime2
 
   request blood_requests @relation(fields: [request_id], references: [request_id], onDelete: NoAction, onUpdate: NoAction)
   donor   users          @relation("MatchDonor", fields: [donor_user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
@@ -479,6 +500,7 @@ model donations {
   status_code         String    @default("COMPLETED") @db.NVarChar(20)
   next_eligible_date  DateTime? @db.Date
   created_at          DateTime  @default(now()) @db.DateTime2
+  updated_at          DateTime? @db.DateTime2
 
   facility           medical_facilities   @relation(fields: [facility_id], references: [facility_id], onDelete: NoAction, onUpdate: NoAction)
   donor              users                @relation("DonationDonor", fields: [donor_user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
@@ -488,6 +510,23 @@ model donations {
   staff              users?               @relation("DonationStaff", fields: [staff_user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
   blood_inventories  blood_inventory[]    @relation("InventoryDonation")
   donation_reminders donation_reminders[]
+  certificate        donation_certificates?
+}
+
+model donation_certificates {
+  certificate_id    Int       @id @default(autoincrement())
+  donation_id       Int       @unique
+  certificate_code  String    @unique @db.NVarChar(50)
+  status            String    @default("PENDING") @db.NVarChar(20)
+  approved_by       Int?
+  approved_at       DateTime? @db.DateTime2
+  reject_reason     String?   @db.NVarChar(500)
+  seal_number       String?   @db.NVarChar(50)
+  issued_at         DateTime? @db.DateTime2
+  created_at        DateTime  @default(now()) @db.DateTime2
+
+  donation          donations @relation(fields: [donation_id], references: [donation_id], onDelete: NoAction, onUpdate: NoAction)
+  approver          users?    @relation("CertificateApprover", fields: [approved_by], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
 }
 
 model donation_reminders {
@@ -502,6 +541,7 @@ model donation_reminders {
   sent_at       DateTime? @db.DateTime2
   is_read       Boolean   @default(false)
   created_at    DateTime  @default(now()) @db.DateTime2
+  updated_at    DateTime? @db.DateTime2
 
   user      users            @relation(fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
   donation  donations?       @relation(fields: [donation_id], references: [donation_id], onDelete: NoAction, onUpdate: NoAction)
@@ -553,6 +593,7 @@ model notifications {
   is_read           Boolean   @default(false)
   created_at        DateTime  @default(now()) @db.DateTime2
   read_at           DateTime? @db.DateTime2
+  updated_at        DateTime? @db.DateTime2
 
   user users @relation(fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
 }

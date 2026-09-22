@@ -5,16 +5,18 @@ import { Toaster } from '@/components/ui/sonner';
 
 interface MainLayoutProps {
   children: ReactNode;
+  hideFooter?: boolean;
+  fullHeight?: boolean;
 }
 
-export const MainLayout = ({ children }: MainLayoutProps) => {
+export const MainLayout = ({ children, hideFooter = false, fullHeight = false }: MainLayoutProps) => {
   return (
-    <div className="flex min-h-screen flex-col bg-slate-50 font-sans">
+    <div className={`flex flex-col bg-slate-50 font-sans ${fullHeight ? 'h-screen overflow-hidden' : 'min-h-screen'}`}>
       <Header />
-      <main className="flex-1">
+      <main className={fullHeight ? 'flex-1 flex flex-col overflow-hidden' : 'flex-1'}>
         {children}
       </main>
-      <Footer />
+      {!hideFooter && <Footer />}
       <Toaster richColors position="top-right" />
     </div>
   );

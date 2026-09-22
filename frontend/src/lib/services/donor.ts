@@ -14,7 +14,7 @@ export const donorService = {
   getSchedules: async (facilityId?: string) => {
     return apiClient.get<any, any>(`/donor/schedules${facilityId ? `?facilityId=${facilityId}` : ''}`);
   },
-  bookSlot: async (data: { schedule_id?: number, request_id?: number, facility_id?: number, specific_date?: string, expected_time?: string, notes?: string }) => {
+  bookSlot: async (data: { schedule_id?: number, request_id?: number, facility_id?: number, specific_date?: string, expected_time?: string, notes?: string, is_health_cleared?: boolean }) => {
     return apiClient.post<any, ApiResponse<any>>('/donor/book-slot', data);
   },
   cancelSlot: async (slotId: number) => {
@@ -25,5 +25,17 @@ export const donorService = {
   },
   getHistory: async () => {
     return apiClient.get<any, ApiResponse<DonationHistory[]>>('/donor/history');
+  },
+  getMyMatches: async () => {
+    return apiClient.get<any, any>('/donor/my-matches');
+  },
+  getAchievements: async () => {
+    return apiClient.get<any, any>('/donor/achievements');
+  },
+  getCertificate: async (donationId: number) => {
+    return apiClient.get<any, any>(`/donor/certificate/${donationId}`);
+  },
+  getMyCertificates: async (params?: any) => {
+    return apiClient.get<any, any>('/donor/my-certificates', { params });
   }
 };

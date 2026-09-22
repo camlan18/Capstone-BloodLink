@@ -27,7 +27,7 @@ export class AuthService {
     }
 
     const memberRole = await this.prisma.roles.findUnique({
-      where: { role_code: RoleCode.MEMBER },
+      where: { role_code: RoleCode.USER },
     });
 
     if (!memberRole) {
@@ -81,7 +81,6 @@ export class AuthService {
       };
     });
 
-    // Gửi email bên ngoài transaction để tránh timeout
     await this.mailService.sendVerificationEmail(dto.email, otpCode, dto.full_name);
 
     return {
@@ -192,7 +191,7 @@ export class AuthService {
     return { message: 'Đã gửi lại mã OTP vào email của bạn.' };
   }
 
-  async login(dto: LoginDto) {
+  async login(dto: LoginDto, metadata?: { ip_address?: string; device_info?: string }) {
     const user = await this.prisma.users.findFirst({
       where: {
         OR: [
@@ -220,13 +219,27 @@ export class AuthService {
       throw new UnauthorizedException('Email hoặc mật khẩu không chính xác');
     }
 
-    const refreshToken = crypto.randomBytes(40).toString('hex');
+    // Sinh refresh token ngẫu nhiên và hash bằng SHA256 để lưu vào user_sessions
+    const rawRefreshToken = crypto.randomBytes(40).toString('hex');
+    const tokenHash = crypto.createHash('sha256').update(rawRefreshToken).digest('hex');
+
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 30); // Session có hiệu lực 30 ngày
+
+    await this.prisma.user_sessions.create({
+      data: {
+        user_id: user.user_id,
+        refresh_token_hash: tokenHash,
+        device_info: metadata?.device_info || null,
+        ip_address: metadata?.ip_address || null,
+        expires_at: expiresAt,
+      },
+    });
 
     await this.prisma.users.update({
       where: { user_id: user.user_id },
       data: {
         last_login_at: new Date(),
-        refresh_token: refreshToken
       },
     });
 
@@ -234,7 +247,7 @@ export class AuthService {
 
     return {
       access_token: this.jwtService.sign(payload),
-      refresh_token: refreshToken,
+      refresh_token: rawRefreshToken,
       user: {
         user_id: user.user_id,
         email: user.email,
@@ -250,26 +263,46 @@ export class AuthService {
     };
   }
 
-  async refreshToken(refreshToken: string) {
-    if (!refreshToken) {
+  async refreshToken(rawRefreshToken: string) {
+    if (!rawRefreshToken) {
       throw new UnauthorizedException('Refresh token không hợp lệ');
     }
 
-    const user = await this.prisma.users.findFirst({
-      where: { refresh_token: refreshToken, is_active: true },
-      include: { role: true, facility: true },
+    const tokenHash = crypto.createHash('sha256').update(rawRefreshToken).digest('hex');
+
+    const session = await this.prisma.user_sessions.findFirst({
+      where: {
+        refresh_token_hash: tokenHash,
+        revoked_at: null,
+        expires_at: { gt: new Date() },
+      },
+      include: {
+        user: {
+          include: { role: true, facility: true }
+        }
+      }
     });
 
-    if (!user) {
+    if (!session || !session.user || !session.user.is_active) {
       throw new UnauthorizedException('Refresh token không hợp lệ hoặc đã hết hạn');
     }
 
+    // Xoay vòng Refresh Token (Token Rotation)
     const newRefreshToken = crypto.randomBytes(40).toString('hex');
-    await this.prisma.users.update({
-      where: { user_id: user.user_id },
-      data: { refresh_token: newRefreshToken },
+    const newTokenHash = crypto.createHash('sha256').update(newRefreshToken).digest('hex');
+    const newExpiresAt = new Date();
+    newExpiresAt.setDate(newExpiresAt.getDate() + 30);
+
+    await this.prisma.user_sessions.update({
+      where: { session_id: session.session_id },
+      data: {
+        refresh_token_hash: newTokenHash,
+        expires_at: newExpiresAt,
+        last_used_at: new Date(),
+      },
     });
 
+    const user = session.user;
     const payload = { sub: user.user_id, email: user.email, role: user.role.role_code, facility_id: user.facility_id };
 
     return {
@@ -285,6 +318,17 @@ export class AuthService {
         facility: user.facility ? { facility_name: user.facility.facility_name } : undefined,
       }
     };
+  }
+
+  async logout(rawRefreshToken?: string) {
+    if (rawRefreshToken) {
+      const tokenHash = crypto.createHash('sha256').update(rawRefreshToken).digest('hex');
+      await this.prisma.user_sessions.updateMany({
+        where: { refresh_token_hash: tokenHash, revoked_at: null },
+        data: { revoked_at: new Date() },
+      });
+    }
+    return { message: 'Đăng xuất thành công' };
   }
 
   async forgotPassword(dto: ForgotPasswordDto) {
@@ -368,6 +412,11 @@ export class AuthService {
       this.prisma.users.update({
         where: { user_id: user.user_id },
         data: { password_hash: newPasswordHash },
+      }),
+      // Thu hồi toàn bộ session khi đổi mật khẩu để bảo vệ tài khoản
+      this.prisma.user_sessions.updateMany({
+        where: { user_id: user.user_id, revoked_at: null },
+        data: { revoked_at: new Date() },
       }),
     ]);
 

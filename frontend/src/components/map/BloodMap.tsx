@@ -15,63 +15,84 @@ interface FacilityOnMap {
   is_primary?: boolean;
   logo_url?: string;
   pendingRequests: any[];
+  distance_km?: number;
 }
 
 interface BloodMapProps {
   facilities: FacilityOnMap[];
   onFacilitySelect: (facility: FacilityOnMap) => void;
   selectedFacilityId?: number | null;
+  userLocation?: [number, number] | null;
+  nearestFacilityId?: number | null;
+  flyToCoords?: [number, number] | null;
+  flyToZoom?: number;
 }
 
-// Custom marker SVG for hospitals
-const createHospitalIcon = (count: number, isSelected: boolean, isPrimary: boolean) => {
-  const size = isSelected ? 44 : 36;
+// Custom marker SVG for hospitals with accurate tip anchor
+const createHospitalIcon = (count: number, isSelected: boolean, isPrimary: boolean, isNearest: boolean) => {
+  const pinW = isSelected ? 44 : 36;
+  const pinH = isSelected ? 56 : 46;
+  const anchorX = pinW / 2;
+  const anchorY = pinH;
+  const headR = anchorX - 3;
+  const headCy = anchorX;
+
   const color = count > 0 ? (count >= 3 ? '#dc2626' : '#f59e0b') : '#10b981';
-  const borderColor = isSelected ? '#1a2332' : color;
-  const bgColor = isSelected ? color : '#ffffff';
-  const textColor = isSelected ? '#ffffff' : color;
+  const pinFill = isSelected ? '#1a2332' : color;
+  const innerBg = isSelected ? color : '#ffffff';
+  const crossColor = isSelected ? '#ffffff' : color;
+
+  const crossW = isSelected ? 16 : 13;
+  const crossThick = isSelected ? 5 : 4;
 
   const svg = `
-    <svg width="${size}" height="${size + 12}" viewBox="0 0 ${size} ${size + 12}" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <filter id="shadow" x="-20%" y="-10%" width="140%" height="150%">
-          <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#000" flood-opacity="0.2"/>
-        </filter>
-      </defs>
-      <!-- Pin shape -->
-      <path d="M${size/2} ${size + 10} L${size/2 - 6} ${size - 2} A${size/2 - 2} ${size/2 - 2} 0 1 1 ${size/2 + 6} ${size - 2} Z" 
-            fill="${borderColor}" filter="url(#shadow)"/>
-      <!-- Circle background -->
-      <circle cx="${size/2}" cy="${size/2 - 1}" r="${size/2 - 3}" fill="${bgColor}" stroke="${borderColor}" stroke-width="2.5"/>
-      <!-- Cross icon -->
-      <rect x="${size/2 - 7}" y="${size/2 - 3}" width="14" height="5" rx="1" fill="${textColor}"/>
-      <rect x="${size/2 - 2.5}" y="${size/2 - 8}" width="5" height="14" rx="1" fill="${textColor}"/>
+    <svg width="${pinW}" height="${pinH}" viewBox="0 0 ${pinW} ${pinH}" style="display:block;overflow:visible;" xmlns="http://www.w3.org/2000/svg">
+      <!-- Pin drop shadow -->
+      <path d="M${anchorX} ${pinH} C${anchorX} ${pinH} 3 ${pinH * 0.65} 3 ${headCy} A${headR} ${headR} 0 1 1 ${pinW - 3} ${headCy} C${pinW - 3} ${pinH * 0.65} ${anchorX} ${pinH} ${anchorX} ${pinH} Z" 
+            fill="${pinFill}" stroke="#ffffff" stroke-width="2" style="filter: drop-shadow(0 3px 4px rgba(0,0,0,0.3));"/>
+      <!-- Inner circular white/colored badge -->
+      <circle cx="${anchorX}" cy="${headCy}" r="${headR - 4}" fill="${innerBg}"/>
+      <!-- Medical Cross -->
+      <rect x="${anchorX - crossW/2}" y="${headCy - crossThick/2}" width="${crossW}" height="${crossThick}" rx="1" fill="${crossColor}"/>
+      <rect x="${anchorX - crossThick/2}" y="${headCy - crossW/2}" width="${crossThick}" height="${crossW}" rx="1" fill="${crossColor}"/>
       ${count > 0 ? `
-        <!-- Badge -->
-        <circle cx="${size - 6}" cy="6" r="8" fill="#dc2626" stroke="#fff" stroke-width="1.5"/>
-        <text x="${size - 6}" y="10" text-anchor="middle" fill="#fff" font-size="9" font-weight="bold" font-family="Arial">${count > 9 ? '9+' : count}</text>
+        <!-- Count Badge -->
+        <circle cx="${pinW - 5}" cy="5" r="8" fill="#dc2626" stroke="#ffffff" stroke-width="1.5"/>
+        <text x="${pinW - 5}" y="8.5" text-anchor="middle" fill="#ffffff" font-size="9" font-weight="900" font-family="system-ui, sans-serif">${count > 9 ? '9+' : count}</text>
       ` : ''}
       ${isPrimary ? `
-        <!-- Star badge -->
-        <circle cx="6" cy="6" r="6" fill="#f59e0b" stroke="#fff" stroke-width="1.5"/>
-        <text x="6" y="9.5" text-anchor="middle" fill="#fff" font-size="8" font-weight="bold">★</text>
+        <!-- Primary Hospital Star -->
+        <circle cx="5" cy="5" r="6" fill="#f59e0b" stroke="#ffffff" stroke-width="1.5"/>
+        <text x="5" y="8" text-anchor="middle" fill="#ffffff" font-size="7.5" font-weight="bold">★</text>
       ` : ''}
     </svg>
   `;
 
   return L.divIcon({
-    html: svg,
+    html: `<div class="hospital-pin-wrapper ${isNearest ? 'nearest-pin-pulse' : ''}" style="width:${pinW}px;height:${pinH}px;display:flex;align-items:flex-end;justify-content:center;">${svg}</div>`,
     className: 'custom-hospital-marker',
-    iconSize: [size, size + 12],
-    iconAnchor: [size / 2, size + 10],
-    popupAnchor: [0, -(size + 5)],
+    iconSize: [pinW, pinH],
+    iconAnchor: [anchorX, anchorY],
+    popupAnchor: [0, -anchorY],
   });
 };
 
-export default function BloodMap({ facilities, onFacilitySelect, selectedFacilityId }: BloodMapProps) {
+// User location icon
+const createUserLocationIcon = () => {
+  return L.divIcon({
+    html: `<div class="user-location-marker"><div class="user-location-dot"></div><div class="user-location-ring"></div></div>`,
+    className: 'user-location-icon',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12],
+  });
+};
+
+export default function BloodMap({ facilities, onFacilitySelect, selectedFacilityId, userLocation, nearestFacilityId, flyToCoords, flyToZoom }: BloodMapProps) {
   const mapRef = useRef<L.Map | null>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const markersRef = useRef<L.LayerGroup | null>(null);
+  const userMarkerRef = useRef<L.Marker | null>(null);
+  const lineRef = useRef<L.Polyline | null>(null);
 
   // Vietnam center coordinates
   const defaultCenter: [number, number] = [10.8231, 106.6297]; // Ho Chi Minh City
@@ -91,16 +112,11 @@ export default function BloodMap({ facilities, onFacilitySelect, selectedFacilit
     // Add zoom control to top-right
     L.control.zoom({ position: 'topright' }).addTo(map);
 
-    // Use CartoDB Positron tiles for a clean, professional look
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+    // Standard OpenStreetMap tiles - 100% free, no API key required, reliable worldwide
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
-      subdomains: 'abcd',
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
     }).addTo(map);
-
-    // Attribution
-    L.control.attribution({ position: 'bottomright', prefix: false })
-      .addAttribution('© <a href="https://carto.com/">CARTO</a> | © <a href="https://www.openstreetmap.org/">OSM</a>')
-      .addTo(map);
 
     markersRef.current = L.layerGroup().addTo(map);
     mapRef.current = map;
@@ -122,7 +138,8 @@ export default function BloodMap({ facilities, onFacilitySelect, selectedFacilit
     validFacilities.forEach(facility => {
       const count = facility.pendingRequests?.length || 0;
       const isSelected = facility.facility_id === selectedFacilityId;
-      const icon = createHospitalIcon(count, isSelected, facility.is_primary || false);
+      const isNearest = facility.facility_id === nearestFacilityId;
+      const icon = createHospitalIcon(count, isSelected, facility.is_primary || false, isNearest);
 
       const marker = L.marker([facility.latitude!, facility.longitude!], { icon })
         .on('click', () => {
@@ -130,6 +147,10 @@ export default function BloodMap({ facilities, onFacilitySelect, selectedFacilit
         });
 
       // Tooltip
+      const distanceInfo = facility.distance_km !== undefined
+        ? `<div style="font-size: 11px; color: #2563eb; font-weight: 600; margin-top: 3px;">📍 ${facility.distance_km.toFixed(1)} km từ bạn</div>`
+        : '';
+
       marker.bindTooltip(
         `<div style="font-family: system-ui; padding: 2px 0;">
           <div style="font-weight: 700; font-size: 12px; color: #1a2332; margin-bottom: 2px;">${facility.facility_name}</div>
@@ -138,6 +159,8 @@ export default function BloodMap({ facilities, onFacilitySelect, selectedFacilit
             ? `<div style="font-size: 11px; color: #dc2626; font-weight: 600; margin-top: 3px;">🩸 ${count} yêu cầu đang chờ</div>` 
             : `<div style="font-size: 11px; color: #10b981; margin-top: 3px;">✓ Không có yêu cầu chờ</div>`
           }
+          ${distanceInfo}
+          ${isNearest ? `<div style="font-size: 11px; color: #7c3aed; font-weight: 700; margin-top: 3px;">⭐ Gần bạn nhất!</div>` : ''}
         </div>`,
         { 
           direction: 'top', 
@@ -151,12 +174,47 @@ export default function BloodMap({ facilities, onFacilitySelect, selectedFacilit
 
     // Fit bounds if there are markers
     if (validFacilities.length > 0) {
-      const bounds = L.latLngBounds(
-        validFacilities.map(f => [f.latitude!, f.longitude!] as [number, number])
-      );
+      const allPoints: [number, number][] = validFacilities.map(f => [f.latitude!, f.longitude!] as [number, number]);
+      if (userLocation) allPoints.push(userLocation);
+      const bounds = L.latLngBounds(allPoints);
       mapRef.current.fitBounds(bounds, { padding: [50, 50], maxZoom: 14 });
     }
-  }, [facilities, selectedFacilityId]);
+  }, [facilities, selectedFacilityId, nearestFacilityId]);
+
+  // User location marker
+  useEffect(() => {
+    if (!mapRef.current) return;
+
+    // Remove old marker and line
+    if (userMarkerRef.current) {
+      mapRef.current.removeLayer(userMarkerRef.current);
+      userMarkerRef.current = null;
+    }
+    if (lineRef.current) {
+      mapRef.current.removeLayer(lineRef.current);
+      lineRef.current = null;
+    }
+
+    if (userLocation) {
+      const userIcon = createUserLocationIcon();
+      userMarkerRef.current = L.marker(userLocation, { icon: userIcon, zIndexOffset: 1000 })
+        .bindTooltip('<div style="font-family: system-ui; font-weight: 700; font-size: 12px; color: #2563eb;">📍 Vị trí của bạn</div>', {
+          direction: 'top', offset: [0, -10], className: 'map-tooltip-custom'
+        })
+        .addTo(mapRef.current);
+
+      // Draw line to nearest facility
+      if (nearestFacilityId) {
+        const nearest = facilities.find(f => f.facility_id === nearestFacilityId);
+        if (nearest?.latitude && nearest?.longitude) {
+          lineRef.current = L.polyline(
+            [userLocation, [nearest.latitude, nearest.longitude]],
+            { color: '#6366f1', weight: 3, dashArray: '8, 8', opacity: 0.7 }
+          ).addTo(mapRef.current);
+        }
+      }
+    }
+  }, [userLocation, nearestFacilityId, facilities]);
 
   // Pan to selected facility
   useEffect(() => {
@@ -167,12 +225,76 @@ export default function BloodMap({ facilities, onFacilitySelect, selectedFacilit
     }
   }, [selectedFacilityId]);
 
+  // Fly to specified coordinates (e.g. province/city change)
+  useEffect(() => {
+    if (!mapRef.current || !flyToCoords) return;
+    mapRef.current.flyTo(flyToCoords, flyToZoom || 13, { duration: 1.2 });
+  }, [flyToCoords, flyToZoom]);
+
   return (
     <>
       <style jsx global>{`
         .custom-hospital-marker {
+          background: transparent !important;
+          border: none !important;
+        }
+        .hospital-pin-wrapper {
+          transform-origin: bottom center;
+          transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .hospital-pin-wrapper:hover {
+          transform: scale(1.15);
+        }
+        .nearest-pin-pulse {
+          animation: hospitalPinPulse 1.8s ease-in-out infinite;
+        }
+        @keyframes hospitalPinPulse {
+          0%, 100% {
+            transform: scale(1);
+            filter: drop-shadow(0 0 3px rgba(220, 38, 38, 0.6));
+          }
+          50% {
+            transform: scale(1.18);
+            filter: drop-shadow(0 0 14px rgba(220, 38, 38, 0.9));
+          }
+        }
+        .user-location-icon {
           background: none !important;
           border: none !important;
+        }
+        .user-location-marker {
+          position: relative;
+          width: 24px;
+          height: 24px;
+        }
+        .user-location-dot {
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          width: 12px;
+          height: 12px;
+          background: #2563eb;
+          border-radius: 50%;
+          border: 3px solid white;
+          box-shadow: 0 0 6px rgba(37, 99, 235, 0.4);
+          z-index: 2;
+        }
+        .user-location-ring {
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          width: 40px;
+          height: 40px;
+          border-radius: 50%;
+          background: rgba(37, 99, 235, 0.15);
+          animation: userRingPulse 2s ease-in-out infinite;
+          z-index: 1;
+        }
+        @keyframes userRingPulse {
+          0%, 100% { transform: translate(-50%, -50%) scale(0.5); opacity: 1; }
+          50% { transform: translate(-50%, -50%) scale(1.2); opacity: 0.3; }
         }
         .map-tooltip-custom {
           background: white !important;

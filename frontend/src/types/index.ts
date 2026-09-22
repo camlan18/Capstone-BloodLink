@@ -40,7 +40,9 @@ export interface DonorProfile {
   address: string;
   total_donations: number;
   last_donation_date?: string;
+  next_eligible_date?: string;
   is_eligible: boolean;
+  days_until_next_donation?: number;
   weight_kg?: number;
   height_cm?: number;
   health_notes?: string;

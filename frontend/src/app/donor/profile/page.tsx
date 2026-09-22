@@ -259,7 +259,16 @@ export default function DonorProfilePage() {
           </div>
           <div>
             <h3 className="text-xl font-bold text-navy">{user?.full_name || 'Chưa cập nhật tên'}</h3>
-            <p className="text-slate-500">{user?.email}</p>
+            <p className="text-slate-500 mb-2">{user?.email}</p>
+            {donorProfile && donorProfile.is_eligible === false ? (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-50 border border-amber-200 text-amber-700 rounded-full text-xs font-semibold">
+                Còn {donorProfile.days_until_next_donation} ngày nữa để có thể hiến máu
+              </span>
+            ) : donorProfile && donorProfile.is_eligible ? (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-full text-xs font-semibold">
+                Đủ điều kiện hiến máu
+              </span>
+            ) : null}
           </div>
         </div>
 

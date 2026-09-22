@@ -1,11 +1,11 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { adminMasterDataService } from '@/lib/services/admin-master-data';
 import { bloodRequestService } from '@/lib/services/bloodRequest';
-import { MapPin, X, Clock, Heart, Droplet, User, Activity, ArrowRight, Building2, Phone, ChevronLeft, ChevronRight, Loader2, AlertTriangle, CheckCircle2, List, Map as MapIcon, Filter } from 'lucide-react';
+import { MapPin, X, Clock, Heart, Droplet, User, Activity, ArrowRight, Building2, Phone, ChevronLeft, ChevronRight, Loader2, AlertTriangle, CheckCircle2, List, Map as MapIcon, Filter, Navigation, Locate } from 'lucide-react';
 import Link from 'next/link';
 
 // Dynamic import to avoid SSR issues with Leaflet
@@ -30,6 +30,7 @@ interface FacilityOnMap {
   is_primary?: boolean;
   logo_url?: string;
   pendingRequests: any[];
+  distance_km?: number;
 }
 
 const getUrgencyStyle = (code?: string) => {
@@ -40,6 +41,18 @@ const getUrgencyStyle = (code?: string) => {
   return { bg: 'bg-blue-50', text: 'text-blue-600', border: 'border-blue-200', dot: 'bg-blue-500' };
 };
 
+// Haversine formula to calculate distance between two coordinates in km
+function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371; // Earth's radius in km
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
 export default function BloodMapPage() {
   const [facilities, setFacilities] = useState<FacilityOnMap[]>([]);
   const [allRequests, setAllRequests] = useState<any[]>([]);
@@ -47,6 +60,35 @@ export default function BloodMapPage() {
   const [selectedFacility, setSelectedFacility] = useState<FacilityOnMap | null>(null);
   const [panelOpen, setPanelOpen] = useState(false);
   const [filterHasRequests, setFilterHasRequests] = useState(false);
+
+  // Geolocation
+  const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
+  const [locatingUser, setLocatingUser] = useState(false);
+  const [locationError, setLocationError] = useState('');
+  const [sortByDistance, setSortByDistance] = useState(false);
+
+  // Region / City & Blood Type Filters
+  const [selectedRegion, setSelectedRegion] = useState<string>('ALL');
+  const [selectedBloodType, setSelectedBloodType] = useState<string>('ALL');
+  const [flyToCoords, setFlyToCoords] = useState<[number, number] | null>(null);
+  const [flyToZoom, setFlyToZoom] = useState<number>(13);
+
+  const REGIONS: Record<string, { label: string; coords: [number, number]; zoom: number; keywords: string[] }> = {
+    ALL: { label: 'Tất cả khu vực', coords: [10.7769, 106.6953], zoom: 11, keywords: [] },
+    HCM: { label: 'TP. Hồ Chí Minh', coords: [10.7769, 106.6953], zoom: 12, keywords: ['Hồ Chí Minh', 'TP.HCM', 'Sài Gòn'] },
+    CAN_THO: { label: 'TP. Cần Thơ', coords: [10.0336, 105.7865], zoom: 13, keywords: ['Cần Thơ', 'Ninh Kiều'] },
+    DA_NANG: { label: 'TP. Đà Nẵng', coords: [16.0544, 108.2022], zoom: 13, keywords: ['Đà Nẵng', 'Hải Châu'] },
+    HA_NOI: { label: 'Thủ đô Hà Nội', coords: [21.0285, 105.8542], zoom: 12, keywords: ['Hà Nội', 'Cầu Giấy', 'Đống Đa'] },
+  };
+
+  const handleRegionChange = (regKey: string) => {
+    setSelectedRegion(regKey);
+    const reg = REGIONS[regKey];
+    if (reg) {
+      setFlyToCoords(reg.coords);
+      setFlyToZoom(reg.zoom);
+    }
+  };
 
   useEffect(() => {
     fetchData();
@@ -62,13 +104,13 @@ export default function BloodMapPage() {
 
       let facilityList: any[] = [];
       if (facRes) {
-        const data = facRes.data;
+        const data: any = (facRes as any).data;
         facilityList = Array.isArray(data) ? data : (data?.data || []);
       }
 
       let requestList: any[] = [];
       if (reqRes) {
-        const data = reqRes.data;
+        const data: any = (reqRes as any).data;
         if (Array.isArray(data)) requestList = data;
         else if (data?.data && Array.isArray(data.data)) requestList = data.data;
         else if (Array.isArray(reqRes)) requestList = reqRes as any;
@@ -94,12 +136,59 @@ export default function BloodMapPage() {
     }
   };
 
+  // Calculate distances when user location is available
+  const facilitiesWithDistance = useMemo(() => {
+    if (!userLocation) return facilities;
+    return facilities.map(f => {
+      if (f.latitude && f.longitude) {
+        return { ...f, distance_km: haversineDistance(userLocation[0], userLocation[1], f.latitude, f.longitude) };
+      }
+      return { ...f, distance_km: undefined };
+    });
+  }, [facilities, userLocation]);
+
+  const nearestFacilityId = useMemo(() => {
+    if (!userLocation) return null;
+    const validFacilities = facilitiesWithDistance.filter(f => f.distance_km !== undefined);
+    if (validFacilities.length === 0) return null;
+    validFacilities.sort((a, b) => (a.distance_km || Infinity) - (b.distance_km || Infinity));
+    return validFacilities[0].facility_id;
+  }, [facilitiesWithDistance, userLocation]);
+
   const displayFacilities = useMemo(() => {
-    if (filterHasRequests) {
-      return facilities.filter(f => f.pendingRequests.length > 0);
+    let list = facilitiesWithDistance;
+
+    // Filter by Region
+    if (selectedRegion !== 'ALL') {
+      const keywords = REGIONS[selectedRegion]?.keywords || [];
+      list = list.filter(f =>
+        keywords.some(kw =>
+          (f.address && f.address.toLowerCase().includes(kw.toLowerCase())) ||
+          (f.facility_name && f.facility_name.toLowerCase().includes(kw.toLowerCase()))
+        )
+      );
     }
-    return facilities;
-  }, [facilities, filterHasRequests]);
+
+    // Filter by Blood Type
+    if (selectedBloodType !== 'ALL') {
+      list = list.filter(f =>
+        f.pendingRequests.some(r => {
+          const btStr = r.blood_type ? (r.blood_type.abo + r.blood_type.rh_factor).replace(/\s+/g, '') : '';
+          return btStr === selectedBloodType;
+        })
+      );
+    }
+
+    // Filter by has requests
+    if (filterHasRequests) {
+      list = list.filter(f => f.pendingRequests.length > 0);
+    }
+
+    if (sortByDistance && userLocation) {
+      list = [...list].sort((a, b) => (a.distance_km || Infinity) - (b.distance_km || Infinity));
+    }
+    return list;
+  }, [facilitiesWithDistance, selectedRegion, selectedBloodType, filterHasRequests, sortByDistance, userLocation]);
 
   const totalPending = useMemo(() => {
     return facilities.reduce((sum, f) => sum + f.pendingRequests.length, 0);
@@ -114,6 +203,27 @@ export default function BloodMapPage() {
     setPanelOpen(true);
   };
 
+  const handleLocateUser = useCallback(() => {
+    if (!navigator.geolocation) {
+      setLocationError('Trình duyệt không hỗ trợ định vị');
+      return;
+    }
+    setLocatingUser(true);
+    setLocationError('');
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setUserLocation([position.coords.latitude, position.coords.longitude]);
+        setSortByDistance(true);
+        setLocatingUser(false);
+      },
+      (error) => {
+        setLocationError('Không thể lấy vị trí. Vui lòng cho phép truy cập vị trí.');
+        setLocatingUser(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 }
+    );
+  }, []);
+
   const formatDate = (dateStr?: string) => {
     if (!dateStr) return '—';
     const d = new Date(dateStr);
@@ -122,10 +232,10 @@ export default function BloodMapPage() {
   };
 
   return (
-    <MainLayout>
-      <div className="h-[calc(100vh-64px)] flex flex-col bg-[#f0f2f5]">
+    <MainLayout hideFooter fullHeight>
+      <div className="flex-1 flex flex-col bg-[#f0f2f5] overflow-hidden">
         {/* Top bar */}
-        <div className="bg-white border-b border-slate-200 px-4 py-2.5 flex items-center justify-between shrink-0 z-20">
+        <div className="bg-white border-b border-slate-200 px-4 py-2.5 flex items-center justify-between shrink-0 z-10">
           <div className="flex items-center gap-4">
             <Link href="/blood-requests" className="text-sm text-slate-500 hover:text-slate-800 font-medium flex items-center gap-1.5 transition-colors">
               <ChevronLeft className="w-4 h-4" />
@@ -154,6 +264,46 @@ export default function BloodMapPage() {
               </div>
             </div>
             <div className="h-5 w-px bg-slate-200 hidden md:block" />
+            {/* Region select */}
+            <select
+              value={selectedRegion}
+              onChange={(e) => handleRegionChange(e.target.value)}
+              className="text-xs font-semibold px-2.5 py-1.5 rounded-sm border border-slate-300 bg-white text-slate-700 hover:border-slate-400 focus:outline-none focus:ring-1 focus:ring-blood"
+            >
+              {Object.entries(REGIONS).map(([k, v]) => (
+                <option key={k} value={k}>{v.label}</option>
+              ))}
+            </select>
+
+            {/* Blood type select */}
+            <select
+              value={selectedBloodType}
+              onChange={(e) => setSelectedBloodType(e.target.value)}
+              className="text-xs font-semibold px-2.5 py-1.5 rounded-sm border border-slate-300 bg-white text-slate-700 hover:border-slate-400 focus:outline-none focus:ring-1 focus:ring-blood hidden sm:block"
+            >
+              <option value="ALL">Mọi nhóm máu</option>
+              {['O+', 'O-', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-'].map(bt => (
+                <option key={bt} value={bt}>Cần {bt}</option>
+              ))}
+            </select>
+
+            {/* Locate me button */}
+            <button
+              onClick={handleLocateUser}
+              disabled={locatingUser}
+              className={`text-xs font-semibold px-3 py-1.5 rounded-sm border transition-all flex items-center gap-1.5 ${
+                userLocation
+                  ? 'bg-blue-600 text-white border-blue-600'
+                  : 'bg-white text-slate-600 border-slate-300 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300'
+              }`}
+            >
+              {locatingUser ? (
+                <Loader2 className="w-3 h-3 animate-spin" />
+              ) : (
+                <Navigation className="w-3 h-3" />
+              )}
+              {userLocation ? 'Đã định vị' : 'Tìm BV gần tôi'}
+            </button>
             {/* Filter toggle */}
             <button
               onClick={() => setFilterHasRequests(!filterHasRequests)}
@@ -169,6 +319,17 @@ export default function BloodMapPage() {
           </div>
         </div>
 
+        {/* Location error */}
+        {locationError && (
+          <div className="bg-amber-50 border-b border-amber-200 px-4 py-2 text-xs text-amber-700 flex items-center gap-2 shrink-0">
+            <AlertTriangle className="w-3.5 h-3.5" />
+            {locationError}
+            <button onClick={() => setLocationError('')} className="ml-auto text-amber-500 hover:text-amber-700">
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
+
         {/* Map + Panel */}
         <div className="flex-1 flex relative overflow-hidden">
           {/* Map */}
@@ -183,6 +344,10 @@ export default function BloodMapPage() {
                 facilities={displayFacilities}
                 onFacilitySelect={handleFacilitySelect}
                 selectedFacilityId={selectedFacility?.facility_id}
+                userLocation={userLocation}
+                nearestFacilityId={nearestFacilityId}
+                flyToCoords={flyToCoords}
+                flyToZoom={flyToZoom}
               />
             )}
 
@@ -206,6 +371,18 @@ export default function BloodMapPage() {
                   <div className="w-2.5 h-2.5 rounded-full bg-amber-400 ring-1 ring-amber-400/50" />
                   <span>Cơ sở chính (★)</span>
                 </div>
+                {userLocation && (
+                  <>
+                    <div className="flex items-center gap-2 text-xs text-blue-600">
+                      <div className="w-3 h-3 rounded-full bg-blue-500 ring-2 ring-blue-200" />
+                      <span>Vị trí của bạn</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-violet-600">
+                      <div className="w-3 h-3 rounded-full bg-violet-500 animate-pulse" />
+                      <span>Gần bạn nhất</span>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
 
@@ -237,6 +414,9 @@ export default function BloodMapPage() {
                         {selectedFacility.is_primary && (
                           <span className="bg-amber-500/20 text-amber-300 text-[10px] font-bold px-1.5 py-0.5 rounded-sm uppercase">Cơ sở chính</span>
                         )}
+                        {selectedFacility.facility_id === nearestFacilityId && (
+                          <span className="bg-violet-500/20 text-violet-300 text-[10px] font-bold px-1.5 py-0.5 rounded-sm uppercase animate-pulse">⭐ Gần nhất</span>
+                        )}
                       </div>
                       <h2 className="text-base font-bold leading-tight truncate">{selectedFacility.facility_name}</h2>
                       {selectedFacility.short_name && (
@@ -262,6 +442,12 @@ export default function BloodMapPage() {
                       <div className="flex items-center gap-2">
                         <Phone className="w-3 h-3 shrink-0" />
                         <span>{selectedFacility.phone}</span>
+                      </div>
+                    )}
+                    {selectedFacility.distance_km !== undefined && (
+                      <div className="flex items-center gap-2 text-blue-300 font-semibold">
+                        <Navigation className="w-3 h-3 shrink-0" />
+                        <span>{selectedFacility.distance_km.toFixed(1)} km từ vị trí của bạn</span>
                       </div>
                     )}
                   </div>
@@ -333,7 +519,7 @@ export default function BloodMapPage() {
                               </div>
                               {req.clinical_notes && (
                                 <div className="text-xs text-slate-500 bg-slate-50 rounded-sm p-2 mt-1 line-clamp-2 italic">
-                                  "{req.clinical_notes}"
+                                  &quot;{req.clinical_notes}&quot;
                                 </div>
                               )}
                             </div>
@@ -389,9 +575,19 @@ export default function BloodMapPage() {
                   <MapPin className="w-8 h-8 text-slate-300" />
                 </div>
                 <h3 className="text-sm font-bold text-slate-700 mb-1 text-center">Chọn một cơ sở y tế</h3>
-                <p className="text-xs text-slate-400 text-center leading-relaxed">
+                <p className="text-xs text-slate-400 text-center leading-relaxed mb-6">
                   Nhấp vào biểu tượng bệnh viện trên bản đồ để xem danh sách yêu cầu máu đang chờ xử lý tại cơ sở đó.
                 </p>
+                {!userLocation && (
+                  <button
+                    onClick={handleLocateUser}
+                    disabled={locatingUser}
+                    className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white text-xs font-bold rounded-sm hover:bg-blue-700 transition-colors"
+                  >
+                    {locatingUser ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Locate className="w-3.5 h-3.5" />}
+                    Tìm bệnh viện gần tôi
+                  </button>
+                )}
               </div>
             )}
           </div>

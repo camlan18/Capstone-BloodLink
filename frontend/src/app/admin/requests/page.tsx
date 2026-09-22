@@ -41,9 +41,11 @@ export default function AdminRequestsPage() {
   // Filters
   const [statusId, setStatusId] = useState<string>('ALL');
   const [urgencyId, setUrgencyId] = useState<string>('ALL');
+  const [sortBy, setSortBy] = useState<string>('default');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc' | undefined>(undefined);
   
   const currentUser = useAuthStore(state => state.user);
-  const isStaff = currentUser?.role?.role_code === 'HOSPITAL_STAFF' || currentUser?.role?.role_code === 'STAFF' || (typeof currentUser?.role === 'string' && ['HOSPITAL_STAFF', 'STAFF'].includes(currentUser.role));
+  const isStaff = currentUser?.role?.role_code === 'HOSPITAL_STAFF' || (typeof currentUser?.role === 'string' && currentUser.role === 'HOSPITAL_STAFF');
 
   // Master Data
   const [bloodTypes, setBloodTypes] = useState<any[]>([]);
@@ -97,7 +99,7 @@ export default function AdminRequestsPage() {
 
   useEffect(() => {
     fetchData();
-  }, [page, pageSize, keyword, statusId, urgencyId]);
+  }, [page, pageSize, keyword, statusId, urgencyId, sortBy, sortOrder]);
 
   useEffect(() => {
     if (isDetailOpen && selectedItem) {
@@ -142,7 +144,9 @@ export default function AdminRequestsPage() {
         limit: pageSize,
         search: keyword || undefined,
         status_id: statusId === 'ALL' ? undefined : statusId,
-        urgency_id: urgencyId === 'ALL' ? undefined : urgencyId
+        urgency_id: urgencyId === 'ALL' ? undefined : urgencyId,
+        sortBy: sortBy === 'default' ? undefined : sortBy,
+        sortOrder: sortOrder || undefined
       });
       if (res) {
         setData(Array.isArray(res.data) ? res.data : (Array.isArray(res) ? res : []));
@@ -153,6 +157,17 @@ export default function AdminRequestsPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSort = (key: string, direction: 'asc' | 'desc' | undefined) => {
+    if (!direction) {
+      setSortBy('default');
+      setSortOrder(undefined);
+    } else {
+      setSortBy(key);
+      setSortOrder(direction);
+    }
+    setPage(1);
   };
 
   const handleProcess = async (id: number) => {
@@ -455,6 +470,7 @@ export default function AdminRequestsPage() {
     {
       key: 'urgency',
       title: 'Độ khẩn cấp',
+      sortable: true,
       render: (req) => {
         const ucode = req.urgency?.urgency_code;
         return (
@@ -478,6 +494,7 @@ export default function AdminRequestsPage() {
     {
       key: 'status',
       title: 'Trạng thái',
+      sortable: true,
       render: (req) => {
         const status = req.status?.status_code?.toLowerCase();
         return (
@@ -567,10 +584,13 @@ export default function AdminRequestsPage() {
           page={page}
           pageSize={pageSize}
           keyword={keyword}
+          sortBy={sortBy === 'default' ? undefined : sortBy}
+          sortDirection={sortOrder}
           itemName="yêu cầu"
           onPageChange={setPage}
           onPageSizeChange={setPageSize}
           onSearch={handleSearch}
+          onSort={handleSort}
           rowActions={getRowActions}
           toolbarFilters={
             <div className="flex flex-wrap items-center gap-2">
@@ -620,6 +640,12 @@ export default function AdminRequestsPage() {
                   </SelectContent>
                 </Select>
               </div>
+              {sortBy === 'default' && (
+                <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-emerald-50 border border-emerald-200 rounded-md text-xs text-emerald-700 font-medium">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 5h10"/><path d="M11 9h7"/><path d="M11 13h4"/><path d="M3 17l3 3 3-3"/><path d="M6 18V4"/></svg>
+                  Ưu tiên khẩn cấp
+                </div>
+              )}
             </div>
           }
         />
@@ -974,9 +1000,9 @@ export default function AdminRequestsPage() {
                             <div className="text-xs text-slate-500">{match.donor?.email}</div>
                           </td>
                           <td className="px-4 py-3 font-bold text-blood">{match.donor?.blood_type?.blood_type_code}</td>
-                          <td className="px-4 py-3 text-emerald-600 font-semibold">{match.match_score ? Number(match.match_score).toFixed(0) : 0}%</td>
+                          <td className="px-4 py-3 text-emerald-600 font-semibold">{match.match_score != null ? Number(match.match_score).toFixed(0) : '0'}%</td>
                           <td className="px-4 py-3">
-                            <Select value={match.match_status} onValueChange={(v) => handleUpdateMatchStatus(match.match_id, v)}>
+                            <Select disabled={selectedItem.status?.status_code === 'COMPLETED'} value={match.match_status} onValueChange={(v) => handleUpdateMatchStatus(match.match_id, v)}>
                               <SelectTrigger className="h-8 text-xs bg-white">
                                 <SelectValue />
                               </SelectTrigger>

@@ -6,12 +6,14 @@ interface BloodRequestDetailModalProps {
   requestCode: string | null;
   isOpen: boolean;
   onClose: () => void;
+  zIndexClass?: string;
 }
 
 export const BloodRequestDetailModal: React.FC<BloodRequestDetailModalProps> = ({
   requestCode,
   isOpen,
-  onClose
+  onClose,
+  zIndexClass = 'z-[10002]'
 }) => {
   if (!isOpen) return null;
 
@@ -23,6 +25,7 @@ export const BloodRequestDetailModal: React.FC<BloodRequestDetailModalProps> = (
       subtitle={requestCode ? `Mã yêu cầu: ${requestCode}` : ''}
       size="2xl"
       hideFooter
+      zIndexClass={zIndexClass}
     >
       <BloodRequestDetailContent requestCode={requestCode} />
       <div className="pt-2">

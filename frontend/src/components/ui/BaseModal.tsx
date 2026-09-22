@@ -49,7 +49,7 @@ export const BaseModal = ({
   cancelText = 'Hủy',
   hideFooter = false,
   disableSubmit = false,
-  zIndexClass = 'z-50',
+  zIndexClass = 'z-[9999]',
   submitBtnClass,
 }: BaseModalProps & { submitBtnClass?: string }) => {
   const isModalOpen = open !== undefined ? open : isOpen;
@@ -106,10 +106,10 @@ export const BaseModal = ({
   );
 
   return (
-    <div className={`fixed inset-0 ${zIndexClass} flex items-center justify-center bg-black/40 backdrop-blur-[2px] p-4`}>
+    <div className={`fixed inset-0 ${zIndexClass} flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 sm:p-6 overflow-y-auto`}>
       <div
         className={`
-          w-full max-h-[95vh] bg-white rounded-xl shadow-2xl flex flex-col overflow-hidden
+          w-full max-h-[92vh] bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden my-auto
           animate-in fade-in zoom-in-95 duration-200
           ${sizeClasses[size]}
         `}

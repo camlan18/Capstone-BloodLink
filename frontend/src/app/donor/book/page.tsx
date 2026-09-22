@@ -64,16 +64,38 @@ export default function BookDonationPage() {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [availableSchedulesOnDate, setAvailableSchedulesOnDate] = useState<any[]>([]);
+  const [selectedScheduleId, setSelectedScheduleId] = useState<number | null>(null);
   const [notes, setNotes] = useState('');
   const [expectedTime, setExpectedTime] = useState('');
   const [isSubmitting, setIsSubmitting] = useState<number | null>(null);
   const [isConsentChecked, setIsConsentChecked] = useState(false);
+  
+  const riskQuestions = [
+    "Mắc các bệnh lây truyền qua đường máu (HIV, Viêm gan B, Viêm gan C, Giang mai...)",
+    "Tiền sử bệnh lý tim mạch, huyết áp, ung thư, tiểu đường, hô hấp nghiêm trọng",
+    "Có hành vi nguy cơ cao (Tiêm chích ma túy, quan hệ tình dục không an toàn...)",
+    "Đã phẫu thuật, xăm hình, xỏ khuyên, hoặc truyền máu trong vòng 6 tháng qua",
+    "Đang mắc bệnh cấp tính (cảm cúm, ho, sốt) hoặc dùng kháng sinh trong 7 ngày qua",
+    "Phụ nữ đang mang thai, đang nuôi con bú, hoặc mới sinh con dưới 1 năm"
+  ];
+  const [riskAnswers, setRiskAnswers] = useState<boolean[]>(new Array(6).fill(false));
+  const hasRisk = riskAnswers.some(v => v === true);
+  const isHealthCleared = !hasRisk;
+
+  const noteQuestions = [
+    "Đang trong kỳ kinh nguyệt (đối với nữ)",
+    "Đã nhổ răng, tiểu phẫu cách đây trên 1 tháng",
+    "Đang dùng thuốc bổ, thực phẩm chức năng hoặc thuốc tránh thai",
+    "Có bệnh lý nhẹ ngoài da (không lây nhiễm)",
+    "Hơi thiếu ngủ hoặc ăn uống không ngon miệng trong vài ngày qua"
+  ];
+  const [noteAnswers, setNoteAnswers] = useState<boolean[]>(new Array(5).fill(false));
+
   const [viewingTermsHtml, setViewingTermsHtml] = useState<string>('');
   const [isTermsModalOpen, setIsTermsModalOpen] = useState(false);
   const [selectedRequestCode, setSelectedRequestCode] = useState<string | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
-  // Xem chi tiết lịch đã đặt
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [selectedMySlot, setSelectedMySlot] = useState<any | null>(null);
   const [isCanceling, setIsCanceling] = useState(false);
@@ -100,9 +122,9 @@ export default function BookDonationPage() {
         }).catch(() => null) : Promise.resolve(null)
       ]);
       
-      if (slotsRes && slotsRes.data) setMySlots(slotsRes.data);
-      if (schedRes && schedRes.data) setSchedules(schedRes.data);
-      if (historyRes && historyRes.data) setMyHistory(historyRes.data);
+      if (slotsRes) setMySlots(Array.isArray(slotsRes) ? slotsRes : (slotsRes.data || []));
+      if (schedRes) setSchedules(Array.isArray(schedRes) ? schedRes : (schedRes.data || []));
+      if (historyRes) setMyHistory(Array.isArray(historyRes) ? historyRes : (historyRes.data || []));
       if (reqRes) setRequestContext(reqRes);
       
       if (donorRes && donorRes.data) {
@@ -128,34 +150,42 @@ export default function BookDonationPage() {
       return;
     }
 
-    const openSchedules = schedules.filter(sch => isSameDay(parseISO(sch.date), day));
-    if (openSchedules.length === 0) {
-      if (requestContext && facilityIdParam) {
-        // Cho phép tạo lịch ngầm định cho yêu cầu
-        setAvailableSchedulesOnDate([{
+    if (donorProfile?.next_eligible_date) {
+      const eligibleDate = startOfDay(parseISO(donorProfile.next_eligible_date));
+      if (isBefore(day, eligibleDate)) {
+        toast.error(`Bạn chưa đủ điều kiện thời gian để hiến máu vào ngày này. Ngày có thể hiến tiếp theo là ${format(eligibleDate, 'dd/MM/yyyy')}`);
+        return;
+      }
+    }
+
+    let openSchedules = schedules.filter(sch => isSameDay(parseISO(sch.date), day));
+    
+    if (requestContext && facilityIdParam) {
+      openSchedules = openSchedules.filter(sch => String(sch.facility_id) === String(facilityIdParam));
+      if (openSchedules.length === 0) {
+        openSchedules = [{
+          schedule_id: -1,
           is_implicit: true,
           facility: requestContext.facility || { facility_name: requestContext.hospital_name, address: requestContext.address },
           max_donors: 999,
           current_donors: 0,
           start_time: '07:00',
           end_time: '17:00'
-        }]);
-        setSelectedDate(day);
-        setNotes('');
-        setExpectedTime('');
-        setIsConsentChecked(false);
-        setIsModalOpen(true);
-        return;
+        }];
       }
+    } else if (openSchedules.length === 0) {
       toast.error('Hiện chưa có cơ sở nào mở lịch hiến máu vào ngày này.');
       return;
     }
 
     setAvailableSchedulesOnDate(openSchedules);
+    setSelectedScheduleId(openSchedules.length === 1 ? openSchedules[0].schedule_id : null);
     setSelectedDate(day);
     setNotes('');
     setExpectedTime('');
     setIsConsentChecked(false);
+    setRiskAnswers(new Array(6).fill(false));
+    setNoteAnswers(new Array(5).fill(false));
     setIsModalOpen(true);
   };
 
@@ -172,13 +202,20 @@ export default function BookDonationPage() {
          }
       }
 
+      let finalNotes = notes;
+      const selectedNotes = noteAnswers.map((checked, idx) => checked ? noteQuestions[idx] : null).filter(Boolean);
+      if (selectedNotes.length > 0) {
+        finalNotes = (finalNotes ? finalNotes + " | " : "") + "Lưu ý sức khỏe: " + selectedNotes.join(", ");
+      }
+
       await donorService.bookSlot({
-        schedule_id: scheduleId,
+        schedule_id: scheduleId === -1 ? undefined : scheduleId,
         request_id: requestContext ? Number(requestId) : undefined,
         facility_id: requestContext ? Number(facilityIdParam) : undefined,
         specific_date: selectedDate ? format(selectedDate, 'yyyy-MM-dd') : undefined,
         expected_time: expectedTime,
-        notes
+        notes: finalNotes,
+        is_health_cleared: isHealthCleared
       });
       
       toast.success('Đăng ký lịch hiến máu thành công!');
@@ -320,7 +357,12 @@ export default function BookDonationPage() {
             const mySlot = mySlots.find(s => s.schedule && isSameDay(parseISO(s.schedule.date), day));
             const openSchedulesCount = schedules.filter(sch => isSameDay(parseISO(sch.date), day)).length;
 
-            const isDisabled = (isPast && !mySlot) || isAfterRequiredDate;
+            const isBeforeEligible = Boolean(
+              donorProfile?.next_eligible_date &&
+              isBefore(day, startOfDay(parseISO(donorProfile.next_eligible_date)))
+            );
+
+            const isDisabled = (isPast && !mySlot) || isAfterRequiredDate || (isBeforeEligible && !mySlot);
 
             return (
               <div 
@@ -339,6 +381,12 @@ export default function BookDonationPage() {
                 `}>
                   {format(day, 'd')}
                 </div>
+
+                {!isPast && !mySlot && isBeforeEligible && (
+                  <span className="text-[10px] px-1.5 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded font-medium text-center">
+                    Chưa đủ ngày
+                  </span>
+                )}
 
                 {mySlot && mySlot.schedule && (
                   (() => {
@@ -390,17 +438,27 @@ export default function BookDonationPage() {
         size="3xl"
         hideFooter
       >
-        <div className="space-y-5">
+        <div className="space-y-4 mb-6">
           {availableSchedulesOnDate.map(sch => {
             const isFull = sch.current_donors >= sch.max_donors;
+            const isSelected = selectedScheduleId === sch.schedule_id;
             
             return (
-              <div key={sch.schedule_id} className="transition-all bg-white">
-                <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-6">
+              <div 
+                key={sch.schedule_id} 
+                onClick={() => !isFull && setSelectedScheduleId(sch.schedule_id)}
+                className={`transition-all bg-white p-4 border-2 rounded-xl cursor-pointer ${isFull ? 'opacity-50 cursor-not-allowed border-slate-200' : isSelected ? 'border-blood bg-blood/5 shadow-sm' : 'border-slate-200 hover:border-blood/50'}`}
+              >
+                <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
                   <div className="flex-1">
-                    <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wide">Cơ sở y tế / Bệnh viện</label>
-                    <h4 className="font-bold text-navy text-lg leading-tight mb-2">{sch.facility?.facility_name}</h4>
-                    <div className="flex items-start gap-2 text-sm text-slate-500">
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${isSelected ? 'border-blood' : 'border-slate-300'}`}>
+                        {isSelected && <div className="w-2 h-2 rounded-full bg-blood" />}
+                      </div>
+                      <label className="text-xs font-bold text-slate-600 uppercase tracking-wide cursor-pointer">Cơ sở y tế / Bệnh viện</label>
+                    </div>
+                    <h4 className="font-bold text-navy text-lg leading-tight mb-2 pl-6">{sch.facility?.facility_name}</h4>
+                    <div className="flex items-start gap-2 text-sm text-slate-500 pl-6">
                       <MapPin className="w-4 h-4 shrink-0 mt-0.5 text-slate-400" />
                       <span className="line-clamp-2 leading-relaxed">{sch.facility?.address}</span>
                     </div>
@@ -411,118 +469,187 @@ export default function BookDonationPage() {
                 </div>
                 
                 {!sch.is_implicit && (
-                  <div className="flex flex-wrap items-center gap-3 text-sm font-medium mb-5">
-                    <div className="flex items-center gap-2 text-slate-700 bg-slate-50 px-3 py-2 rounded-sm border border-slate-100">
+                  <div className="flex flex-wrap items-center gap-3 text-sm font-medium mt-4 pl-6">
+                    <div className="flex items-center gap-2 text-slate-700 bg-white px-3 py-2 rounded-sm border border-slate-100 shadow-sm">
                       <Clock className="w-4 h-4 text-slate-400" />
                       {sch.start_time?.includes('T') ? sch.start_time.substring(11, 16) : sch.start_time} - {sch.end_time?.includes('T') ? sch.end_time.substring(11, 16) : sch.end_time}
                     </div>
-                    <div className="flex items-center gap-2 text-slate-700 bg-slate-50 px-3 py-2 rounded-sm border border-slate-100">
+                    <div className="flex items-center gap-2 text-slate-700 bg-white px-3 py-2 rounded-sm border border-slate-100 shadow-sm">
                       <Users className="w-4 h-4 text-slate-400" />
                       {sch.current_donors}/{sch.max_donors} người
                     </div>
-                  </div>
-                )}
-
-                {!isFull && (
-                  <div className="flex flex-col gap-5">
-                    
-                    {sch.is_implicit && (
-                      <div className="relative border-t border-slate-100 pt-4 mt-1">
-                        <label className="block text-xs font-bold text-slate-600 mb-2 uppercase tracking-wide">Khung giờ dự kiến đến hiến <span className="text-red-500">*</span></label>
-                        <select 
-                           value={expectedTime} 
-                           onChange={e => setExpectedTime(e.target.value)}
-                           className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-sm text-sm font-medium text-navy focus:outline-none focus:ring-1 focus:ring-blood focus:border-blood transition-colors cursor-pointer"
-                        >
-                           <option value="" disabled>-- Chọn khung giờ --</option>
-                           {[
-                             { value: '07:00', label: '07:00 Sáng' },
-                             { value: '08:00', label: '08:00 Sáng' },
-                             { value: '09:00', label: '09:00 Sáng' },
-                             { value: '10:00', label: '10:00 Sáng' },
-                             { value: '11:00', label: '11:00 Sáng' },
-                             { value: '13:30', label: '13:30 Chiều' },
-                             { value: '14:30', label: '14:30 Chiều' },
-                             { value: '15:30', label: '15:30 Chiều' },
-                             { value: '16:30', label: '16:30 Chiều' }
-                           ].map(opt => {
-                             let disabled = false;
-                             if (selectedDate && isToday(selectedDate)) {
-                               const [h, m] = opt.value.split(':').map(Number);
-                               const now = new Date();
-                               if (h < now.getHours() || (h === now.getHours() && m < now.getMinutes())) {
-                                 disabled = true;
-                               }
-                             }
-                             return (
-                               <option key={opt.value} value={opt.value} disabled={disabled} className={disabled ? 'text-slate-300' : 'text-slate-700'}>
-                                 {opt.label} {disabled ? '(Đã qua)' : ''}
-                               </option>
-                             );
-                           })}
-                        </select>
-                      </div>
-                    )}
-
-                    {/* Ghi chú & Xác nhận */}
-                    <div className="relative border-t border-slate-100 pt-4 mt-1">
-                      <label className="block text-xs font-bold text-slate-600 mb-2 uppercase tracking-wide">Ghi chú cho cơ sở y tế (Tùy chọn)</label>
-                      <input 
-                        type="text" 
-                        placeholder="Nhập ghi chú..." 
-                        value={notes}
-                        onChange={e => setNotes(e.target.value)}
-                        className="w-full px-4 py-3 bg-white border border-slate-200 rounded-sm text-sm focus:outline-none focus:ring-1 focus:ring-slate-400 focus:border-slate-400 placeholder:text-slate-400 transition-colors"
-                      />
-                    </div>
-
-                    <div className="flex items-center gap-2 bg-blue-50/50 p-3 rounded-sm border border-blue-100/50">
-                      <Info className="w-4 h-4 text-blue-600 shrink-0" />
-                      <span className="text-sm text-slate-600">
-                        Vui lòng đọc kỹ <button 
-                          onClick={() => {
-                            setViewingTermsHtml(sch.terms_html || '<p>Không có lưu ý đặc biệt từ cơ sở này.</p>');
-                            setIsTermsModalOpen(true);
-                          }} 
-                          className="text-blue-600 font-semibold hover:underline decoration-blue-600/30 underline-offset-2"
-                        >
-                          Lưu ý và Điều khoản hiến máu
-                        </button> trước khi đăng ký.
-                      </span>
-                    </div>
-
-                    <label className="flex items-start gap-3 cursor-pointer group pt-1">
-                      <div className="relative flex items-center justify-center mt-0.5 shrink-0">
-                        <input 
-                          type="checkbox" 
-                          checked={isConsentChecked}
-                          onChange={(e) => setIsConsentChecked(e.target.checked)}
-                          className="peer w-5 h-5 appearance-none border border-slate-300 rounded bg-white checked:bg-blood checked:border-blood transition-all cursor-pointer"
-                        />
-                        <CheckCircle2 className="w-3.5 h-3.5 text-white absolute pointer-events-none opacity-0 peer-checked:opacity-100 transition-opacity" />
-                      </div>
-                      <span className="text-sm text-slate-700 leading-relaxed group-hover:text-slate-900 transition-colors select-none">
-                        Tôi đã đọc kỹ và xác nhận bản thân đáp ứng đủ các tiêu chuẩn hiến máu ở trên.
-                      </span>
-                    </label>
-
-                    <button
-                      onClick={() => handleSubmitBooking(sch.schedule_id)}
-                      disabled={isSubmitting !== null || !isConsentChecked || (sch.is_implicit && !expectedTime)}
-                      className="w-full py-3.5 bg-blood text-white font-bold rounded-sm hover:bg-blood-dark transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed mt-2"
-                    >
-                      {isSubmitting === (sch.schedule_id || -1) ? (
-                        <><span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></span> Đang xử lý</>
-                      ) : (
-                        sch.is_implicit ? 'Xác nhận hiến máu khẩn cấp' : 'Xác nhận đăng ký'
-                      )}
-                    </button>
                   </div>
                 )}
               </div>
             );
           })}
         </div>
+
+        {selectedScheduleId && (() => {
+          const sch = availableSchedulesOnDate.find(s => s.schedule_id === selectedScheduleId);
+          if (!sch) return null;
+          return (
+            <div className="flex flex-col gap-5 border-t-2 border-slate-100 pt-6">
+              {sch.is_implicit && (
+                <div className="relative">
+                  <label className="block text-xs font-bold text-slate-600 mb-2 uppercase tracking-wide">Khung giờ dự kiến đến hiến <span className="text-red-500">*</span></label>
+                  <select 
+                     value={expectedTime} 
+                     onChange={e => setExpectedTime(e.target.value)}
+                     className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-sm text-sm font-medium text-navy focus:outline-none focus:ring-1 focus:ring-blood focus:border-blood transition-colors cursor-pointer"
+                  >
+                     <option value="" disabled>-- Chọn khung giờ --</option>
+                     {[
+                       { value: '07:00', label: '07:00 Sáng' },
+                       { value: '08:00', label: '08:00 Sáng' },
+                       { value: '09:00', label: '09:00 Sáng' },
+                       { value: '10:00', label: '10:00 Sáng' },
+                       { value: '11:00', label: '11:00 Sáng' },
+                       { value: '13:30', label: '13:30 Chiều' },
+                       { value: '14:30', label: '14:30 Chiều' },
+                       { value: '15:30', label: '15:30 Chiều' },
+                       { value: '16:30', label: '16:30 Chiều' }
+                     ].map(opt => {
+                       let disabled = false;
+                       if (selectedDate && isToday(selectedDate)) {
+                         const [h, m] = opt.value.split(':').map(Number);
+                         const now = new Date();
+                         if (h < now.getHours() || (h === now.getHours() && m < now.getMinutes())) {
+                           disabled = true;
+                         }
+                       }
+                       return (
+                         <option key={opt.value} value={opt.value} disabled={disabled} className={disabled ? 'text-slate-300' : 'text-slate-700'}>
+                           {opt.label} {disabled ? '(Đã qua)' : ''}
+                         </option>
+                       );
+                     })}
+                  </select>
+                </div>
+              )}
+
+              {/* B8: Bảng câu hỏi sàng lọc sức khỏe */}
+              <div className="relative">
+                <label className="block text-xs font-bold text-slate-600 mb-1 uppercase tracking-wide">
+                  Bảng Sàng Lọc Sức Khỏe <span className="text-red-500">*</span>
+                </label>
+                <p className="text-sm text-slate-500 mb-3 italic">
+                  Đánh dấu vào các mục dưới đây nếu bạn ĐANG mắc phải hoặc CÓ tiền sử:
+                </p>
+                <div className="space-y-3 bg-red-50/50 p-4 rounded-md border border-red-100">
+                  {riskQuestions.map((q, idx) => (
+                    <label key={idx} className="flex items-start gap-3 cursor-pointer group">
+                      <div className="relative flex items-center justify-center mt-0.5 shrink-0">
+                        <input 
+                          type="checkbox" 
+                          checked={riskAnswers[idx]}
+                          onChange={(e) => {
+                            const newArr = [...riskAnswers];
+                            newArr[idx] = e.target.checked;
+                            setRiskAnswers(newArr);
+                          }}
+                          className="peer w-5 h-5 appearance-none border border-slate-300 rounded bg-white checked:bg-red-500 checked:border-red-500 transition-all cursor-pointer"
+                        />
+                        <CheckCircle2 className="w-3.5 h-3.5 text-white absolute opacity-0 peer-checked:opacity-100 transition-opacity pointer-events-none" />
+                      </div>
+                      <span className="text-sm font-medium text-slate-700 group-hover:text-navy transition-colors">{q}</span>
+                    </label>
+                  ))}
+                </div>
+                {hasRisk && (
+                  <div className="mt-3 p-3 bg-red-100 border border-red-300 rounded text-red-800 text-sm flex items-start gap-2">
+                    <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
+                    <span>Xin lỗi bạn, với dữ liệu sàng lọc hiện tại thì bạn không thể hiến máu được rồi. Hãy khám bệnh kỹ và chăm sóc sức khỏe nhé!</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Lưu ý thêm cho bác sĩ */}
+              <div className="relative">
+                <label className="block text-xs font-bold text-slate-600 mb-1 uppercase tracking-wide">
+                  Lưu ý thêm cho bác sĩ (Tùy chọn)
+                </label>
+                <p className="text-sm text-slate-500 mb-3 italic">
+                  Đánh dấu nếu bạn có các tình trạng sau (vẫn có thể hiến máu nhưng cần bác sĩ lưu ý):
+                </p>
+                <div className="space-y-3 bg-amber-50/50 p-4 rounded-md border border-amber-100">
+                  {noteQuestions.map((q, idx) => (
+                    <label key={idx} className="flex items-start gap-3 cursor-pointer group">
+                      <div className="relative flex items-center justify-center mt-0.5 shrink-0">
+                        <input 
+                          type="checkbox" 
+                          checked={noteAnswers[idx]}
+                          onChange={(e) => {
+                            const newArr = [...noteAnswers];
+                            newArr[idx] = e.target.checked;
+                            setNoteAnswers(newArr);
+                          }}
+                          className="peer w-5 h-5 appearance-none border border-slate-300 rounded bg-white checked:bg-amber-500 checked:border-amber-500 transition-all cursor-pointer"
+                        />
+                        <CheckCircle2 className="w-3.5 h-3.5 text-white absolute opacity-0 peer-checked:opacity-100 transition-opacity pointer-events-none" />
+                      </div>
+                      <span className="text-sm font-medium text-slate-700 group-hover:text-navy transition-colors">{q}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {/* Ghi chú & Xác nhận */}
+              <div className="relative">
+                <label className="block text-xs font-bold text-slate-600 mb-2 uppercase tracking-wide">Ghi chú cho cơ sở y tế (Tùy chọn)</label>
+                <input 
+                  type="text" 
+                  placeholder="Nhập ghi chú..." 
+                  value={notes}
+                  onChange={e => setNotes(e.target.value)}
+                  className="w-full px-4 py-3 bg-white border border-slate-200 rounded-sm text-sm focus:outline-none focus:ring-1 focus:ring-slate-400 focus:border-slate-400 placeholder:text-slate-400 transition-colors"
+                />
+              </div>
+
+              <div className="flex items-center gap-2 bg-blue-50/50 p-3 rounded-sm border border-blue-100/50">
+                <Info className="w-4 h-4 text-blue-600 shrink-0" />
+                <span className="text-sm text-slate-600">
+                  Vui lòng đọc kỹ <button 
+                    onClick={() => {
+                      setViewingTermsHtml(sch.terms_html || '<p>Không có lưu ý đặc biệt từ cơ sở này.</p>');
+                      setIsTermsModalOpen(true);
+                    }} 
+                    className="text-blue-600 font-semibold hover:underline decoration-blue-600/30 underline-offset-2"
+                  >
+                    Lưu ý và Điều khoản hiến máu
+                  </button> trước khi đăng ký.
+                </span>
+              </div>
+
+              <label className="flex items-start gap-3 cursor-pointer group">
+                <div className="relative flex items-center justify-center mt-0.5 shrink-0">
+                  <input 
+                    type="checkbox" 
+                    checked={isConsentChecked}
+                    onChange={(e) => setIsConsentChecked(e.target.checked)}
+                    className="peer w-5 h-5 appearance-none border border-slate-300 rounded bg-white checked:bg-blood checked:border-blood transition-all cursor-pointer"
+                  />
+                  <CheckCircle2 className="w-3.5 h-3.5 text-white absolute pointer-events-none opacity-0 peer-checked:opacity-100 transition-opacity" />
+                </div>
+                <span className="text-sm text-slate-700 leading-relaxed group-hover:text-slate-900 transition-colors select-none">
+                  Tôi đã đọc kỹ và xác nhận bản thân đáp ứng đủ các tiêu chuẩn hiến máu ở trên.
+                </span>
+              </label>
+
+              <button
+                onClick={() => handleSubmitBooking(sch.schedule_id)}
+                disabled={isSubmitting === sch.schedule_id || !isConsentChecked || !isHealthCleared || (sch.is_implicit && !expectedTime)}
+                className="w-full py-3.5 bg-blood text-white font-bold rounded-sm hover:bg-blood-dark transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed mt-2"
+              >
+                {isSubmitting === (sch.schedule_id || -1) ? (
+                  <><span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></span> Đang xử lý</>
+                ) : (
+                  sch.is_implicit ? 'Xác nhận hiến máu khẩn cấp' : 'Xác nhận đăng ký'
+                )}
+              </button>
+            </div>
+          );
+        })()}
       </BaseModal>
 
       {/* View/Cancel Modal */}
@@ -639,14 +766,14 @@ export default function BookDonationPage() {
           </div>
         )}
       </BaseModal>
-      {/* Terms Modal */}
+      {/* Terms Modal - Hiển thị xếp tầng đè lên trên Modal đăng ký (z-[10002] > z-[9999]) */}
       <BaseModal
         open={isTermsModalOpen}
         onOpenChange={setIsTermsModalOpen}
         title="Lưu ý và Điều khoản hiến máu"
         size="2xl"
         hideFooter
-        zIndexClass="z-[60]"
+        zIndexClass="z-[10002]"
       >
         <div 
           className="prose prose-slate max-w-none text-sm bg-slate-50 p-6 rounded-xl border border-slate-100"

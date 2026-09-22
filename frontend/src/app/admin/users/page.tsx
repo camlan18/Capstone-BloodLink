@@ -209,12 +209,119 @@ export default function AdminUsersPage() {
     }
   };
 
+  const today = new Date();
+  const maxDobDate = new Date(today.getFullYear() - 18, today.getMonth(), today.getDate()).toISOString().split('T')[0];
+  const minDobDate = new Date(today.getFullYear() - 65, today.getMonth(), today.getDate()).toISOString().split('T')[0];
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // 1. Validate email
+    const emailTrim = formData.email.trim();
+    if (!emailTrim || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailTrim)) {
+      toast.error('Vui lòng nhập địa chỉ email hợp lệ');
+      return;
+    }
+
+    // 2. Validate họ và tên
+    const nameTrim = formData.full_name.trim();
+    if (!nameTrim) {
+      toast.error('Vui lòng nhập họ và tên');
+      return;
+    }
+    if (nameTrim.length < 2) {
+      toast.error('Họ và tên phải có ít nhất 2 ký tự');
+      return;
+    }
+    if (!/^[a-zA-ZÀ-ỹ\s'.-]+$/u.test(nameTrim)) {
+      toast.error('Họ và tên không được chứa ký tự đặc biệt hoặc số');
+      return;
+    }
+
+    // 3. Validate vai trò
+    if (!formData.role_id) {
+      toast.error('Vui lòng chọn vai trò người dùng');
+      return;
+    }
+
+    // 4. Validate mật khẩu khi thêm mới
+    if (!editingUser && formData.password && formData.password.length < 6) {
+      toast.error('Mật khẩu phải có ít nhất 6 ký tự');
+      return;
+    }
+
+    // 5. Validate số điện thoại
+    if (formData.phone) {
+      const cleanPhone = formData.phone.replace(/[\s.-]/g, '');
+      if (!/^(0|\+84)(3|5|7|8|9)[0-9]{8}$/.test(cleanPhone)) {
+        toast.error('Số điện thoại không hợp lệ (Phải gồm 10 chữ số, VD: 0901234567)');
+        return;
+      }
+    }
+
+    // 6. Validate CCCD/CMND
+    if (formData.identity_card) {
+      const cleanCccd = formData.identity_card.trim();
+      if (!/^[0-9]{9}$|^[0-9]{12}$/.test(cleanCccd)) {
+        toast.error('CCCD/CMND không hợp lệ (Phải gồm 9 hoặc 12 chữ số)');
+        return;
+      }
+    }
+
+    // 7. Validate Ngày sinh & Tuổi hiến máu
+    if (formData.date_of_birth) {
+      const dob = new Date(formData.date_of_birth);
+      const now = new Date();
+      if (dob > now) {
+        toast.error('Ngày sinh không thể là ngày trong tương lai');
+        return;
+      }
+
+      let age = now.getFullYear() - dob.getFullYear();
+      const m = now.getMonth() - dob.getMonth();
+      if (m < 0 || (m === 0 && now.getDate() < dob.getDate())) {
+        age--;
+      }
+
+      if (age < 18) {
+        toast.error(`Người dùng chưa đủ 18 tuổi (${age} tuổi). Theo quy định y tế, độ tuổi được phép hiến máu và tham gia hệ thống là từ đủ 18 tuổi trở lên.`);
+        return;
+      }
+      if (age > 65) {
+        toast.error(`Người dùng đã vượt quá độ tuổi hiến máu (${age} tuổi). Độ tuổi tối đa theo quy định là 60 - 65 tuổi.`);
+        return;
+      }
+    }
+
+    // 8. Validate Cơ sở y tế cho Hospital Staff
+    const selectedRole = roles.find(r => r.role_id.toString() === formData.role_id?.toString());
+    if (selectedRole?.role_code === 'HOSPITAL_STAFF') {
+      if (!formData.facility_id || formData.facility_id === '-1') {
+        toast.error('Vai trò Nhân viên bệnh viện bắt buộc phải chọn Cơ sở y tế trực thuộc');
+        return;
+      }
+    }
+
+    // 9. Validate Hồ sơ hiến máu (nếu nhập)
+    if (formData.weight_kg) {
+      const w = Number(formData.weight_kg);
+      if (isNaN(w) || w < 42 || w > 200) {
+        toast.error('Cân nặng không hợp lệ (Theo tiêu chuẩn hiến máu, tối thiểu 42kg với nữ và 45kg với nam)');
+        return;
+      }
+    }
+    if (formData.height_cm) {
+      const h = Number(formData.height_cm);
+      if (isNaN(h) || h < 100 || h > 250) {
+        toast.error('Chiều cao không hợp lệ (Trong khoảng 100cm - 250cm)');
+        return;
+      }
+    }
+
     try {
       const payload: any = { 
-        email: formData.email,
-        full_name: formData.full_name,
+        email: emailTrim,
+        full_name: nameTrim,
         role_id: Number(formData.role_id),
         is_active: formData.is_active,
         is_email_verified: formData.is_email_verified,
@@ -223,18 +330,19 @@ export default function AdminUsersPage() {
       };
 
       if (formData.password) payload.password = formData.password;
-      if (formData.username) payload.username = formData.username;
-      if (formData.phone) payload.phone = formData.phone;
+      if (formData.username) payload.username = formData.username.trim();
+      if (formData.phone) payload.phone = formData.phone.trim();
       if (formData.date_of_birth) payload.date_of_birth = formData.date_of_birth;
       if (formData.gender) payload.gender = formData.gender;
-      if (formData.identity_card) payload.identity_card = formData.identity_card;
-      if (formData.address) payload.address = formData.address;
-      if (formData.province_id) payload.province_id = Number(formData.province_id);
-      if (formData.ward_id) payload.ward_id = Number(formData.ward_id);
-      if (roles.find(r => r.role_id.toString() === formData.role_id)?.role_code === 'HOSPITAL_STAFF') {
-        payload.facility_id = formData.facility_id ? Number(formData.facility_id) : -1;
+      if (formData.identity_card) payload.identity_card = formData.identity_card.trim();
+      if (formData.address) payload.address = formData.address.trim();
+      if (formData.province_id && Number(formData.province_id) > 0) payload.province_id = Number(formData.province_id);
+      if (formData.ward_id && Number(formData.ward_id) > 0) payload.ward_id = Number(formData.ward_id);
+      
+      if (selectedRole?.role_code === 'HOSPITAL_STAFF' && formData.facility_id && Number(formData.facility_id) > 0) {
+        payload.facility_id = Number(formData.facility_id);
       } else {
-        payload.facility_id = -1;
+        payload.facility_id = null;
       }
 
       // Map donor_profile fields
@@ -242,7 +350,7 @@ export default function AdminUsersPage() {
         payload.donor_profile = {
           is_active: formData.dp_is_active
         };
-        if (formData.blood_type_id) payload.donor_profile.blood_type_id = Number(formData.blood_type_id);
+        if (formData.blood_type_id && Number(formData.blood_type_id) > 0) payload.donor_profile.blood_type_id = Number(formData.blood_type_id);
         if (formData.weight_kg) payload.donor_profile.weight_kg = Number(formData.weight_kg);
         if (formData.height_cm) payload.donor_profile.height_cm = Number(formData.height_cm);
         if (formData.first_donation_date) payload.donor_profile.first_donation_date = formData.first_donation_date;
@@ -524,22 +632,31 @@ export default function AdminUsersPage() {
                 <h3 className="font-semibold text-blood border-b pb-2 mb-4">Thông tin Cá nhân</h3>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Họ và tên <span className="text-red-500">*</span></label>
-                  <Input type="text" value={formData.full_name} onChange={e => setFormData({...formData, full_name: e.target.value})} required={modalTab === 'info'} />
+                  <Input type="text" value={formData.full_name} onChange={e => setFormData({...formData, full_name: e.target.value})} placeholder="Nguyễn Văn A" required={modalTab === 'info'} />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1">Số điện thoại</label>
-                    <Input type="text" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} />
+                    <Input type="text" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} placeholder="VD: 0901234567" />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1">CCCD/CMND</label>
-                    <Input type="text" value={formData.identity_card} onChange={e => setFormData({...formData, identity_card: e.target.value})} />
+                    <Input type="text" value={formData.identity_card} onChange={e => setFormData({...formData, identity_card: e.target.value})} placeholder="12 chữ số CCCD" maxLength={12} />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Ngày sinh</label>
-                    <Input type="date" value={formData.date_of_birth} onChange={e => setFormData({...formData, date_of_birth: e.target.value})} />
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-sm font-medium text-slate-700">Ngày sinh</label>
+                      <span className="text-[10px] text-blood font-semibold bg-red-50 px-1.5 py-0.5 rounded border border-red-100">Đủ 18 - 60 tuổi</span>
+                    </div>
+                    <Input 
+                      type="date" 
+                      min={minDobDate} 
+                      max={maxDobDate} 
+                      value={formData.date_of_birth} 
+                      onChange={e => setFormData({...formData, date_of_birth: e.target.value})} 
+                    />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1">Giới tính</label>
@@ -593,12 +710,15 @@ export default function AdminUsersPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Cân nặng (kg)</label>
-                    <Input type="number" value={formData.weight_kg} onChange={e => setFormData({...formData, weight_kg: e.target.value})} />
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-sm font-medium text-slate-700">Cân nặng (kg)</label>
+                      <span className="text-[10px] text-slate-400">≥ 42kg (Nữ) / ≥ 45kg (Nam)</span>
+                    </div>
+                    <Input type="number" min={40} max={200} step="0.1" value={formData.weight_kg} onChange={e => setFormData({...formData, weight_kg: e.target.value})} placeholder="VD: 55" />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1">Chiều cao (cm)</label>
-                    <Input type="number" value={formData.height_cm} onChange={e => setFormData({...formData, height_cm: e.target.value})} />
+                    <Input type="number" min={100} max={250} value={formData.height_cm} onChange={e => setFormData({...formData, height_cm: e.target.value})} placeholder="VD: 165" />
                   </div>
                 </div>
                 <div>
@@ -617,17 +737,17 @@ export default function AdminUsersPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1">Lần hiến đầu tiên</label>
-                    <Input type="date" value={formData.first_donation_date} onChange={e => setFormData({...formData, first_donation_date: e.target.value})} />
+                    <Input type="date" max={today.toISOString().split('T')[0]} value={formData.first_donation_date} onChange={e => setFormData({...formData, first_donation_date: e.target.value})} />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1">Tổng số lần hiến</label>
-                    <Input type="number" value={formData.total_donations} onChange={e => setFormData({...formData, total_donations: e.target.value})} />
+                    <Input type="number" min={0} value={formData.total_donations} onChange={e => setFormData({...formData, total_donations: e.target.value})} />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1">Lần hiến gần nhất</label>
-                    <Input type="date" value={formData.last_donation_date} onChange={e => setFormData({...formData, last_donation_date: e.target.value})} />
+                    <Input type="date" max={today.toISOString().split('T')[0]} value={formData.last_donation_date} onChange={e => setFormData({...formData, last_donation_date: e.target.value})} />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1">Ngày có thể hiến tiếp</label>
@@ -637,11 +757,11 @@ export default function AdminUsersPage() {
                 <div className="grid grid-cols-2 gap-4 mt-2">
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1">Tên liên hệ khẩn cấp</label>
-                    <Input type="text" value={formData.emergency_contact_name} onChange={e => setFormData({...formData, emergency_contact_name: e.target.value})} />
+                    <Input type="text" value={formData.emergency_contact_name} onChange={e => setFormData({...formData, emergency_contact_name: e.target.value})} placeholder="Họ tên người thân" />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1">SĐT liên hệ khẩn cấp</label>
-                    <Input type="text" value={formData.emergency_contact_phone} onChange={e => setFormData({...formData, emergency_contact_phone: e.target.value})} />
+                    <Input type="text" value={formData.emergency_contact_phone} onChange={e => setFormData({...formData, emergency_contact_phone: e.target.value})} placeholder="SĐT người thân" />
                   </div>
                 </div>
                 <div className="pt-2">

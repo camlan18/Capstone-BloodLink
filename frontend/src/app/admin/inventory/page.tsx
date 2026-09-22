@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { toast } from 'sonner';
-import { Loader2, Plus, Trash2, Filter, Edit } from 'lucide-react';
+import { Loader2, Plus, Trash2, Filter, Edit, ArrowRightLeft } from 'lucide-react';
 import { format } from 'date-fns';
 import { DataTable, Column, ActionItem } from '@/components/ui/DataTable';
 import { BaseModal } from '@/components/ui/BaseModal';
@@ -26,7 +26,7 @@ export default function AdminInventoryPage() {
   const [statusCode, setStatusCode] = useState<string>('AVAILABLE');
   
   const currentUser = useAuthStore(state => state.user);
-  const isStaff = currentUser?.role?.role_code === 'HOSPITAL_STAFF' || currentUser?.role?.role_code === 'STAFF' || (typeof currentUser?.role === 'string' && ['HOSPITAL_STAFF', 'STAFF'].includes(currentUser.role));
+  const isStaff = currentUser?.role?.role_code === 'HOSPITAL_STAFF' || (typeof currentUser?.role === 'string' && currentUser.role === 'HOSPITAL_STAFF');
   const [bagCode, setBagCode] = useState('');
   const [filterBloodType, setFilterBloodType] = useState<string>('ALL');
   const [filterFacility, setFilterFacility] = useState<string>('ALL');
@@ -148,7 +148,41 @@ export default function AdminInventoryPage() {
       toast.success('Đã tiêu hủy túi máu');
       fetchData();
     } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Tiêu hủy thất bại');
+      toast.error(error.response?.data?.message || 'Lỗi khi tiêu hủy túi máu');
+    }
+  };
+
+  // Transfer Modal
+  const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
+  const [transferringItem, setTransferringItem] = useState<any>(null);
+  const [transferFacilityId, setTransferFacilityId] = useState('');
+  const [transferNotes, setTransferNotes] = useState('');
+  
+  const handleOpenTransfer = (item: any) => {
+    setTransferringItem(item);
+    setTransferFacilityId('');
+    setTransferNotes('');
+    setIsTransferModalOpen(true);
+  };
+  
+  const handleTransfer = async () => {
+    if (!transferFacilityId) {
+      toast.error('Vui lòng chọn cơ sở y tế đích');
+      return;
+    }
+    try {
+      setSubmitting(true);
+      await adminInventoryService.transferBlood(transferringItem.inventory_id, {
+        to_facility_id: Number(transferFacilityId),
+        notes: transferNotes
+      });
+      toast.success('Đã chuyển túi máu thành công');
+      setIsTransferModalOpen(false);
+      fetchData();
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Lỗi khi chuyển máu');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -280,6 +314,12 @@ export default function AdminInventoryPage() {
       label: 'Chỉnh sửa',
       icon: <Edit className="w-4 h-4 text-blue-600" />,
       onClick: () => handleOpenEditModal(item)
+    },
+    {
+      label: 'Chuyển cơ sở',
+      icon: <ArrowRightLeft className="w-4 h-4 text-purple-600" />,
+      hidden: item.status_code !== 'AVAILABLE',
+      onClick: () => handleOpenTransfer(item)
     },
     {
       label: 'Tiêu hủy',
@@ -446,6 +486,40 @@ export default function AdminInventoryPage() {
         onImport={handleImport}
         onDownloadTemplate={handleDownloadTemplate}
       />
+
+      <BaseModal
+        open={isTransferModalOpen}
+        onOpenChange={setIsTransferModalOpen}
+        title={`Chuyển túi máu ${transferringItem?.bag_code || ''}`}
+        onSubmit={handleTransfer}
+        loading={submitting}
+        submitText="Xác nhận chuyển"
+        cancelText="Hủy"
+      >
+        <div className="space-y-4">
+          <div className="bg-slate-50 p-3 rounded-md border border-slate-200">
+            <p className="text-sm font-medium text-slate-700">Cơ sở hiện tại: <span className="font-bold text-navy">{transferringItem?.facility?.facility_name}</span></p>
+            <p className="text-sm font-medium text-slate-700 mt-1">Nhóm máu: <span className="font-bold text-blood">{transferringItem?.blood_type?.blood_type_code}</span></p>
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-slate-700">Chuyển đến cơ sở y tế <span className="text-red-500">*</span></label>
+            <SearchableSelect
+              options={facilities.filter(f => f.facility_id !== transferringItem?.facility_id).map(f => ({ value: f.facility_id.toString(), label: f.facility_name }))}
+              value={transferFacilityId}
+              onValueChange={setTransferFacilityId}
+              placeholder="Chọn cơ sở y tế đích..."
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-slate-700">Ghi chú (tùy chọn)</label>
+            <Input 
+              value={transferNotes}
+              onChange={e => setTransferNotes(e.target.value)}
+              placeholder="Lý do chuyển, ghi chú..." 
+            />
+          </div>
+        </div>
+      </BaseModal>
     </div>
   );
 }

@@ -2,7 +2,8 @@
 import { useEffect, useState } from 'react';
 import { donorService } from '@/lib/services/donor';
 import { DonationHistory } from '@/types';
-import { Calendar, Droplet, MapPin, Eye, FileText } from 'lucide-react';
+import { Calendar, Droplet, MapPin, Eye, FileText, Award } from 'lucide-react';
+import Link from 'next/link';
 import { BaseModal } from '@/components/ui/BaseModal';
 import { DataTable, Column, ActionItem } from '@/components/ui/DataTable';
 
@@ -145,6 +146,14 @@ export default function DonorHistoryPage() {
                 setSelectedItem(item);
                 setIsDetailOpen(true);
               }
+            },
+            {
+              label: 'Xem chứng nhận',
+              icon: <Award className="w-4 h-4 text-amber-500" />,
+              hidden: item.status !== 'COMPLETED' || !item.donation_id,
+              onClick: () => {
+                window.open(`/certificate/${item.donation_id}`, '_blank');
+              }
             }
           ]}
         />
@@ -181,6 +190,18 @@ export default function DonorHistoryPage() {
               <div className="mt-2 p-3 bg-slate-50 rounded-lg border border-slate-100">
                 <label className="flex items-center gap-1 text-xs font-medium text-slate-500 mb-1"><FileText className="w-3 h-3"/> Ghi chú / Lý do</label>
                 <div className="text-sm text-slate-700 whitespace-pre-wrap">{selectedItem.notes}</div>
+              </div>
+            )}
+
+            {selectedItem.status === 'COMPLETED' && selectedItem.donation_id && (
+              <div className="mt-4 pt-4 border-t border-slate-100 flex justify-end">
+                <Link 
+                  href={`/donor/certificate/${selectedItem.donation_id}`}
+                  className="flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                >
+                  <Award className="w-4 h-4" />
+                  Xem giấy chứng nhận
+                </Link>
               </div>
             )}
           </div>

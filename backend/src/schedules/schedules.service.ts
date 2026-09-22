@@ -3,6 +3,7 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateScheduleDto, UpdateScheduleDto, ScheduleFilterDto } from './dto/schedules.dto';
 import { NotificationsService, NotificationType } from '../notifications/notifications.service';
+import { ExcelUtil } from '../common/utils/excel.util';
 
 @Injectable()
 export class SchedulesService implements OnModuleInit {
@@ -314,7 +315,6 @@ export class SchedulesService implements OnModuleInit {
       'Ngày đăng ký': slot.created_at ? new Date(slot.created_at).toLocaleString('vi-VN') : '',
     }));
 
-    const ExcelUtil = require('../common/utils/excel.util').ExcelUtil;
     const buffer = ExcelUtil.generateExcel(dataToExport, 'Danh Sách Đăng Ký');
 
     return {
