@@ -176,9 +176,9 @@ export class InventoryService {
   /**
    * Thống kê kho máu (Group By Facility, Blood Type, Component)
    */
-  async getInventoryStats(user: any) {
+  async getInventoryStats(user: any, global: boolean = false) {
     const where: any = { status_code: 'AVAILABLE' };
-    if (user.role_code === 'HOSPITAL_STAFF') {
+    if (user.role_code === 'HOSPITAL_STAFF' && !global) {
       where.facility_id = user.facility_id || -1;
     }
 

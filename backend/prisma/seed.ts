@@ -13,6 +13,7 @@ async function main() {
   
   await prisma.inventory_transactions.deleteMany();
   await prisma.blood_request_inventory_allocations.deleteMany();
+  await prisma.blood_transfers.deleteMany();
   await prisma.blood_inventory.deleteMany();
   
   await prisma.donation_certificates.deleteMany();

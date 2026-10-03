@@ -5,8 +5,8 @@ export const adminInventoryService = {
     return await api.get('/inventory', { params });
   },
 
-  getInventoryStats: async () => {
-    return await api.get('/inventory/stats');
+  getInventoryStats: async (params?: any) => {
+    return await api.get('/inventory/stats', { params });
   },
 
   receiveBlood: async (data: any) => {

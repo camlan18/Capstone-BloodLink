@@ -409,12 +409,18 @@ export default function AdminUsersPage() {
     {
       key: 'user',
       title: 'Họ tên',
-      render: (user) => (
-        <div>
-          <div className="font-medium text-slate-800">{user.full_name || 'Chưa cập nhật'}</div>
-          <div className="text-xs text-slate-500">{user.email}</div>
-        </div>
-      )
+      render: (user) => {
+        const isFrequentDonor = user.donor_profile && user.donor_profile.total_donations >= 3;
+        return (
+          <div className={isFrequentDonor ? "animate-pulse" : ""}>
+            <div className={`font-medium ${isFrequentDonor ? 'text-blood font-bold' : 'text-slate-800'}`}>
+              {user.full_name || 'Chưa cập nhật'}
+              {isFrequentDonor && <span className="ml-2 text-[10px] bg-blood text-white px-1.5 py-0.5 rounded-full whitespace-nowrap">Người Hiến Nhiều</span>}
+            </div>
+            <div className="text-xs text-slate-500">{user.email}</div>
+          </div>
+        );
+      }
     },
     {
       key: 'phone',

@@ -185,7 +185,7 @@ export default function FacilitySealPage() {
     donation_id: 1,
     donor_name: 'NGUYỄN VĂN AN (MẪU XEM TRƯỚC)',
     donor_dob: '2000-01-01',
-    donor_address: formData.address || 'Quận Ninh Kiều, TP. Cần Thơ',
+    donor_address: formData.address || 'Phường An Phú, TP. Cần Thơ',
     donor_identity_card: '092000001234',
     blood_type: 'O+',
     donation_date: new Date(),
@@ -220,10 +220,10 @@ export default function FacilitySealPage() {
         <div>
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2.5">
             <FileSignature className="w-7 h-7 text-blood" />
-            Cấu Hình Con Dấu & Chữ Ký Số Bệnh Viện
+            Cấu Hình Con Dấu Bệnh Viện
           </h1>
           <p className="text-sm text-slate-500 mt-1">
-            Thiết lập con dấu mộc đỏ tròn (tách nền PNG) và chữ ký số bác sĩ để tự động đóng dấu lên Giấy Chứng Nhận Hiến Máu.
+            Thiết lập con dấu mộc đỏ tròn (tách nền PNG) để tự động đóng dấu lên Giấy Chứng Nhận Hiến Máu.
           </p>
         </div>
 
@@ -293,7 +293,7 @@ export default function FacilitySealPage() {
                 onChange={(e) => setFormData(prev => ({ ...prev, director_title: e.target.value }))}
                 placeholder="VD: KT. GIÁM ĐỐC - PHÓ GIÁM ĐỐC hoặc GIÁM ĐỐC"
               />
-              <p className="text-[11px] text-slate-400 mt-1">Dòng chữ chức danh in phía trên con dấu và chữ ký</p>
+              <p className="text-[11px] text-slate-400 mt-1">Dòng chữ chức danh in phía trên con dấu</p>
             </div>
 
             <div>
@@ -303,7 +303,7 @@ export default function FacilitySealPage() {
                 onChange={(e) => setFormData(prev => ({ ...prev, director_name: e.target.value }))}
                 placeholder="VD: TS. BS. CKII. Nguyễn Tri Thức"
               />
-              <p className="text-[11px] text-slate-400 mt-1">Họ tên bác sĩ lãnh đạo in bên dưới chữ ký</p>
+              <p className="text-[11px] text-slate-400 mt-1">Họ tên bác sĩ lãnh đạo in bên dưới con dấu</p>
             </div>
           </div>
 
@@ -373,92 +373,7 @@ export default function FacilitySealPage() {
             </div>
           </div>
 
-          {/* Box 3: Ký Điện Tử Trực Tiếp & Chữ Ký Bác Sĩ */}
-          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                <FileSignature className="w-5 h-5 text-indigo-600" />
-                Chữ Ký Số / Chữ Ký Bác Sĩ
-              </h3>
-              {formData.signature_image_url && (
-                <button
-                  type="button"
-                  onClick={() => setFormData(prev => ({ ...prev, signature_image_url: '' }))}
-                  className="text-xs text-red-600 hover:underline flex items-center gap-1"
-                >
-                  <RotateCcw className="w-3 h-3" />
-                  Dùng chữ ký mặc định
-                </button>
-              )}
-            </div>
 
-            {/* Current Signature Display */}
-            <div className="flex items-center gap-4 p-3 rounded-xl border border-slate-200 bg-slate-50/60">
-              <div className="w-36 h-20 rounded-lg border border-slate-200 bg-[radial-gradient(#cbd5e1_1px,transparent_1px)] [background-size:8px_8px] flex items-center justify-center p-2 shrink-0 relative shadow-inner">
-                {formData.signature_image_url ? (
-                  <img
-                    src={formData.signature_image_url}
-                    alt="Chữ ký hiện tại"
-                    className="w-full h-full object-contain -rotate-3"
-                  />
-                ) : (
-                  <div className="text-center p-1">
-                    <span className="text-[11px] font-serif italic text-slate-500 block">Chữ ký mẫu mặc định</span>
-                  </div>
-                )}
-              </div>
-
-              <div className="text-xs space-y-1">
-                <p className="font-semibold text-slate-800">
-                  {formData.signature_image_url ? 'Đang dùng chữ ký điện tử riêng' : 'Đang dùng chữ ký vector mặc định'}
-                </p>
-                <p className="text-[11px] text-slate-500">
-                  Người ký: <strong>{formData.director_name || 'Chưa đặt'}</strong>
-                </p>
-              </div>
-            </div>
-
-            {/* Digital Signature Pad Component */}
-            <div className="pt-2 border-t border-slate-100">
-              <label className="block text-xs font-bold text-slate-800 mb-2 flex items-center gap-1.5">
-                <PenTool className="w-3.5 h-3.5 text-indigo-600" />
-                Ký Điện Tử Trực Tiếp Hoặc Chọn Mẫu:
-              </label>
-              <DigitalSignaturePad
-                signerName={formData.director_name || 'Bác sĩ'}
-                initialSignature={formData.signature_image_url}
-                onSave={(dataUrl) => {
-                  setFormData(prev => ({ ...prev, signature_image_url: dataUrl }));
-                }}
-              />
-            </div>
-
-            {/* Alternative: Upload file */}
-            <div className="pt-2 border-t border-dashed border-slate-200 text-xs text-slate-500">
-              <span className="text-[11px] block mb-1 text-slate-400">Hoặc tải lên file chữ ký (.PNG tách nền nếu có sẵn):</span>
-              <input
-                ref={signatureInputRef}
-                type="file"
-                accept="image/png,image/webp"
-                className="hidden"
-                onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  if (f) handleUploadFile(f, 'signature');
-                }}
-              />
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => signatureInputRef.current?.click()}
-                disabled={uploadingSignature}
-                className="w-full text-xs h-8 border-slate-300"
-              >
-                {uploadingSignature ? <Loader2 className="w-3 h-3 mr-1.5 animate-spin" /> : <Upload className="w-3 h-3 mr-1.5" />}
-                Tải lên file ảnh chữ ký (.PNG)
-              </Button>
-            </div>
-          </div>
 
         </div>
 
@@ -483,7 +398,7 @@ export default function FacilitySealPage() {
           </div>
 
           <p className="text-xs text-slate-500 text-center italic">
-            * Kéo thanh trượt ngang để xem trọn vẹn cả 2 mặt giấy chứng nhận chuẩn khổ in. Mọi thay đổi con dấu và chữ ký số sẽ áp dụng ngay khi cấp chứng nhận mới.
+            * Kéo thanh trượt ngang để xem trọn vẹn cả 2 mặt giấy chứng nhận chuẩn khổ in. Mọi thay đổi con dấu sẽ áp dụng ngay khi cấp chứng nhận mới.
           </p>
         </div>
 

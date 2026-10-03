@@ -102,20 +102,28 @@ export default function BloodMap({ facilities, onFacilitySelect, selectedFacilit
   useEffect(() => {
     if (!mapContainerRef.current || mapRef.current) return;
 
+    const vietnamBounds = L.latLngBounds(
+      [7.0, 102.0], // Tây Nam
+      [23.5, 118.0] // Đông Bắc
+    );
+
     const map = L.map(mapContainerRef.current, {
       center: defaultCenter,
       zoom: defaultZoom,
       zoomControl: false,
       attributionControl: false,
+      maxBounds: vietnamBounds,
+      maxBoundsViscosity: 1.0, // Ngăn người dùng kéo bản đồ ra khỏi giới hạn
+      minZoom: 5, // Không cho phép zoom out quá xa
     });
 
     // Add zoom control to top-right
     L.control.zoom({ position: 'topright' }).addTo(map);
 
-    // Standard OpenStreetMap tiles - 100% free, no API key required, reliable worldwide
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    // Google Maps tiles - Recommended for Vietnam to ensure proper territorial sovereignty representation
+    L.tileLayer('https://mt0.google.com/vt/lyrs=m&hl=vi&x={x}&y={y}&z={z}', {
       maxZoom: 19,
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      attribution: '&copy; Google Maps',
     }).addTo(map);
 
     markersRef.current = L.layerGroup().addTo(map);

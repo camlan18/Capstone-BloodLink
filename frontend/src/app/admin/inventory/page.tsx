@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { adminInventoryService } from '@/lib/services/admin-inventory';
 import { adminMasterDataService } from '@/lib/services/admin-master-data';
+import { adminTransferService } from '@/lib/services/admin-transfers';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -152,39 +153,7 @@ export default function AdminInventoryPage() {
     }
   };
 
-  // Transfer Modal
-  const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
-  const [transferringItem, setTransferringItem] = useState<any>(null);
-  const [transferFacilityId, setTransferFacilityId] = useState('');
-  const [transferNotes, setTransferNotes] = useState('');
-  
-  const handleOpenTransfer = (item: any) => {
-    setTransferringItem(item);
-    setTransferFacilityId('');
-    setTransferNotes('');
-    setIsTransferModalOpen(true);
-  };
-  
-  const handleTransfer = async () => {
-    if (!transferFacilityId) {
-      toast.error('Vui lòng chọn cơ sở y tế đích');
-      return;
-    }
-    try {
-      setSubmitting(true);
-      await adminInventoryService.transferBlood(transferringItem.inventory_id, {
-        to_facility_id: Number(transferFacilityId),
-        notes: transferNotes
-      });
-      toast.success('Đã chuyển túi máu thành công');
-      setIsTransferModalOpen(false);
-      fetchData();
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Lỗi khi chuyển máu');
-    } finally {
-      setSubmitting(false);
-    }
-  };
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -282,10 +251,19 @@ export default function AdminInventoryPage() {
       render: (item) => {
         const cDate = item.collection_date ? new Date(item.collection_date) : null;
         const eDate = item.expiry_date ? new Date(item.expiry_date) : null;
+        const now = new Date();
+        const diffDays = eDate ? Math.ceil((eDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) : 999;
+        const isExpiringSoon = item.status_code === 'AVAILABLE' && diffDays > 0 && diffDays <= 7;
+        
         return (
-          <div>
-            <div className="text-slate-800">{cDate && !isNaN(cDate.getTime()) ? format(cDate, 'dd/MM/yyyy') : '---'}</div>
-            <div className="text-xs text-slate-500">HSD: {eDate && !isNaN(eDate.getTime()) ? format(eDate, 'dd/MM/yyyy') : '---'}</div>
+          <div className={isExpiringSoon ? "animate-pulse" : ""}>
+            <div className={`font-medium ${isExpiringSoon ? 'text-red-600' : 'text-slate-800'}`}>
+              {cDate && !isNaN(cDate.getTime()) ? format(cDate, 'dd/MM/yyyy') : '---'}
+            </div>
+            <div className={`text-xs ${isExpiringSoon ? 'text-red-500 font-bold' : 'text-slate-500'}`}>
+              HSD: {eDate && !isNaN(eDate.getTime()) ? format(eDate, 'dd/MM/yyyy') : '---'}
+              {isExpiringSoon && <span className="ml-1 text-[10px] bg-red-600 text-white px-1.5 py-0.5 rounded-full whitespace-nowrap">Sắp Hết Hạn</span>}
+            </div>
           </div>
         );
       }
@@ -315,12 +293,7 @@ export default function AdminInventoryPage() {
       icon: <Edit className="w-4 h-4 text-blue-600" />,
       onClick: () => handleOpenEditModal(item)
     },
-    {
-      label: 'Chuyển cơ sở',
-      icon: <ArrowRightLeft className="w-4 h-4 text-purple-600" />,
-      hidden: item.status_code !== 'AVAILABLE',
-      onClick: () => handleOpenTransfer(item)
-    },
+
     {
       label: 'Tiêu hủy',
       icon: <Trash2 className="w-4 h-4 text-red-600" />,
@@ -487,39 +460,7 @@ export default function AdminInventoryPage() {
         onDownloadTemplate={handleDownloadTemplate}
       />
 
-      <BaseModal
-        open={isTransferModalOpen}
-        onOpenChange={setIsTransferModalOpen}
-        title={`Chuyển túi máu ${transferringItem?.bag_code || ''}`}
-        onSubmit={handleTransfer}
-        loading={submitting}
-        submitText="Xác nhận chuyển"
-        cancelText="Hủy"
-      >
-        <div className="space-y-4">
-          <div className="bg-slate-50 p-3 rounded-md border border-slate-200">
-            <p className="text-sm font-medium text-slate-700">Cơ sở hiện tại: <span className="font-bold text-navy">{transferringItem?.facility?.facility_name}</span></p>
-            <p className="text-sm font-medium text-slate-700 mt-1">Nhóm máu: <span className="font-bold text-blood">{transferringItem?.blood_type?.blood_type_code}</span></p>
-          </div>
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-slate-700">Chuyển đến cơ sở y tế <span className="text-red-500">*</span></label>
-            <SearchableSelect
-              options={facilities.filter(f => f.facility_id !== transferringItem?.facility_id).map(f => ({ value: f.facility_id.toString(), label: f.facility_name }))}
-              value={transferFacilityId}
-              onValueChange={setTransferFacilityId}
-              placeholder="Chọn cơ sở y tế đích..."
-            />
-          </div>
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-slate-700">Ghi chú (tùy chọn)</label>
-            <Input 
-              value={transferNotes}
-              onChange={e => setTransferNotes(e.target.value)}
-              placeholder="Lý do chuyển, ghi chú..." 
-            />
-          </div>
-        </div>
-      </BaseModal>
+
     </div>
   );
 }

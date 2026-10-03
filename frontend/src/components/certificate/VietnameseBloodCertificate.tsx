@@ -402,37 +402,7 @@ export const VietnameseBloodCertificate: React.FC<Props> = ({ data, className = 
                         )
                       ) : null}
 
-                      {/* Chữ ký số / Chữ ký Bác sĩ (lồng vào con dấu) */}
-                      {isApproved ? (
-                        data.facility_signature_url ? (
-                          <img 
-                            src={data.facility_signature_url} 
-                            alt="Chữ ký bác sĩ" 
-                            className="w-44 h-24 object-contain relative z-10 -rotate-3 filter drop-shadow-sm"
-                          />
-                        ) : (
-                          /* SVG Chữ ký nghệ thuật mặc định */
-                          <div className="relative z-10 -rotate-6 select-none">
-                            <svg className="w-40 h-20 text-[#1E3A8A]" viewBox="0 0 160 70">
-                              <path 
-                                d="M 15 45 C 30 15, 45 60, 60 25 C 75 5, 80 50, 95 30 C 110 15, 120 40, 145 20" 
-                                fill="none" 
-                                stroke="#1e3a8a" 
-                                strokeWidth="2.5" 
-                                strokeLinecap="round" 
-                                strokeLinejoin="round" 
-                              />
-                              <path 
-                                d="M 40 55 C 70 58, 120 48, 150 50" 
-                                fill="none" 
-                                stroke="#1e3a8a" 
-                                strokeWidth="1.8" 
-                                strokeLinecap="round" 
-                              />
-                            </svg>
-                          </div>
-                        )
-                      ) : null}
+
                     </div>
 
                     {/* Họ tên người ký */}

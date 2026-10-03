@@ -56,8 +56,8 @@ export class InventoryController {
 
   @Roles(RoleCode.ADMIN, RoleCode.STAFF, RoleCode.HOSPITAL_STAFF)
   @Get('stats')
-  async getStats(@Req() req: any) {
-    return await this.inventoryService.getInventoryStats(req.user);
+  async getStats(@Req() req: any, @Query('global') global?: string) {
+    return await this.inventoryService.getInventoryStats(req.user, global === 'true');
   }
 
   @Roles(RoleCode.ADMIN, RoleCode.STAFF, RoleCode.HOSPITAL_STAFF)

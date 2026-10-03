@@ -21,6 +21,7 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { SystemSettingsModule } from './system-settings/system-settings.module';
 import { SchedulesModule } from './schedules/schedules.module';
 import { DashboardModule } from './dashboard/dashboard.module';
+import { TransferModule } from './transfer/transfer.module';
 
 @Module({
   imports: [
@@ -41,6 +42,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
     SystemSettingsModule,
     SchedulesModule,
     DashboardModule,
+    TransferModule,
   ],
   controllers: [AppController],
   providers: [

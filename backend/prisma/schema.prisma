@@ -35,6 +35,7 @@ model blood_types {
   blood_inventory         blood_inventory[]
   blood_requests          blood_requests[]
   donations               donations[]
+  blood_transfers         blood_transfers[]
 }
 
 model blood_components {
@@ -50,6 +51,7 @@ model blood_components {
   blood_requests          blood_requests[]
   donations               donations[]
   donation_reminders      donation_reminders[]
+  blood_transfers         blood_transfers[]
 }
 
 model blood_compatibility {
@@ -152,6 +154,8 @@ model medical_facilities {
   blood_requests  blood_requests[]
   donations       donations[]
   facility_donation_schedules facility_donation_schedules[]
+  transfers_from  blood_transfers[] @relation("TransferFrom")
+  transfers_to    blood_transfers[] @relation("TransferTo")
 }
 
 model facility_donation_schedules {
@@ -300,6 +304,8 @@ model users {
   user_sessions                       user_sessions[]
   notifications                       notifications[]
   approved_certificates               donation_certificates[]               @relation("CertificateApprover")
+  transfer_requests                   blood_transfers[]                     @relation("TransferRequester")
+  transfer_approvals                  blood_transfers[]                     @relation("TransferApprover")
 }
 
 model user_sessions {
@@ -377,6 +383,7 @@ model blood_inventory {
   source_donation                     donations?                            @relation("InventoryDonation", fields: [source_donation_id], references: [donation_id], onDelete: NoAction, onUpdate: NoAction)
   inventory_transactions              inventory_transactions[]
   blood_request_inventory_allocations blood_request_inventory_allocations[]
+  blood_transfers                     blood_transfers[]
 }
 
 model inventory_transactions {
@@ -596,6 +603,36 @@ model notifications {
   updated_at        DateTime? @db.DateTime2
 
   user users @relation(fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model blood_transfers {
+  transfer_id         Int       @id @default(autoincrement())
+  transfer_code       String    @unique @db.NVarChar(30)
+  from_facility_id    Int
+  to_facility_id      Int
+  blood_type_id       Int
+  component_id        Int
+  inventory_id        Int?
+  units_requested     Int       @default(1)
+  status              String    @default("PENDING") @db.NVarChar(20)
+  reason              String?   @db.NVarChar(1000)
+  notes               String?   @db.NVarChar(1000)
+  reject_reason       String?   @db.NVarChar(500)
+  requested_by        Int?
+  approved_by         Int?
+  approved_at         DateTime? @db.DateTime2
+  shipped_at          DateTime? @db.DateTime2
+  received_at         DateTime? @db.DateTime2
+  created_at          DateTime  @default(now()) @db.DateTime2
+  updated_at          DateTime? @db.DateTime2
+
+  from_facility       medical_facilities @relation("TransferFrom", fields: [from_facility_id], references: [facility_id], onDelete: NoAction, onUpdate: NoAction)
+  to_facility         medical_facilities @relation("TransferTo", fields: [to_facility_id], references: [facility_id], onDelete: NoAction, onUpdate: NoAction)
+  blood_type          blood_types        @relation(fields: [blood_type_id], references: [blood_type_id], onDelete: NoAction, onUpdate: NoAction)
+  component           blood_components   @relation(fields: [component_id], references: [component_id], onDelete: NoAction, onUpdate: NoAction)
+  inventory           blood_inventory?   @relation(fields: [inventory_id], references: [inventory_id], onDelete: NoAction, onUpdate: NoAction)
+  requester           users?             @relation("TransferRequester", fields: [requested_by], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+  approver            users?             @relation("TransferApprover", fields: [approved_by], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
 }
 
 model system_settings {
