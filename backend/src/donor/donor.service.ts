@@ -1,3 +1,4 @@
+// Trigger restart
 import { Injectable, BadRequestException, NotFoundException, ForbiddenException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { Cron, CronExpression } from '@nestjs/schedule';
@@ -640,7 +641,10 @@ export class DonorService {
           },
           approver: { select: { full_name: true } }
         },
-        orderBy: { created_at: 'desc' }
+        orderBy: [
+          { approved_at: { sort: 'desc', nulls: 'first' } },
+          { created_at: 'desc' }
+        ]
       }),
       this.prisma.donation_certificates.count({ where })
     ]);
@@ -701,7 +705,10 @@ export class DonorService {
           },
           approver: { select: { full_name: true } }
         },
-        orderBy: { created_at: 'desc' }
+        orderBy: [
+          { approved_at: { sort: 'desc', nulls: 'first' } },
+          { created_at: 'desc' }
+        ]
       }),
       this.prisma.donation_certificates.count({ where })
     ]);
