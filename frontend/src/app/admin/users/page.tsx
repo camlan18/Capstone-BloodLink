@@ -447,13 +447,26 @@ export default function AdminUsersPage() {
     {
       key: 'status',
       title: 'Trạng thái',
-      render: (user) => (
-        <span className={`px-2.5 py-1 rounded-full text-xs font-semibold
-          ${user.is_active ? 'bg-emerald-50 text-emerald-600 border border-emerald-200' : 'bg-red-50 text-red-600 border border-red-200'}
-        `}>
-          {user.is_active ? 'Hoạt động' : 'Bị khóa'}
-        </span>
-      )
+      render: (user) => {
+        const statusText = user.computed_status || (user.is_active ? 'Đang hoạt động' : 'Bị khóa');
+        let statusColor = 'bg-slate-50 text-slate-600 border border-slate-200';
+        
+        if (statusText === 'Đang hoạt động') {
+          statusColor = 'bg-emerald-50 text-emerald-600 border border-emerald-200';
+        } else if (statusText === 'Bị khóa') {
+          statusColor = 'bg-red-50 text-red-600 border border-red-200';
+        } else if (statusText === 'Chưa xác thực') {
+          statusColor = 'bg-amber-50 text-amber-600 border border-amber-200';
+        } else if (statusText === 'Chưa hoạt động') {
+          statusColor = 'bg-blue-50 text-blue-600 border border-blue-200';
+        }
+
+        return (
+          <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${statusColor}`}>
+            {statusText}
+          </span>
+        );
+      }
     },
     {
       key: 'created_at',

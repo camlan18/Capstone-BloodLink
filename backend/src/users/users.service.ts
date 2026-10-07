@@ -113,8 +113,19 @@ export class UsersService {
       this.prisma.users.count({ where }),
     ]);
 
-    data.forEach((user: any) => delete user.password_hash);
-    
+    data.forEach((user: any) => {
+      delete user.password_hash;
+      
+      if (!user.is_active) {
+        user.computed_status = 'Bị khóa';
+      } else if (!user.is_email_verified) {
+        user.computed_status = 'Chưa xác thực';
+      } else if (!user.last_login_at) {
+        user.computed_status = 'Chưa hoạt động';
+      } else {
+        user.computed_status = 'Đang hoạt động';
+      }
+    });
     return {
       data,
       meta: {
@@ -537,7 +548,7 @@ export class UsersService {
       'Giới tính': item.gender === 'M' ? 'Nam' : item.gender === 'F' ? 'Nữ' : 'Khác',
       'Vai trò': item.role?.role_name || '',
       'Cơ sở (Nếu có)': item.facility?.facility_name || '',
-      'Trạng thái': item.is_active ? 'Hoạt động' : 'Đã khóa'
+      'Trạng thái': item.computed_status || (item.is_active ? 'Hoạt động' : 'Bị khóa')
     }));
     return ExcelUtil.generateExcel(data, 'NguoiDung');
   }
