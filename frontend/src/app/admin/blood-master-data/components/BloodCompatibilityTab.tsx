@@ -233,7 +233,7 @@ export default function BloodCompatibilityTab() {
                   {bloodTypes.map(bt => {
                     const isChecked = formData.recipient_blood_type_ids?.includes(bt.blood_type_id);
                     return (
-                      <label key={bt.blood_type_id} className={`flex items-center justify-center p-2 border rounded cursor-pointer transition-colors ${isChecked ? 'bg-blood/10 border-blood text-blood font-bold' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
+                      <label key={bt.blood_type_id} className={`flex items-center justify-center p-2 border rounded cursor-pointer transition-colors ${isChecked ? 'bg-blood/10 border-blue-600 text-blue-600 font-bold' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
                         <input 
                           type="checkbox" 
                           className="hidden"

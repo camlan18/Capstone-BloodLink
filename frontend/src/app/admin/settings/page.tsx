@@ -9,6 +9,8 @@ import { DataTable, Column, ActionItem } from '@/components/ui/DataTable';
 import { BaseModal } from '@/components/ui/BaseModal';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { PageHeader } from '@/components/ui/PageHeader';
+
 
 export default function AdminSettingsPage() {
   const [loading, setLoading] = useState(true);
@@ -159,19 +161,17 @@ export default function AdminSettingsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-800 tracking-tight flex items-center gap-2">
-            <Settings className="w-6 h-6 text-slate-700" /> Cài đặt Hệ thống
-          </h1>
-          <p className="text-sm text-slate-500 mt-1">Quản lý các biến số cấu hình quan trọng của hệ thống</p>
+            <PageHeader
+        title="Cài đặt Hệ thống"
+        description="Quản lý các biến số cấu hình quan trọng của hệ thống"
+        action={
+          <div className="flex items-center gap-3">
+        <Button onClick={handleCreate} className="bg-slate-800 hover:bg-slate-900 text-white shadow-none rounded-md px-4">
+        <Plus className="w-4 h-4 mr-2" /> Thêm biến cấu hình
+        </Button>
         </div>
-        <div className="flex items-center gap-3">
-          <Button onClick={handleCreate} className="bg-slate-800 hover:bg-slate-900 text-white shadow-none rounded-md px-4">
-            <Plus className="w-4 h-4 mr-2" /> Thêm biến cấu hình
-          </Button>
-        </div>
-      </div>
+        }
+      />
 
       <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-800">
         <strong>Lưu ý:</strong> Việc thay đổi các khóa cài đặt (Setting Key) hoặc giá trị (Value) không đúng có thể làm ứng dụng gặp lỗi. Vui lòng chỉ thay đổi khi bạn nắm rõ tác dụng của biến hệ thống đó.

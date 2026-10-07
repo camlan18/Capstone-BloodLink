@@ -108,7 +108,7 @@ export class TransferService {
    * 2. Duyệt phiếu chuyển máu (PENDING → APPROVED)
    * Cơ sở có máu duyệt, chọn túi máu cụ thể để chuyển
    */
-  async approveTransfer(transferId: number, user: any, inventoryId?: number) {
+  async approveTransfer(transferId: number, user: any, inventoryIds?: number[]) {
     const transfer = await this.prisma.blood_transfers.findUnique({
       where: { transfer_id: transferId },
       include: { from_facility: true, to_facility: true },
@@ -120,25 +120,34 @@ export class TransferService {
     }
 
     return await this.prisma.$transaction(async (tx) => {
-      // If inventory_id provided during approval, validate and assign
-      const finalInventoryId = inventoryId || transfer.inventory_id;
-      if (finalInventoryId) {
-        const inv = await tx.blood_inventory.findUnique({
-          where: { inventory_id: finalInventoryId },
-        });
-        if (!inv) throw new BadRequestException('Túi máu không tồn tại');
-        if (inv.facility_id !== transfer.from_facility_id) {
-          throw new BadRequestException('Túi máu không thuộc cơ sở xuất');
-        }
-        if (inv.status_code !== 'AVAILABLE') {
-          throw new BadRequestException(`Túi máu đang ở trạng thái ${inv.status_code}, không thể chuyển`);
-        }
+      let finalIds = inventoryIds || [];
+      if (finalIds.length === 0 && transfer.inventory_id) {
+        finalIds = [transfer.inventory_id];
+      }
 
-        // Lock the inventory bag
-        await tx.blood_inventory.update({
-          where: { inventory_id: finalInventoryId },
-          data: { status_code: 'ALLOCATED' },
-        });
+      const bagsToStore = [];
+
+      if (finalIds.length > 0) {
+        for (const invId of finalIds) {
+          const inv = await tx.blood_inventory.findUnique({
+            where: { inventory_id: invId },
+          });
+          if (!inv) throw new BadRequestException(`Túi máu ID ${invId} không tồn tại`);
+          if (inv.facility_id !== transfer.from_facility_id) {
+            throw new BadRequestException(`Túi máu ID ${invId} không thuộc cơ sở xuất`);
+          }
+          if (inv.status_code !== 'AVAILABLE') {
+            throw new BadRequestException(`Túi máu ID ${invId} đang ở trạng thái ${inv.status_code}, không thể chuyển`);
+          }
+
+          // Lock the inventory bag
+          await tx.blood_inventory.update({
+            where: { inventory_id: invId },
+            data: { status_code: 'ALLOCATED' },
+          });
+
+          bagsToStore.push({ id: inv.inventory_id, code: inv.bag_code, volume: inv.volume_ml });
+        }
       }
 
       const updated = await tx.blood_transfers.update({
@@ -147,7 +156,8 @@ export class TransferService {
           status: 'APPROVED',
           approved_by: user.user_id,
           approved_at: new Date(),
-          inventory_id: finalInventoryId,
+          inventory_id: finalIds[0] || null, // Keep the first one for backward compatibility
+          inventory_ids: JSON.stringify(bagsToStore),
           updated_at: new Date(),
         },
         include: {
@@ -179,28 +189,39 @@ export class TransferService {
         throw new BadRequestException(`Phiếu đang ở trạng thái ${transfer.status}, cần duyệt trước khi xuất kho`);
       }
 
-      if (!transfer.inventory_id) {
+      let finalIds: number[] = [];
+      if (transfer.inventory_ids) {
+        try {
+          const parsed = JSON.parse(transfer.inventory_ids);
+          finalIds = parsed.map((x: any) => typeof x === 'object' ? x.id : x);
+        } catch (e) {}
+      }
+      if (finalIds.length === 0 && transfer.inventory_id) {
+        finalIds = [transfer.inventory_id];
+      }
+
+      if (finalIds.length === 0) {
         throw new BadRequestException('Chưa chọn túi máu cụ thể cho phiếu chuyển này');
       }
 
-      // (Optional) ensure the inventory is ALLOCATED
-      await tx.blood_inventory.update({
-        where: { inventory_id: transfer.inventory_id },
-        data: { status_code: 'ALLOCATED' },
-      });
+      for (const invId of finalIds) {
+        await tx.blood_inventory.update({
+          where: { inventory_id: invId },
+          data: { status_code: 'ALLOCATED' }, // Ensure ALLOCATED
+        });
 
-      // Log transaction
-      await tx.inventory_transactions.create({
-        data: {
-          inventory_id: transfer.inventory_id,
-          transaction_type: 'OUT',
-          quantity: 1,
-          reference_type: 'TRANSFER',
-          reference_id: transfer.transfer_id,
-          performed_by: user.user_id,
-          notes: `Xuất kho chuyển máu: ${transfer.transfer_code}`,
-        },
-      });
+        await tx.inventory_transactions.create({
+          data: {
+            inventory_id: invId,
+            transaction_type: 'OUT',
+            quantity: 1,
+            reference_type: 'TRANSFER',
+            reference_id: transfer.transfer_id,
+            performed_by: user.user_id,
+            notes: `Xuất kho chuyển máu: ${transfer.transfer_code}`,
+          },
+        });
+      }
 
       const updated = await tx.blood_transfers.update({
         where: { transfer_id: transferId },
@@ -238,31 +259,44 @@ export class TransferService {
         throw new BadRequestException(`Phiếu đang ở trạng thái ${transfer.status}, chưa được xuất kho`);
       }
 
-      if (!transfer.inventory_id) {
+      let finalIds: number[] = [];
+      if (transfer.inventory_ids) {
+        try {
+          const parsed = JSON.parse(transfer.inventory_ids);
+          finalIds = parsed.map((x: any) => typeof x === 'object' ? x.id : x);
+        } catch (e) {}
+      }
+      if (finalIds.length === 0 && transfer.inventory_id) {
+        finalIds = [transfer.inventory_id];
+      }
+
+      if (finalIds.length === 0) {
         throw new BadRequestException('Phiếu chuyển không có túi máu');
       }
 
-      // Move inventory to new facility, set back to AVAILABLE
-      await tx.blood_inventory.update({
-        where: { inventory_id: transfer.inventory_id },
-        data: {
-          facility_id: transfer.to_facility_id,
-          status_code: 'AVAILABLE',
-        },
-      });
+      for (const invId of finalIds) {
+        // Move inventory to new facility, set back to AVAILABLE
+        await tx.blood_inventory.update({
+          where: { inventory_id: invId },
+          data: {
+            facility_id: transfer.to_facility_id,
+            status_code: 'AVAILABLE',
+          },
+        });
 
-      // Log transaction
-      await tx.inventory_transactions.create({
-        data: {
-          inventory_id: transfer.inventory_id,
-          transaction_type: 'IN',
-          quantity: 1,
-          reference_type: 'TRANSFER',
-          reference_id: transfer.transfer_id,
-          performed_by: user.user_id,
-          notes: `Nhận kho chuyển máu: ${transfer.transfer_code}`,
-        },
-      });
+        // Log transaction
+        await tx.inventory_transactions.create({
+          data: {
+            inventory_id: invId,
+            transaction_type: 'IN',
+            quantity: 1,
+            reference_type: 'TRANSFER',
+            reference_id: transfer.transfer_id,
+            performed_by: user.user_id,
+            notes: `Nhận kho chuyển máu: ${transfer.transfer_code}`,
+          },
+        });
+      }
 
       const updated = await tx.blood_transfers.update({
         where: { transfer_id: transferId },
@@ -330,15 +364,28 @@ export class TransferService {
       }
 
       // If inventory was allocated during approval, release it
-      if (transfer.inventory_id && transfer.status === 'APPROVED') {
-        const inv = await tx.blood_inventory.findUnique({
-          where: { inventory_id: transfer.inventory_id },
-        });
-        if (inv && inv.status_code === 'ALLOCATED') {
-          await tx.blood_inventory.update({
-            where: { inventory_id: transfer.inventory_id },
-            data: { status_code: 'AVAILABLE' },
+      if (transfer.status === 'APPROVED') {
+        let finalIds: number[] = [];
+        if (transfer.inventory_ids) {
+          try {
+            const parsed = JSON.parse(transfer.inventory_ids);
+            finalIds = parsed.map((x: any) => typeof x === 'object' ? x.id : x);
+          } catch (e) {}
+        }
+        if (finalIds.length === 0 && transfer.inventory_id) {
+          finalIds = [transfer.inventory_id];
+        }
+
+        for (const invId of finalIds) {
+          const inv = await tx.blood_inventory.findUnique({
+            where: { inventory_id: invId },
           });
+          if (inv && inv.status_code === 'ALLOCATED') {
+            await tx.blood_inventory.update({
+              where: { inventory_id: invId },
+              data: { status_code: 'AVAILABLE' },
+            });
+          }
         }
       }
 

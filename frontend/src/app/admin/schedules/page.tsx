@@ -5,6 +5,7 @@ import { adminMasterDataService } from '@/lib/services/admin-master-data';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { PageHeader } from '@/components/ui/PageHeader';
 import { toast } from 'sonner';
 import { Plus, Edit, Trash2, Eye, Calendar as CalendarIcon, MapPin } from 'lucide-react';
 import { DataTable, Column, ActionItem } from '@/components/ui/DataTable';
@@ -312,16 +313,16 @@ export default function AdminSchedulesPage() {
   ];
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-12">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-800">Quản lý Lịch hiến máu</h1>
-          <p className="text-sm text-slate-500 mt-1">Sắp xếp và quản lý lịch tổ chức tại các cơ sở</p>
-        </div>
-        <Button onClick={openCreateModal} className="bg-blood hover:bg-blood-dark text-white">
-          <Plus className="w-4 h-4 mr-2" /> Thêm lịch mới
-        </Button>
-      </div>
+    <div className="space-y-6 w-full mx-auto pb-12">
+      <PageHeader
+        title="Quản lý Lịch hiến máu"
+        description="Sắp xếp và quản lý lịch tổ chức tại các cơ sở"
+        action={
+          <Button onClick={openCreateModal} className="bg-blood hover:bg-blood-dark text-white">
+            <Plus className="w-4 h-4 mr-2" /> Thêm lịch mới
+          </Button>
+        }
+      />
 
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         <DataTable
@@ -522,13 +523,13 @@ export default function AdminSchedulesPage() {
           <div className="space-y-6">
             <div className="flex border-b border-slate-200">
               <button 
-                className={`px-4 py-2 font-semibold text-sm border-b-2 transition-colors whitespace-nowrap ${activeDetailTab === 'info' ? 'border-blood text-blood' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+                className={`px-4 py-2 font-semibold text-sm border-b-2 transition-colors whitespace-nowrap ${activeDetailTab === 'info' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
                 onClick={() => setActiveDetailTab('info')}
               >
                 Thông tin lịch
               </button>
               <button 
-                className={`px-4 py-2 font-semibold text-sm border-b-2 transition-colors whitespace-nowrap ${activeDetailTab === 'donors' ? 'border-blood text-blood' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+                className={`px-4 py-2 font-semibold text-sm border-b-2 transition-colors whitespace-nowrap ${activeDetailTab === 'donors' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
                 onClick={() => setActiveDetailTab('donors')}
               >
                 Danh sách đăng ký ({scheduleDonors.length}/{currentView.max_donors})

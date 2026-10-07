@@ -11,6 +11,8 @@ import { BaseModal } from '@/components/ui/BaseModal';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { PageHeader } from '@/components/ui/PageHeader';
+
 
 export default function AdminNotificationsPage() {
   const [loading, setLoading] = useState(true);
@@ -197,19 +199,17 @@ export default function AdminNotificationsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-800 tracking-tight flex items-center gap-2">
-            <Bell className="w-6 h-6 text-blood" /> Quản lý Thông báo
-          </h1>
-          <p className="text-sm text-slate-500 mt-1">Gửi và theo dõi các thông báo đẩy trong hệ thống</p>
+            <PageHeader
+        title="Quản lý Thông báo"
+        description="Gửi và theo dõi các thông báo đẩy trong hệ thống"
+        action={
+          <div className="flex items-center gap-3">
+        <Button onClick={() => setIsCreateOpen(true)} className="bg-blood hover:bg-blood-deep text-white shadow-none rounded-md px-4">
+        <Plus className="w-4 h-4 mr-2" /> Soạn thông báo mới
+        </Button>
         </div>
-        <div className="flex items-center gap-3">
-          <Button onClick={() => setIsCreateOpen(true)} className="bg-blood hover:bg-blood-deep text-white shadow-none rounded-md px-4">
-            <Plus className="w-4 h-4 mr-2" /> Soạn thông báo mới
-          </Button>
-        </div>
-      </div>
+        }
+      />
 
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         <DataTable

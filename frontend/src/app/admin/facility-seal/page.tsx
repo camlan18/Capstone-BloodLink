@@ -9,6 +9,7 @@ import { FileSignature, Upload, CheckCircle2, RotateCcw, Building2, ShieldCheck,
 import { VietnameseBloodCertificate, CertificateData } from '@/components/certificate/VietnameseBloodCertificate';
 import { DigitalSignaturePad } from '@/components/ui/DigitalSignaturePad';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { PageHeader } from '@/components/ui/PageHeader';
 
 export default function FacilitySealPage() {
   const currentUser = useAuthStore(state => state.user);
@@ -216,26 +217,20 @@ export default function FacilitySealPage() {
   return (
     <div className="space-y-8 max-w-full mx-auto pb-12">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2.5">
-            <FileSignature className="w-7 h-7 text-blood" />
-            Cấu Hình Con Dấu Bệnh Viện
-          </h1>
-          <p className="text-sm text-slate-500 mt-1">
-            Thiết lập con dấu mộc đỏ tròn (tách nền PNG) để tự động đóng dấu lên Giấy Chứng Nhận Hiến Máu.
-          </p>
-        </div>
-
-        <Button
-          onClick={handleSave}
-          disabled={saving}
-          className="bg-blood hover:bg-red-700 text-white font-semibold shadow-sm"
-        >
-          {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <CheckCircle2 className="w-4 h-4 mr-2" />}
-          Lưu Cấu Hình
-        </Button>
-      </div>
+      <PageHeader
+        title="Cấu Hình Con Dấu Bệnh Viện"
+        description="Thiết lập con dấu mộc đỏ tròn (tách nền PNG) để tự động đóng dấu lên Giấy Chứng Nhận Hiến Máu."
+        action={
+          <Button
+            onClick={handleSave}
+            disabled={saving}
+            className="bg-blood hover:bg-red-700 text-white font-semibold shadow-sm"
+          >
+            {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <CheckCircle2 className="w-4 h-4 mr-2" />}
+            Lưu Cấu Hình
+          </Button>
+        }
+      />
 
       {/* Admin Facility Selector */}
       {isAdmin && facilities.length > 0 && (

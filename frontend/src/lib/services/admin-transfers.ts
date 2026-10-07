@@ -13,8 +13,8 @@ export const adminTransferService = {
     return await api.post('/transfers', data);
   },
 
-  approveTransfer: async (id: number, inventoryId?: number) => {
-    return await api.post(`/transfers/${id}/approve`, { inventory_id: inventoryId });
+  approveTransfer: async (id: number, data: any) => {
+    return await api.post(`/transfers/${id}/approve`, data);
   },
 
   shipTransfer: async (id: number) => {

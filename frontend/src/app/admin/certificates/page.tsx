@@ -10,6 +10,8 @@ import { BaseModal } from '@/components/ui/BaseModal';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DataTable, Column, ActionItem } from '@/components/ui/DataTable';
 import { VietnameseBloodCertificate, CertificateData } from '@/components/certificate/VietnameseBloodCertificate';
+import { PageHeader } from '@/components/ui/PageHeader';
+
 
 export default function AdminCertificatesPage() {
   const [loading, setLoading] = useState(true);
@@ -175,14 +177,10 @@ export default function AdminCertificatesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-800 tracking-tight flex items-center gap-2">
-            Quản lý Chứng nhận Hiến máu
-          </h1>
-          <p className="text-sm text-slate-500 mt-1">{meta?.total || 0} chứng nhận trong hệ thống</p>
-        </div>
-      </div>
+            <PageHeader
+        title="Quản lý Chứng nhận Hiến máu"
+        description={`${meta?.total || 0} chứng nhận trong hệ thống`}
+      />
 
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         <DataTable

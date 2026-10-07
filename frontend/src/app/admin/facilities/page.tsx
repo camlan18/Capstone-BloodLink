@@ -10,6 +10,8 @@ import { Input } from '@/components/ui/input';
 import { ExportImportDropdown } from '@/components/ui/ExportImportDropdown';
 import { ExcelImportModal } from '@/components/ui/ExcelImportModal';
 import { uploadImage } from '@/lib/services/apiClient';
+import { PageHeader } from '@/components/ui/PageHeader';
+
 
 export default function AdminFacilitiesPage() {
   const [loading, setLoading] = useState(true);
@@ -256,22 +258,22 @@ export default function AdminFacilitiesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Quản lý Cơ sở y tế</h1>
-          <p className="text-sm text-slate-500 mt-1">{meta?.total || 0} cơ sở trong hệ thống</p>
+            <PageHeader
+        title="Quản lý Cơ sở y tế"
+        description={`${meta?.total || 0} cơ sở trong hệ thống`}
+        action={
+          <div className="flex items-center gap-3">
+        <ExportImportDropdown
+        onImportClick={() => setIsImportOpen(true)}
+        onExportClick={handleExport}
+        onDownloadTemplateClick={handleDownloadTemplate}
+        />
+        <Button onClick={handleOpenCreate} className="bg-blood hover:bg-blood-deep text-white shadow-none rounded-md px-4">
+        <Plus className="w-4 h-4 mr-2" /> Thêm cơ sở
+        </Button>
         </div>
-        <div className="flex items-center gap-3">
-          <ExportImportDropdown 
-            onImportClick={() => setIsImportOpen(true)}
-            onExportClick={handleExport}
-            onDownloadTemplateClick={handleDownloadTemplate}
-          />
-          <Button onClick={handleOpenCreate} className="bg-blood hover:bg-blood-deep text-white shadow-none rounded-md px-4">
-            <Plus className="w-4 h-4 mr-2" /> Thêm cơ sở
-          </Button>
-        </div>
-      </div>
+        }
+      />
 
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         <DataTable

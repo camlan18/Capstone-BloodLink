@@ -300,13 +300,13 @@ export default function MyRequestsPage() {
             <div className="flex items-center gap-6 border-b border-slate-200 mb-6">
               <button 
                 onClick={() => setDetailTab('details')}
-                className={`pb-2.5 text-sm font-bold border-b-2 transition-colors ${detailTab === 'details' ? 'border-blood text-blood' : 'border-transparent text-slate-500 hover:text-slate-800'}`}
+                className={`pb-2.5 text-sm font-bold border-b-2 transition-colors ${detailTab === 'details' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-800'}`}
               >
                 Thông tin chi tiết
               </button>
               <button 
                 onClick={() => setDetailTab('history')}
-                className={`pb-2.5 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 ${detailTab === 'history' ? 'border-blood text-blood' : 'border-transparent text-slate-500 hover:text-slate-800'}`}
+                className={`pb-2.5 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 ${detailTab === 'history' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-800'}`}
               >
                 Lịch sử xử lý
                 <span className="bg-slate-100 text-slate-600 text-[10px] px-1.5 py-0.5 rounded-full">{selectedItem.status_history?.length || 0}</span>

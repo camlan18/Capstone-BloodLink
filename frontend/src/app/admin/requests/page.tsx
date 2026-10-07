@@ -16,6 +16,8 @@ import { ExportImportDropdown } from '@/components/ui/ExportImportDropdown';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useAuthStore } from '@/lib/stores';
+import { PageHeader } from '@/components/ui/PageHeader';
+
 
 const getStatusColor = (code?: string) => {
   if (!code) return 'bg-slate-100 text-slate-600 border-slate-200';
@@ -553,27 +555,27 @@ export default function AdminRequestsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Yêu cầu từ Bệnh viện</h1>
-          <p className="text-sm text-slate-500 mt-1">{meta?.total || 0} yêu cầu trong hệ thống</p>
+            <PageHeader
+        title="Yêu cầu từ Bệnh viện"
+        description={`${meta?.total || 0} yêu cầu trong hệ thống`}
+        action={
+          <div className="flex items-center gap-3">
+        <ExportImportDropdown
+        onImportClick={() => setIsImportOpen(true)}
+        onExportClick={handleExport}
+        onDownloadTemplateClick={handleDownloadTemplate}
+        />
+        <Button onClick={() => {
+        setIsCreateOpen(true);
+        if (isStaff && currentUser?.facility_id) {
+        handleFacilityChange(currentUser.facility_id.toString());
+        }
+        }} className="bg-blood hover:bg-blood-deep text-white shadow-none rounded-md px-4">
+        <Plus className="w-4 h-4 mr-2" /> Tạo yêu cầu mới
+        </Button>
         </div>
-        <div className="flex items-center gap-3">
-          <ExportImportDropdown 
-            onImportClick={() => setIsImportOpen(true)}
-            onExportClick={handleExport}
-            onDownloadTemplateClick={handleDownloadTemplate}
-          />
-          <Button onClick={() => {
-            setIsCreateOpen(true);
-            if (isStaff && currentUser?.facility_id) {
-              handleFacilityChange(currentUser.facility_id.toString());
-            }
-          }} className="bg-blood hover:bg-blood-deep text-white shadow-none rounded-md px-4">
-            <Plus className="w-4 h-4 mr-2" /> Tạo yêu cầu mới
-          </Button>
-        </div>
-      </div>
+        }
+      />
 
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         <DataTable
@@ -822,25 +824,25 @@ export default function AdminRequestsPage() {
             {/* Tabs Navigation */}
             <div className="flex border-b border-slate-200 mb-4 overflow-x-auto">
               <button 
-                className={`px-4 py-2 font-semibold text-sm border-b-2 transition-colors whitespace-nowrap ${detailTab === 'info' ? 'border-blood text-blood' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+                className={`px-4 py-2 font-semibold text-sm border-b-2 transition-colors whitespace-nowrap ${detailTab === 'info' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
                 onClick={() => setDetailTab('info')}
               >
                 Chi tiết khám & lấy máu
               </button>
               <button 
-                className={`px-4 py-2 font-semibold text-sm border-b-2 transition-colors whitespace-nowrap ${detailTab === 'matching' ? 'border-blood text-blood' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+                className={`px-4 py-2 font-semibold text-sm border-b-2 transition-colors whitespace-nowrap ${detailTab === 'matching' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
                 onClick={() => setDetailTab('matching')}
               >
                 Ghép nối Người hiến
               </button>
               <button 
-                className={`px-4 py-2 font-semibold text-sm border-b-2 transition-colors whitespace-nowrap ${detailTab === 'allocation' ? 'border-blood text-blood' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+                className={`px-4 py-2 font-semibold text-sm border-b-2 transition-colors whitespace-nowrap ${detailTab === 'allocation' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
                 onClick={() => setDetailTab('allocation')}
               >
                 Cấp phát Kho
               </button>
               <button 
-                className={`px-4 py-2 font-semibold text-sm border-b-2 transition-colors whitespace-nowrap ${detailTab === 'history' ? 'border-blood text-blood' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+                className={`px-4 py-2 font-semibold text-sm border-b-2 transition-colors whitespace-nowrap ${detailTab === 'history' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
                 onClick={() => setDetailTab('history')}
               >
                 Lịch sử trạng thái

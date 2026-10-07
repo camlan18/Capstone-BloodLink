@@ -109,7 +109,7 @@ export const BaseModal = ({
     <div className={`fixed inset-0 ${zIndexClass} flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 sm:p-6 overflow-y-auto`}>
       <div
         className={`
-          w-full max-h-[92vh] bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden my-auto
+          w-full max-h-[92vh] bg-white rounded-md shadow-2xl flex flex-col overflow-hidden my-auto
           animate-in fade-in zoom-in-95 duration-200
           ${sizeClasses[size]}
         `}
@@ -138,7 +138,10 @@ export const BaseModal = ({
 
         {onSubmit ? (
           <form
-            onSubmit={onSubmit}
+            onSubmit={(e) => {
+              e.preventDefault();
+              onSubmit(e);
+            }}
             className="flex flex-col flex-1 overflow-hidden min-h-0"
             onKeyDown={(e) => {
               if (e.key !== 'Enter') return;

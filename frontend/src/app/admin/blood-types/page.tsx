@@ -3,10 +3,11 @@ import { useEffect, useState } from 'react';
 import { adminMasterDataService } from '@/lib/services/admin-master-data';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { Plus, Edit } from 'lucide-react';
+import { Plus, Edit, Activity } from 'lucide-react';
 import { DataTable, Column, ActionItem } from '@/components/ui/DataTable';
 import { BaseModal } from '@/components/ui/BaseModal';
 import { Input } from '@/components/ui/input';
+import { PageHeader } from '@/components/ui/PageHeader';
 
 export default function AdminBloodTypesPage() {
   const [loading, setLoading] = useState(true);
@@ -105,12 +106,14 @@ export default function AdminBloodTypesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <h1 className="text-2xl font-bold text-slate-800">Quản lý Nhóm máu</h1>
-        <Button onClick={handleOpenCreate} className="bg-blood hover:bg-blood-deep text-white shadow-md">
-          <Plus className="w-4 h-4 mr-2" /> Thêm nhóm máu
-        </Button>
-      </div>
+      <PageHeader
+        title="Quản lý Nhóm máu"
+        action={
+          <Button onClick={handleOpenCreate} className="bg-blood hover:bg-blood-deep text-white shadow-md">
+            <Plus className="w-4 h-4 mr-2" /> Thêm nhóm máu
+          </Button>
+        }
+      />
 
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         <DataTable

@@ -305,7 +305,7 @@ export default function HomePage() {
                   <CardFooter className="p-6 border-t border-slate-50 bg-white mt-auto flex items-center justify-end">
                     <Link
                       href={`/blog/${doc.slug}`}
-                      className="inline-flex items-center gap-2 px-6 py-2.5 text-sm font-bold border border-blood text-blood bg-white hover:bg-blood hover:text-white rounded-md transition-all group/btn"
+                      className="inline-flex items-center gap-2 px-6 py-2.5 text-sm font-bold border border-blue-600 text-blue-600 bg-white hover:bg-blood hover:text-white rounded-md transition-all group/btn"
                     >
                       Đọc tiếp <ArrowRight className="h-4 w-4 group-hover/btn:translate-x-1 transition-transform" />
                     </Link>

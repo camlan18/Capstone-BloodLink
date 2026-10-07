@@ -34,9 +34,9 @@ export class TransferController {
   async approveTransfer(
     @Req() req: any,
     @Param('id', ParseIntPipe) id: number,
-    @Body() body: { inventory_id?: number },
+    @Body() body: { inventory_ids?: number[] },
   ) {
-    return await this.transferService.approveTransfer(id, req.user, body.inventory_id);
+    return await this.transferService.approveTransfer(id, req.user, body.inventory_ids);
   }
 
   @Roles(RoleCode.ADMIN, RoleCode.STAFF, RoleCode.HOSPITAL_STAFF)

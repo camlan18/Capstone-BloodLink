@@ -5,21 +5,18 @@ import BloodComponentsTab from './components/BloodComponentsTab';
 import BloodCompatibilityTab from './components/BloodCompatibilityTab';
 import IntervalRulesTab from './components/IntervalRulesTab';
 import { Settings2 } from 'lucide-react';
+import { PageHeader } from '@/components/ui/PageHeader';
+
 
 export default function BloodMasterDataPage() {
   const [activeTab, setActiveTab] = useState('blood_types');
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-800 tracking-tight flex items-center">
-            <Settings2 className="w-6 h-6 mr-2 text-blood" /> 
-            Quản lý Dữ liệu Máu
-          </h1>
-          <p className="text-sm text-slate-500 mt-1">Cấu hình danh mục nhóm máu, thành phần máu, và các quy tắc y tế</p>
-        </div>
-      </div>
+            <PageHeader
+        title="Quản lý Dữ liệu Máu"
+        description="Cấu hình danh mục nhóm máu, thành phần máu, và các quy tắc y tế"
+      />
 
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="flex px-6 pt-4 border-b border-slate-200 overflow-x-auto">

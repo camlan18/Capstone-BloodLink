@@ -13,6 +13,7 @@ import { Loader2, Plus, Filter, Eye, ArrowRightLeft, CheckCircle2, Truck, Packag
 import { format } from 'date-fns';
 import { DataTable, Column, ActionItem } from '@/components/ui/DataTable';
 import { BaseModal } from '@/components/ui/BaseModal';
+import { PageHeader } from '@/components/ui/PageHeader';
 import { useAuthStore } from '@/lib/stores';
 
 const STATUS_MAP: Record<string, { label: string; color: string }> = {
@@ -64,7 +65,7 @@ export default function AdminTransfersPage() {
   const [isApproveOpen, setIsApproveOpen] = useState(false);
   const [approveItem, setApproveItem] = useState<any>(null);
   const [availableInventory, setAvailableInventory] = useState<any[]>([]);
-  const [selectedInventoryId, setSelectedInventoryId] = useState<string>('');
+  const [selectedInventoryIds, setSelectedInventoryIds] = useState<number[]>([]);
   const [loadingInventory, setLoadingInventory] = useState(false);
 
   // Reject Modal
@@ -148,7 +149,7 @@ export default function AdminTransfersPage() {
 
   const handleOpenApprove = async (item: any) => {
     setApproveItem(item);
-    setSelectedInventoryId('');
+    setSelectedInventoryIds([]);
     setIsApproveOpen(true);
     try {
       setLoadingInventory(true);
@@ -168,13 +169,28 @@ export default function AdminTransfersPage() {
 
   const handleApprove = async () => {
     if (!approveItem) return;
-    if (!selectedInventoryId) {
-      toast.error('Vui lòng chọn túi máu để chuyển');
+    if (selectedInventoryIds.length === 0) {
+      toast.error('Vui lòng chọn ít nhất 1 túi máu để chuyển');
       return;
     }
+
+    const requiredVolume = (approveItem.units_requested || 1) * 250;
+    const selectedVolume = selectedInventoryIds.reduce((sum, id) => {
+      const bag = availableInventory.find((x: any) => x.inventory_id === id);
+      return sum + (bag?.volume_ml || 0);
+    }, 0);
+
+    if (selectedVolume < requiredVolume) {
+      toast.error(`Tổng thể tích đã chọn (${selectedVolume}ml) chưa đủ yêu cầu (${requiredVolume}ml)!`);
+      return;
+    }
+
     try {
       setSubmitting(true);
-      const res = await adminTransferService.approveTransfer(approveItem.transfer_id, Number(selectedInventoryId));
+      // In the frontend API service, ensure approveTransfer accepts an object or updates correctly.
+      // Assuming adminTransferService.approveTransfer passes the second argument as payload: { inventory_ids: selectedInventoryIds }
+      // Wait, let's just pass selectedInventoryIds array.
+      const res = await adminTransferService.approveTransfer(approveItem.transfer_id, { inventory_ids: selectedInventoryIds });
       toast.success((res as any)?.message || (res as any)?.data?.message || 'Đã duyệt phiếu!');
       setIsApproveOpen(false);
       fetchData();
@@ -271,11 +287,26 @@ export default function AdminTransfersPage() {
     {
       key: 'inventory',
       title: 'Túi máu',
-      render: (item) => (
-        <span className="font-mono text-xs text-slate-700">
-          {item.inventory?.bag_code || '(Chưa chọn)'}
-        </span>
-      )
+      render: (item) => {
+        let text = item.inventory?.bag_code || '(Chưa chọn)';
+        if (item.inventory_ids) {
+          try {
+            const parsed = JSON.parse(item.inventory_ids);
+            if (parsed && parsed.length > 0) {
+              if (typeof parsed[0] === 'object') {
+                text = `[${parsed.length} túi]`;
+              } else {
+                text = `[${parsed.length} túi]`;
+              }
+            }
+          } catch (e) {}
+        }
+        return (
+          <span className="font-mono text-xs text-slate-700">
+            {text}
+          </span>
+        );
+      }
     },
     {
       key: 'status',
@@ -365,23 +396,20 @@ export default function AdminTransfersPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-800 tracking-tight flex items-center gap-2.5">
-            <ArrowRightLeft className="w-7 h-7 text-blood" />
-            Phiếu Chuyển Máu Giữa Các Cơ Sở
-          </h1>
-          <p className="text-sm text-slate-500 mt-1">{meta?.total || 0} phiếu chuyển trong hệ thống</p>
-        </div>
-        <Button onClick={() => {
-          setIsCreateOpen(true);
-          if (isStaff && currentUser?.facility_id) {
-            setCreateData(prev => ({ ...prev, to_facility_id: currentUser.facility_id!.toString() }));
-          }
-        }} className="bg-blood hover:bg-blood-deep text-white shadow-none rounded-md px-4">
-          <Plus className="w-4 h-4 mr-2" /> Tạo phiếu yêu cầu chuyển máu
-        </Button>
-      </div>
+      <PageHeader
+        title="Phiếu Chuyển Máu Giữa Các Cơ Sở"
+        description={`${meta?.total || 0} phiếu chuyển trong hệ thống`}
+        action={
+          <Button onClick={() => {
+            setIsCreateOpen(true);
+            if (isStaff && currentUser?.facility_id) {
+              setCreateData(prev => ({ ...prev, to_facility_id: currentUser.facility_id!.toString() }));
+            }
+          }} className="bg-blood hover:bg-blood-deep text-white shadow-none rounded-md px-4">
+            <Plus className="w-4 h-4 mr-2" /> Tạo phiếu yêu cầu chuyển máu
+          </Button>
+        }
+      />
 
       {/* Global Constant Note */}
       <div className="text-xs font-medium text-slate-500 mb-2">Quy định hệ thống: 1 Đơn vị máu = 250 ML</div>
@@ -557,15 +585,32 @@ export default function AdminTransfersPage() {
                 Không tìm thấy túi máu phù hợp trong kho cơ sở xuất.
               </div>
             ) : (
-              <SearchableSelect
-                value={selectedInventoryId}
-                onValueChange={setSelectedInventoryId}
-                options={availableInventory.map(inv => ({
-                  value: inv.inventory_id.toString(),
-                  label: `${inv.bag_code} — ${inv.volume_ml}ml — HSD: ${inv.expiry_date ? format(new Date(inv.expiry_date), 'dd/MM/yyyy') : '---'}`,
-                }))}
-                placeholder="Chọn túi máu..."
-              />
+              <>
+                <div className="max-h-60 overflow-y-auto border border-slate-200 rounded-md p-2 space-y-1 custom-scrollbar">
+                  {availableInventory.map(inv => (
+                    <label key={inv.inventory_id} className={`flex items-center gap-3 p-2 cursor-pointer rounded-md border ${selectedInventoryIds.includes(inv.inventory_id) ? 'bg-red-50 border-blood/20' : 'hover:bg-slate-50 border-transparent hover:border-slate-100'}`}>
+                      <input 
+                        type="checkbox" 
+                        className="w-4 h-4 text-blood focus:ring-blood rounded border-gray-300"
+                        checked={selectedInventoryIds.includes(inv.inventory_id)}
+                        onChange={() => {
+                          setSelectedInventoryIds(prev => 
+                            prev.includes(inv.inventory_id) ? prev.filter(x => x !== inv.inventory_id) : [...prev, inv.inventory_id]
+                          );
+                        }}
+                      />
+                      <div className="flex-1">
+                        <p className="text-sm font-bold text-slate-800">{inv.bag_code}</p>
+                        <p className="text-xs text-slate-500">{inv.volume_ml}ml — HSD: {inv.expiry_date ? format(new Date(inv.expiry_date), 'dd/MM/yyyy') : '---'}</p>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+                <div className="mt-2 flex justify-between items-center text-sm">
+                  <span className="text-slate-600">Đã chọn: <span className="font-bold text-blood">{selectedInventoryIds.length}</span> túi</span>
+                  <span className="text-slate-600">Yêu cầu: <span className="font-bold text-blood">{approveItem?.units_requested}</span> đơn vị</span>
+                </div>
+              </>
             )}
           </div>
         </div>
@@ -625,12 +670,36 @@ export default function AdminTransfersPage() {
                 </span>
               </div>
             </div>
-            {selectedItem.inventory?.bag_code && (
-              <div className="bg-blue-50 p-3 rounded-md border border-blue-200">
-                <p className="text-xs text-blue-600 font-medium">Túi máu được chọn</p>
-                <p className="font-mono font-bold text-blue-800">{selectedItem.inventory.bag_code} — {selectedItem.inventory.volume_ml}ml</p>
-              </div>
-            )}
+            {(() => {
+              let hasBags = false;
+              let parsed: any[] = [];
+              if (selectedItem.inventory_ids) {
+                try {
+                  parsed = JSON.parse(selectedItem.inventory_ids);
+                  if (parsed && parsed.length > 0) hasBags = true;
+                } catch (e) {}
+              }
+              if (!hasBags && selectedItem.inventory?.bag_code) hasBags = true;
+
+              if (!hasBags) return null;
+
+              return (
+                <div className={`p-3 rounded-md border ${selectedItem.status === 'CANCELLED' ? 'bg-gray-50 border-gray-200' : 'bg-blue-50 border-blue-200'}`}>
+                  <p className={`text-xs font-medium ${selectedItem.status === 'CANCELLED' ? 'text-gray-500' : 'text-blue-600'}`}>
+                    {selectedItem.status === 'CANCELLED' ? 'Túi máu từng được chọn (Đã hoàn kho)' : 'Túi máu được chọn'}
+                  </p>
+                  <p className={`font-bold ${selectedItem.status === 'CANCELLED' ? 'text-gray-700' : 'text-blue-800'}`}>
+                    {parsed.length > 0 ? (
+                      typeof parsed[0] === 'object'
+                        ? `Đã chọn ${parsed.length} túi máu: ${parsed.map((x: any) => `${x.code} (${x.volume}ml)`).join(', ')}`
+                        : `Đã chọn ${parsed.length} túi máu`
+                    ) : (
+                      <span className="font-mono">{selectedItem.inventory?.bag_code} — {selectedItem.inventory?.volume_ml}ml</span>
+                    )}
+                  </p>
+                </div>
+              );
+            })()}
             {selectedItem.reason && (
               <div>
                 <p className="text-xs text-slate-500">Lý do</p>

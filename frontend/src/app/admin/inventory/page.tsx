@@ -15,6 +15,8 @@ import { BaseModal } from '@/components/ui/BaseModal';
 import { ExportImportDropdown } from '@/components/ui/ExportImportDropdown';
 import { ExcelImportModal } from '@/components/ui/ExcelImportModal';
 import { useAuthStore } from '@/lib/stores';
+import { PageHeader } from '@/components/ui/PageHeader';
+
 
 export default function AdminInventoryPage() {
   const [loading, setLoading] = useState(true);
@@ -305,22 +307,22 @@ export default function AdminInventoryPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Kho máu</h1>
-          <p className="text-sm text-slate-500 mt-1">{meta?.total || 0} túi máu trong hệ thống kho</p>
+            <PageHeader
+        title="Kho máu"
+        description={`${meta?.total || 0} túi máu trong hệ thống kho`}
+        action={
+          <div className="flex items-center gap-3">
+        <ExportImportDropdown
+        onImportClick={() => setIsImportOpen(true)}
+        onExportClick={handleExport}
+        onDownloadTemplateClick={handleDownloadTemplate}
+        />
+        <Button onClick={handleOpenAddModal} className="bg-blood hover:bg-blood-deep text-white shadow-none rounded-md px-4">
+        <Plus className="w-4 h-4 mr-2" /> Nhập máu thủ công
+        </Button>
         </div>
-        <div className="flex items-center gap-3">
-          <ExportImportDropdown 
-            onImportClick={() => setIsImportOpen(true)}
-            onExportClick={handleExport}
-            onDownloadTemplateClick={handleDownloadTemplate}
-          />
-          <Button onClick={handleOpenAddModal} className="bg-blood hover:bg-blood-deep text-white shadow-none rounded-md px-4">
-            <Plus className="w-4 h-4 mr-2" /> Nhập máu thủ công
-          </Button>
-        </div>
-      </div>
+        }
+      />
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
         <DataTable

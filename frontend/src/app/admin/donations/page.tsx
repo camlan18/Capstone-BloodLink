@@ -17,6 +17,8 @@ import { BloodRequestDetailContent } from '@/components/BloodRequestDetailConten
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { DataTable, Column, ActionItem } from '@/components/ui/DataTable';
 import { useAuthStore } from '@/lib/stores';
+import { PageHeader } from '@/components/ui/PageHeader';
+
 
 export default function AdminDonationsPage() {
   const [loading, setLoading] = useState(true);
@@ -421,22 +423,22 @@ export default function AdminDonationsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Tiếp nhận Hiến máu</h1>
-          <p className="text-sm text-slate-500 mt-1">{meta?.total || 0} lượt hẹn trong hệ thống</p>
+            <PageHeader
+        title="Tiếp nhận Hiến máu"
+        description={`${meta?.total || 0} lượt hẹn trong hệ thống`}
+        action={
+          <div className="flex items-center gap-3">
+        <ExportImportDropdown
+        onImportClick={() => setIsImportOpen(true)}
+        onExportClick={handleExport}
+        onDownloadTemplateClick={handleDownloadTemplate}
+        />
+        <Button onClick={() => setIsCreateOpen(true)} className="bg-blood hover:bg-blood-deep text-white shadow-none rounded-md px-4">
+        <Plus className="w-4 h-4 mr-2" /> Tạo lượt đăng ký mới
+        </Button>
         </div>
-        <div className="flex items-center gap-3">
-          <ExportImportDropdown 
-            onImportClick={() => setIsImportOpen(true)}
-            onExportClick={handleExport}
-            onDownloadTemplateClick={handleDownloadTemplate}
-          />
-          <Button onClick={() => setIsCreateOpen(true)} className="bg-blood hover:bg-blood-deep text-white shadow-none rounded-md px-4">
-            <Plus className="w-4 h-4 mr-2" /> Tạo lượt đăng ký mới
-          </Button>
-        </div>
-      </div>
+        }
+      />
 
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         <DataTable
@@ -616,14 +618,14 @@ export default function AdminDonationsPage() {
               <div className="flex gap-4 border-b border-slate-200 mb-6">
                 <button 
                   type="button" 
-                  className={`pb-2 px-1 border-b-2 text-sm font-medium ${activeTab === 'donor_info' ? 'border-blood text-blood' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'}`}
+                  className={`pb-2 px-1 border-b-2 text-sm font-medium ${activeTab === 'donor_info' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'}`}
                   onClick={() => setActiveTab('donor_info')}
                 >
                   Thông tin người hiến
                 </button>
                 <button 
                   type="button" 
-                  className={`pb-2 px-1 border-b-2 text-sm font-medium ${activeTab === 'donation_record' ? 'border-blood text-blood' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'}`}
+                  className={`pb-2 px-1 border-b-2 text-sm font-medium ${activeTab === 'donation_record' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'}`}
                   onClick={() => setActiveTab('donation_record')}
                 >
                   Thông tin khám & Lấy máu
@@ -631,7 +633,7 @@ export default function AdminDonationsPage() {
                 {extractedCode && (
                   <button 
                     type="button" 
-                    className={`pb-2 px-1 border-b-2 text-sm font-medium ${activeTab === 'request_info' ? 'border-blood text-blood' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'}`}
+                    className={`pb-2 px-1 border-b-2 text-sm font-medium ${activeTab === 'request_info' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'}`}
                     onClick={() => setActiveTab('request_info')}
                   >
                     Chi tiết yêu cầu
@@ -804,14 +806,14 @@ export default function AdminDonationsPage() {
                   <div className="flex gap-4 border-b border-slate-200 mb-6">
                     <button 
                       type="button" 
-                      className={`pb-2 px-1 border-b-2 text-sm font-medium ${detailActiveTab === 'donor_info' ? 'border-blood text-blood' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'}`}
+                      className={`pb-2 px-1 border-b-2 text-sm font-medium ${detailActiveTab === 'donor_info' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'}`}
                       onClick={() => setDetailActiveTab('donor_info')}
                     >
                       Thông tin người đăng ký
                     </button>
                     <button 
                       type="button" 
-                      className={`pb-2 px-1 border-b-2 text-sm font-medium ${detailActiveTab === 'schedule_info' ? 'border-blood text-blood' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'}`}
+                      className={`pb-2 px-1 border-b-2 text-sm font-medium ${detailActiveTab === 'schedule_info' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'}`}
                       onClick={() => setDetailActiveTab('schedule_info')}
                     >
                       Thông tin lịch hẹn
@@ -819,7 +821,7 @@ export default function AdminDonationsPage() {
                     {extractedCode && (
                       <button 
                         type="button" 
-                        className={`pb-2 px-1 border-b-2 text-sm font-medium ${detailActiveTab === 'request_info' ? 'border-blood text-blood' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'}`}
+                        className={`pb-2 px-1 border-b-2 text-sm font-medium ${detailActiveTab === 'request_info' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'}`}
                         onClick={() => setDetailActiveTab('request_info')}
                       >
                         Chi tiết yêu cầu

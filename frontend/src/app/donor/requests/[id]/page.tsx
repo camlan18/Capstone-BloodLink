@@ -116,13 +116,13 @@ export default function RequestDetailsPage({ params }: { params: Promise<{ id: s
       <div className="flex items-center gap-8 border-b border-slate-200 mb-8">
         <button 
           onClick={() => setActiveTab('details')}
-          className={`pb-3 text-sm font-bold border-b-2 transition-colors ${activeTab === 'details' ? 'border-blood text-blood' : 'border-transparent text-slate-500 hover:text-slate-800'}`}
+          className={`pb-3 text-sm font-bold border-b-2 transition-colors ${activeTab === 'details' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-800'}`}
         >
           Thông tin chi tiết
         </button>
         <button 
           onClick={() => setActiveTab('history')}
-          className={`pb-3 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'history' ? 'border-blood text-blood' : 'border-transparent text-slate-500 hover:text-slate-800'}`}
+          className={`pb-3 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'history' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-800'}`}
         >
           Lịch sử xử lý
           <span className="bg-slate-100 text-slate-600 text-xs px-2 py-0.5 rounded-full">{request.status_history?.length || 0}</span>

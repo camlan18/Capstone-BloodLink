@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { adminUserService } from '@/lib/services/admin-users';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { Plus, Edit, Lock, Unlock, Eye, Loader2, User, Activity, History } from 'lucide-react';
+import { Plus, Edit, Lock, Unlock, Eye, Loader2, User, Activity, History, Users } from 'lucide-react';
 import { format } from 'date-fns';
 import { DataTable, Column, ActionItem } from '@/components/ui/DataTable';
 import { BaseModal } from '@/components/ui/BaseModal';
@@ -11,6 +11,7 @@ import { ExcelImportModal } from '@/components/ui/ExcelImportModal';
 import { ExportImportDropdown } from '@/components/ui/ExportImportDropdown';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { PageHeader } from '@/components/ui/PageHeader';
 import { useAuthStore } from '@/lib/stores';
 import { adminMasterDataService } from '@/lib/services/admin-master-data';
 
@@ -18,7 +19,7 @@ export default function AdminUsersPage() {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<any[]>([]);
   const [meta, setMeta] = useState<any>({});
-  
+
   // DataTable state
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(15);
@@ -28,19 +29,19 @@ export default function AdminUsersPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<any>(null);
   const [isImportOpen, setIsImportOpen] = useState(false);
-  
+
   // Detail Modal State
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [selectedUserDetail, setSelectedUserDetail] = useState<any>(null);
   const [detailLoading, setDetailLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<'info'|'donor'|'history'>('info');
+  const [activeTab, setActiveTab] = useState<'info' | 'donor' | 'history'>('info');
 
   const [bloodTypes, setBloodTypes] = useState<any[]>([]);
   const [provinces, setProvinces] = useState<any[]>([]);
   const [wards, setWards] = useState<any[]>([]);
   const [roles, setRoles] = useState<any[]>([]);
   const [facilities, setFacilities] = useState<any[]>([]);
-  const [modalTab, setModalTab] = useState<'info'|'donor'>('info');
+  const [modalTab, setModalTab] = useState<'info' | 'donor'>('info');
 
   const [formData, setFormData] = useState({
     email: '', password: '', username: '', full_name: '', phone: '',
@@ -48,7 +49,7 @@ export default function AdminUsersPage() {
     province_id: '', ward_id: '', role_id: '', facility_id: '',
     is_active: true, is_email_verified: false,
     is_donor_registered: false, is_available_for_donation: false,
-    
+
     blood_type_id: '', weight_kg: '', height_cm: '',
     first_donation_date: '', total_donations: '', last_donation_date: '',
     next_eligible_date: '', health_notes: '',
@@ -68,28 +69,28 @@ export default function AdminUsersPage() {
     try {
       const res = await adminMasterDataService.getFacilities({ limit: 1000 });
       if (res && res.data) setFacilities(Array.isArray(res.data) ? res.data : (res.data.data || []));
-    } catch (error) {}
+    } catch (error) { }
   };
 
   const fetchRoles = async () => {
     try {
       const res = await adminMasterDataService.getRoles();
       if (res && res.data) setRoles(res.data);
-    } catch (error) {}
+    } catch (error) { }
   };
 
   const fetchBloodTypes = async () => {
     try {
       const res = await adminMasterDataService.getBloodTypes({ limit: 100 });
       if (res && res.data) setBloodTypes(res.data);
-    } catch (error) {}
+    } catch (error) { }
   };
 
   const fetchProvinces = async () => {
     try {
       const res = await adminMasterDataService.getProvinces();
       if (res && res.data) setProvinces(res.data);
-    } catch (error) {}
+    } catch (error) { }
   };
 
   useEffect(() => {
@@ -138,7 +139,7 @@ export default function AdminUsersPage() {
       province_id: '', ward_id: '', role_id: '', facility_id: '',
       is_active: true, is_email_verified: false,
       is_donor_registered: false, is_available_for_donation: false,
-      
+
       blood_type_id: '', weight_kg: '', height_cm: '',
       first_donation_date: '', total_donations: '', last_donation_date: '',
       next_eligible_date: '', health_notes: '',
@@ -215,7 +216,7 @@ export default function AdminUsersPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // 1. Validate email
     const emailTrim = formData.email.trim();
     if (!emailTrim || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailTrim)) {
@@ -319,7 +320,7 @@ export default function AdminUsersPage() {
     }
 
     try {
-      const payload: any = { 
+      const payload: any = {
         email: emailTrim,
         full_name: nameTrim,
         role_id: Number(formData.role_id),
@@ -338,7 +339,7 @@ export default function AdminUsersPage() {
       if (formData.address) payload.address = formData.address.trim();
       if (formData.province_id && Number(formData.province_id) > 0) payload.province_id = Number(formData.province_id);
       if (formData.ward_id && Number(formData.ward_id) > 0) payload.ward_id = Number(formData.ward_id);
-      
+
       if (selectedRole?.role_code === 'HOSPITAL_STAFF' && formData.facility_id && Number(formData.facility_id) > 0) {
         payload.facility_id = Number(formData.facility_id);
       } else {
@@ -435,9 +436,9 @@ export default function AdminUsersPage() {
         const isAdmin = user.role?.role_code === 'ADMIN' || (typeof user.role === 'string' && user.role === 'ADMIN');
         return (
           <span className={`px-2.5 py-1 rounded-full text-xs font-semibold
-            ${isAdmin ? 'bg-purple-50 text-purple-600 border border-purple-200' : 
-              isStaff ? 'bg-blue-50 text-blue-600 border border-blue-200' : 
-              'bg-slate-50 text-slate-600 border border-slate-200'}
+            ${isAdmin ? 'bg-purple-50 text-purple-600 border border-purple-200' :
+              isStaff ? 'bg-blue-50 text-blue-600 border border-blue-200' :
+                'bg-slate-50 text-slate-600 border border-slate-200'}
           `}>
             {user.role?.role_name || user.role_id}
           </span>
@@ -450,7 +451,7 @@ export default function AdminUsersPage() {
       render: (user) => {
         const statusText = user.computed_status || (user.is_active ? 'Đang hoạt động' : 'Bị khóa');
         let statusColor = 'bg-slate-50 text-slate-600 border border-slate-200';
-        
+
         if (statusText === 'Đang hoạt động') {
           statusColor = 'bg-emerald-50 text-emerald-600 border border-emerald-200';
         } else if (statusText === 'Bị khóa') {
@@ -477,7 +478,7 @@ export default function AdminUsersPage() {
 
   const getRowActions = (user: any): ActionItem[] => {
     const currentUser = useAuthStore.getState().user;
-    
+
     // Prevent the currently logged in admin from locking or altering their own account from this list
     if (currentUser && Number(user.user_id) === Number(currentUser.user_id)) {
       return [];
@@ -512,22 +513,22 @@ export default function AdminUsersPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Quản lý Người dùng</h1>
-          <p className="text-sm text-slate-500 mt-1">{meta?.total || 0} tài khoản trong hệ thống</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <ExportImportDropdown 
-            onImportClick={() => setIsImportOpen(true)}
-            onExportClick={handleExport}
-            onDownloadTemplateClick={handleDownloadTemplate}
-          />
-          <Button onClick={handleOpenCreate} className="bg-blood hover:bg-blood-deep text-white shadow-none rounded-md px-4">
-            <Plus className="w-4 h-4 mr-2" /> Thêm mới
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        title="Quản lý Người dùng"
+        description={`${meta?.total || 0} tài khoản trong hệ thống`}
+        action={
+          <div className="flex items-center gap-3">
+            <ExportImportDropdown
+              onImportClick={() => setIsImportOpen(true)}
+              onExportClick={handleExport}
+              onDownloadTemplateClick={handleDownloadTemplate}
+            />
+            <Button onClick={handleOpenCreate} className="bg-blood hover:bg-blood-deep text-white shadow-none rounded-md px-4">
+              <Plus className="w-4 h-4 mr-2" /> Thêm mới
+            </Button>
+          </div>
+        }
+      />
 
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         <DataTable
@@ -553,18 +554,18 @@ export default function AdminUsersPage() {
         size="7xl"
         hideFooter
       >
-        <div className="flex border-b border-slate-200 mb-6">
-          <button 
+        <div className="flex border-b border-slate-200 mb-6 gap-6">
+          <button
             type="button"
             onClick={() => setModalTab('info')}
-            className={`flex-1 py-3 text-sm font-medium border-b-2 transition-colors ${modalTab === 'info' ? 'border-blood text-blood' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+            className={`py-3 text-sm font-medium border-b-2 transition-colors -mb-px ${modalTab === 'info' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
           >
             Thông tin chung
           </button>
-          <button 
+          <button
             type="button"
             onClick={() => setModalTab('donor')}
-            className={`flex-1 py-3 text-sm font-medium border-b-2 transition-colors ${modalTab === 'donor' ? 'border-blood text-blood' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+            className={`py-3 text-sm font-medium border-b-2 transition-colors -mb-px ${modalTab === 'donor' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
           >
             Hồ sơ hiến máu
           </button>
@@ -581,19 +582,19 @@ export default function AdminUsersPage() {
                 <h3 className="font-semibold text-blood border-b pb-2 mb-4">Thông tin Tài khoản</h3>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Email <span className="text-red-500">*</span></label>
-                  <Input type="email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} required={modalTab === 'info'} />
+                  <Input type="email" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} required={modalTab === 'info'} />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Username</label>
-                  <Input type="text" value={formData.username} onChange={e => setFormData({...formData, username: e.target.value})} />
+                  <Input type="text" value={formData.username} onChange={e => setFormData({ ...formData, username: e.target.value })} />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Mật khẩu {editingUser && <span className="text-slate-400 font-normal">(Bỏ trống nếu không đổi)</span>}</label>
-                  <Input type="password" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} required={!editingUser && modalTab === 'info'} />
+                  <Input type="password" value={formData.password} onChange={e => setFormData({ ...formData, password: e.target.value })} required={!editingUser && modalTab === 'info'} />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Vai trò</label>
-                  <Select value={formData.role_id} onValueChange={v => setFormData({...formData, role_id: v || ''})}>
+                  <Select value={formData.role_id} onValueChange={v => setFormData({ ...formData, role_id: v || '' })}>
                     <SelectTrigger>
                       <SelectValue placeholder="Chọn vai trò">
                         {roles.find(r => r.role_id.toString() === formData.role_id)?.role_name || 'Chọn vai trò'}
@@ -611,7 +612,7 @@ export default function AdminUsersPage() {
                 {roles.find(r => r.role_id.toString() === formData.role_id)?.role_code === 'HOSPITAL_STAFF' && (
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1">Cơ sở y tế (Bệnh viện) <span className="text-red-500">*</span></label>
-                    <Select value={formData.facility_id} onValueChange={v => setFormData({...formData, facility_id: v || ''})}>
+                    <Select value={formData.facility_id} onValueChange={v => setFormData({ ...formData, facility_id: v || '' })}>
                       <SelectTrigger>
                         <SelectValue placeholder="Chọn cơ sở y tế">
                           {facilities.find(f => f.facility_id.toString() === formData.facility_id)?.facility_name || 'Chọn cơ sở y tế'}
@@ -629,38 +630,38 @@ export default function AdminUsersPage() {
                 )}
                 <div className="grid grid-cols-2 gap-4 pt-2">
                   <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" checked={formData.is_active} onChange={e => setFormData({...formData, is_active: e.target.checked})} className="w-4 h-4 text-blood rounded border-gray-300 focus:ring-blood" />
+                    <input type="checkbox" checked={formData.is_active} onChange={e => setFormData({ ...formData, is_active: e.target.checked })} className="w-4 h-4 text-blood rounded border-gray-300 focus:ring-blood" />
                     <span className="text-sm font-medium text-slate-700">Tài khoản hoạt động</span>
                   </label>
                   <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" checked={formData.is_email_verified} onChange={e => setFormData({...formData, is_email_verified: e.target.checked})} className="w-4 h-4 text-blood rounded border-gray-300 focus:ring-blood" />
+                    <input type="checkbox" checked={formData.is_email_verified} onChange={e => setFormData({ ...formData, is_email_verified: e.target.checked })} className="w-4 h-4 text-blood rounded border-gray-300 focus:ring-blood" />
                     <span className="text-sm font-medium text-slate-700">Đã xác minh Email</span>
                   </label>
                   <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" checked={formData.is_donor_registered} onChange={e => setFormData({...formData, is_donor_registered: e.target.checked})} className="w-4 h-4 text-blood rounded border-gray-300 focus:ring-blood" />
+                    <input type="checkbox" checked={formData.is_donor_registered} onChange={e => setFormData({ ...formData, is_donor_registered: e.target.checked })} className="w-4 h-4 text-blood rounded border-gray-300 focus:ring-blood" />
                     <span className="text-sm font-medium text-slate-700">Đã đ.ký hiến máu</span>
                   </label>
                   <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" checked={formData.is_available_for_donation} onChange={e => setFormData({...formData, is_available_for_donation: e.target.checked})} className="w-4 h-4 text-blood rounded border-gray-300 focus:ring-blood" />
+                    <input type="checkbox" checked={formData.is_available_for_donation} onChange={e => setFormData({ ...formData, is_available_for_donation: e.target.checked })} className="w-4 h-4 text-blood rounded border-gray-300 focus:ring-blood" />
                     <span className="text-sm font-medium text-slate-700">Sẵn sàng hiến máu</span>
                   </label>
                 </div>
               </div>
-              
+
               <div className="space-y-4">
                 <h3 className="font-semibold text-blood border-b pb-2 mb-4">Thông tin Cá nhân</h3>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Họ và tên <span className="text-red-500">*</span></label>
-                  <Input type="text" value={formData.full_name} onChange={e => setFormData({...formData, full_name: e.target.value})} placeholder="Nguyễn Văn A" required={modalTab === 'info'} />
+                  <Input type="text" value={formData.full_name} onChange={e => setFormData({ ...formData, full_name: e.target.value })} placeholder="Nguyễn Văn A" required={modalTab === 'info'} />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1">Số điện thoại</label>
-                    <Input type="text" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} placeholder="VD: 0901234567" />
+                    <Input type="text" value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} placeholder="VD: 0901234567" />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1">CCCD/CMND</label>
-                    <Input type="text" value={formData.identity_card} onChange={e => setFormData({...formData, identity_card: e.target.value})} placeholder="12 chữ số CCCD" maxLength={12} />
+                    <Input type="text" value={formData.identity_card} onChange={e => setFormData({ ...formData, identity_card: e.target.value })} placeholder="12 chữ số CCCD" maxLength={12} />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
@@ -669,17 +670,17 @@ export default function AdminUsersPage() {
                       <label className="block text-sm font-medium text-slate-700">Ngày sinh</label>
                       <span className="text-[10px] text-blood font-semibold bg-red-50 px-1.5 py-0.5 rounded border border-red-100">Đủ 18 - 60 tuổi</span>
                     </div>
-                    <Input 
-                      type="date" 
-                      min={minDobDate} 
-                      max={maxDobDate} 
-                      value={formData.date_of_birth} 
-                      onChange={e => setFormData({...formData, date_of_birth: e.target.value})} 
+                    <Input
+                      type="date"
+                      min={minDobDate}
+                      max={maxDobDate}
+                      value={formData.date_of_birth}
+                      onChange={e => setFormData({ ...formData, date_of_birth: e.target.value })}
                     />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1">Giới tính</label>
-                    <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50" value={formData.gender} onChange={e => setFormData({...formData, gender: e.target.value})}>
+                    <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50" value={formData.gender} onChange={e => setFormData({ ...formData, gender: e.target.value })}>
                       <option value="">Chưa chọn</option>
                       <option value="M">Nam</option>
                       <option value="F">Nữ</option>
@@ -687,18 +688,18 @@ export default function AdminUsersPage() {
                     </select>
                   </div>
                 </div>
-                
+
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1">Tỉnh/Thành phố</label>
-                    <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2" value={formData.province_id} onChange={e => setFormData({...formData, province_id: e.target.value, ward_id: ''})}>
+                    <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2" value={formData.province_id} onChange={e => setFormData({ ...formData, province_id: e.target.value, ward_id: '' })}>
                       <option value="">Chọn tỉnh</option>
                       {provinces.map(p => <option key={p.province_id} value={p.province_id}>{p.province_name}</option>)}
                     </select>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1">Phường/Xã</label>
-                    <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2" value={formData.ward_id} onChange={e => setFormData({...formData, ward_id: e.target.value})} disabled={!formData.province_id}>
+                    <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2" value={formData.ward_id} onChange={e => setFormData({ ...formData, ward_id: e.target.value })} disabled={!formData.province_id}>
                       <option value="">Chọn xã</option>
                       {wards.map(w => <option key={w.ward_id} value={w.ward_id}>{w.ward_name}</option>)}
                     </select>
@@ -706,7 +707,7 @@ export default function AdminUsersPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Địa chỉ chi tiết</label>
-                  <Input type="text" value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} placeholder="Số nhà, tên đường..." />
+                  <Input type="text" value={formData.address} onChange={e => setFormData({ ...formData, address: e.target.value })} placeholder="Số nhà, tên đường..." />
                 </div>
               </div>
             </div>
@@ -716,10 +717,10 @@ export default function AdminUsersPage() {
                 <h3 className="font-semibold text-blood border-b pb-2 mb-4">Chỉ số Cơ thể</h3>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Nhóm máu</label>
-                  <select 
+                  <select
                     className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                     value={formData.blood_type_id}
-                    onChange={e => setFormData({...formData, blood_type_id: e.target.value})}
+                    onChange={e => setFormData({ ...formData, blood_type_id: e.target.value })}
                   >
                     <option value="">Chưa cập nhật</option>
                     {bloodTypes.map(bt => (
@@ -733,59 +734,59 @@ export default function AdminUsersPage() {
                       <label className="block text-sm font-medium text-slate-700">Cân nặng (kg)</label>
                       <span className="text-[10px] text-slate-400">≥ 42kg (Nữ) / ≥ 45kg (Nam)</span>
                     </div>
-                    <Input type="number" min={40} max={200} step="0.1" value={formData.weight_kg} onChange={e => setFormData({...formData, weight_kg: e.target.value})} placeholder="VD: 55" />
+                    <Input type="number" min={40} max={200} step="0.1" value={formData.weight_kg} onChange={e => setFormData({ ...formData, weight_kg: e.target.value })} placeholder="VD: 55" />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1">Chiều cao (cm)</label>
-                    <Input type="number" min={100} max={250} value={formData.height_cm} onChange={e => setFormData({...formData, height_cm: e.target.value})} placeholder="VD: 165" />
+                    <Input type="number" min={100} max={250} value={formData.height_cm} onChange={e => setFormData({ ...formData, height_cm: e.target.value })} placeholder="VD: 165" />
                   </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Ghi chú y tế</label>
-                  <textarea 
+                  <textarea
                     className="flex min-h-[120px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                    value={formData.health_notes} 
-                    onChange={e => setFormData({...formData, health_notes: e.target.value})} 
+                    value={formData.health_notes}
+                    onChange={e => setFormData({ ...formData, health_notes: e.target.value })}
                     placeholder="Tiền sử bệnh lý, lưu ý khi hiến máu..."
                   />
                 </div>
               </div>
-              
+
               <div className="space-y-4">
                 <h3 className="font-semibold text-blood border-b pb-2 mb-4">Lịch sử & Khẩn cấp</h3>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1">Lần hiến đầu tiên</label>
-                    <Input type="date" max={today.toISOString().split('T')[0]} value={formData.first_donation_date} onChange={e => setFormData({...formData, first_donation_date: e.target.value})} />
+                    <Input type="date" max={today.toISOString().split('T')[0]} value={formData.first_donation_date} onChange={e => setFormData({ ...formData, first_donation_date: e.target.value })} />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1">Tổng số lần hiến</label>
-                    <Input type="number" min={0} value={formData.total_donations} onChange={e => setFormData({...formData, total_donations: e.target.value})} />
+                    <Input type="number" min={0} value={formData.total_donations} onChange={e => setFormData({ ...formData, total_donations: e.target.value })} />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1">Lần hiến gần nhất</label>
-                    <Input type="date" max={today.toISOString().split('T')[0]} value={formData.last_donation_date} onChange={e => setFormData({...formData, last_donation_date: e.target.value})} />
+                    <Input type="date" max={today.toISOString().split('T')[0]} value={formData.last_donation_date} onChange={e => setFormData({ ...formData, last_donation_date: e.target.value })} />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1">Ngày có thể hiến tiếp</label>
-                    <Input type="date" value={formData.next_eligible_date} onChange={e => setFormData({...formData, next_eligible_date: e.target.value})} />
+                    <Input type="date" value={formData.next_eligible_date} onChange={e => setFormData({ ...formData, next_eligible_date: e.target.value })} />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4 mt-2">
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1">Tên liên hệ khẩn cấp</label>
-                    <Input type="text" value={formData.emergency_contact_name} onChange={e => setFormData({...formData, emergency_contact_name: e.target.value})} placeholder="Họ tên người thân" />
+                    <Input type="text" value={formData.emergency_contact_name} onChange={e => setFormData({ ...formData, emergency_contact_name: e.target.value })} placeholder="Họ tên người thân" />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1">SĐT liên hệ khẩn cấp</label>
-                    <Input type="text" value={formData.emergency_contact_phone} onChange={e => setFormData({...formData, emergency_contact_phone: e.target.value})} placeholder="SĐT người thân" />
+                    <Input type="text" value={formData.emergency_contact_phone} onChange={e => setFormData({ ...formData, emergency_contact_phone: e.target.value })} placeholder="SĐT người thân" />
                   </div>
                 </div>
                 <div className="pt-2">
                   <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" checked={formData.dp_is_active} onChange={e => setFormData({...formData, dp_is_active: e.target.checked})} className="w-4 h-4 text-blood rounded border-gray-300 focus:ring-blood" />
+                    <input type="checkbox" checked={formData.dp_is_active} onChange={e => setFormData({ ...formData, dp_is_active: e.target.checked })} className="w-4 h-4 text-blood rounded border-gray-300 focus:ring-blood" />
                     <span className="text-sm font-medium text-slate-700">Hồ sơ hiến máu Đang hoạt động</span>
                   </label>
                 </div>
@@ -815,22 +816,22 @@ export default function AdminUsersPage() {
           </div>
         ) : selectedUserDetail ? (
           <div className="space-y-4">
-            <div className="flex border-b border-slate-200">
-              <button 
+            <div className="flex border-b border-slate-200 gap-6">
+              <button
                 onClick={() => setActiveTab('info')}
-                className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'info' ? 'border-blood text-blood' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'}`}
+                className={`flex items-center gap-2 py-3 text-sm font-medium border-b-2 transition-colors -mb-px ${activeTab === 'info' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
               >
                 <User className="w-4 h-4" /> Thông tin cá nhân
               </button>
-              <button 
+              <button
                 onClick={() => setActiveTab('donor')}
-                className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'donor' ? 'border-blood text-blood' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'}`}
+                className={`flex items-center gap-2 py-3 text-sm font-medium border-b-2 transition-colors -mb-px ${activeTab === 'donor' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
               >
                 <Activity className="w-4 h-4" /> Hồ sơ hiến máu
               </button>
-              <button 
+              <button
                 onClick={() => setActiveTab('history')}
-                className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'history' ? 'border-blood text-blood' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'}`}
+                className={`flex items-center gap-2 py-3 text-sm font-medium border-b-2 transition-colors -mb-px ${activeTab === 'history' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
               >
                 <History className="w-4 h-4" /> Lịch sử hiến
               </button>
@@ -847,7 +848,7 @@ export default function AdminUsersPage() {
                     <span className="text-slate-500 block mb-1 text-xs uppercase tracking-wider font-semibold">Vai trò</span>
                     <span className="font-semibold text-slate-800">{selectedUserDetail.role?.role_name || '-'}</span>
                   </div>
-                  
+
                   <div className="col-span-2 sm:col-span-1">
                     <span className="text-slate-500 block mb-1 text-xs uppercase tracking-wider font-semibold">Email</span>
                     <span className="font-medium text-slate-800">{selectedUserDetail.email}</span>
@@ -889,7 +890,7 @@ export default function AdminUsersPage() {
                         <span className="text-slate-500 block mb-1 text-xs uppercase tracking-wider font-semibold">Tổng số lần hiến</span>
                         <span className="font-bold text-blue-600 text-xl">{selectedUserDetail.donor_profile.total_donations || 0}</span>
                       </div>
-                      
+
                       <div className="col-span-2 sm:col-span-1">
                         <span className="text-slate-500 block mb-1 text-xs uppercase tracking-wider font-semibold">Chiều cao</span>
                         <span className="font-medium text-slate-800">{selectedUserDetail.donor_profile.height_cm ? `${selectedUserDetail.donor_profile.height_cm} cm` : '-'}</span>
@@ -914,7 +915,7 @@ export default function AdminUsersPage() {
                           {selectedUserDetail.donor_profile.health_notes || '-'}
                         </div>
                       </div>
-                      
+
                       <div className="col-span-2 sm:col-span-1 border-t border-blue-100 pt-4 mt-2">
                         <span className="text-slate-500 block mb-1 text-xs uppercase tracking-wider font-semibold">Liên hệ khẩn cấp</span>
                         <span className="font-medium text-slate-800">{selectedUserDetail.donor_profile.emergency_contact_name || '-'}</span>
@@ -974,7 +975,7 @@ export default function AdminUsersPage() {
                                 <span className={`px-2 py-1 rounded text-xs font-semibold
                                   ${d.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-700' :
                                     d.status === 'FAILED' ? 'bg-red-100 text-red-700' :
-                                    'bg-amber-100 text-amber-700'}`}>
+                                      'bg-amber-100 text-amber-700'}`}>
                                   {d.status === 'COMPLETED' ? 'Thành công' : d.status === 'FAILED' ? 'Thất bại' : 'Chờ xử lý'}
                                 </span>
                               </td>

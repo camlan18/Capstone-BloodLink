@@ -1,7 +1,8 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { TrendingUp, Activity, Users, FileText, Droplets, HeartPulse, Clock, FileSearch } from 'lucide-react';
+import { TrendingUp, Activity, Users, FileText, Droplets, HeartPulse, Clock, FileSearch, BarChart2 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { PageHeader } from '@/components/ui/PageHeader';
 import { adminDashboardService } from '@/lib/services/admin-dashboard';
 import { adminMasterDataService } from '@/lib/services/admin-master-data';
 import { toast } from 'sonner';
@@ -177,56 +178,55 @@ export default function AdminDashboardPage() {
   const maxChartValue = Math.max(...chartData.map(d => d.count), 10); 
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto">
+    <div className="space-y-6 w-full mx-auto pb-12">
       {/* Header Area */}
-      <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 mb-2">
-        <div>
-          <h2 className="text-3xl font-bold text-slate-900 tracking-tight">Dashboard</h2>
-          <p className="text-sm text-slate-500 mt-1">Tổng quan hoạt động hiến máu</p>
-        </div>
-        
-        <div className="flex flex-wrap items-center gap-4">
-          {(!user || userRole === 'ADMIN' || userRole === 'STAFF') && (
-            <div className="w-72">
-              <Select value={facilityId} onValueChange={(v) => setFacilityId(v || 'all')}>
-                <SelectTrigger className="w-full bg-white border-slate-200 rounded-none shadow-sm focus:ring-0 focus:border-blood h-10 font-medium text-slate-700">
-                  <SelectValue placeholder="Tất cả cơ sở y tế">
-                    {facilityId === 'all' ? 'Tất cả cơ sở y tế' : facilities.find(f => f.facility_id.toString() === facilityId)?.facility_name || 'Tất cả cơ sở y tế'}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent className="rounded-none">
-                  <SelectItem value="all">Tất cả cơ sở y tế</SelectItem>
-                  {facilities.map(f => (
-                    <SelectItem key={f.facility_id} value={f.facility_id.toString()}>
-                      {f.facility_name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-          
-          {!isMod && (
-            <div className="flex items-center bg-white border border-slate-200 rounded-none shadow-sm h-10 px-3 group focus-within:border-blood transition-colors">
-              <span className="text-sm text-slate-500 mr-2 font-medium">Từ</span>
-              <input 
-                type="date" 
-                className="text-sm border-none focus:outline-none focus:ring-0 text-slate-700 bg-transparent cursor-pointer" 
-                value={startDate ? new Date(startDate).toISOString().split('T')[0] : ''}
-                onChange={(e) => setStartDate(new Date(e.target.value).toISOString())}
-              />
-              <span className="text-slate-300 px-3">→</span>
-              <span className="text-sm text-slate-500 mr-2 font-medium">Đến</span>
-              <input 
-                type="date" 
-                className="text-sm border-none focus:outline-none focus:ring-0 text-slate-700 bg-transparent cursor-pointer" 
-                value={endDate ? new Date(endDate).toISOString().split('T')[0] : ''}
-                onChange={(e) => setEndDate(new Date(e.target.value).toISOString())}
-              />
-            </div>
-          )}
-        </div>
-      </div>
+      <PageHeader
+        title="Dashboard"
+        description="Tổng quan hoạt động hiến máu"
+        action={
+          <div className="flex flex-wrap items-center gap-4">
+            {(!user || userRole === 'ADMIN' || userRole === 'STAFF') && (
+              <div className="w-72">
+                <Select value={facilityId} onValueChange={(v) => setFacilityId(v || 'all')}>
+                  <SelectTrigger className="w-full bg-white border-slate-200 rounded-none shadow-sm focus:ring-0 focus:border-blood h-10 font-medium text-slate-700">
+                    <SelectValue placeholder="Tất cả cơ sở y tế">
+                      {facilityId === 'all' ? 'Tất cả cơ sở y tế' : facilities.find(f => f.facility_id.toString() === facilityId)?.facility_name || 'Tất cả cơ sở y tế'}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent className="rounded-none">
+                    <SelectItem value="all">Tất cả cơ sở y tế</SelectItem>
+                    {facilities.map(f => (
+                      <SelectItem key={f.facility_id} value={f.facility_id.toString()}>
+                        {f.facility_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            
+            {!isMod && (
+              <div className="flex items-center bg-white border border-slate-200 rounded-none shadow-sm h-10 px-3 group focus-within:border-blood transition-colors">
+                <span className="text-sm text-slate-500 mr-2 font-medium">Từ</span>
+                <input 
+                  type="date" 
+                  className="text-sm border-none focus:outline-none focus:ring-0 text-slate-700 bg-transparent cursor-pointer" 
+                  value={startDate ? new Date(startDate).toISOString().split('T')[0] : ''}
+                  onChange={(e) => setStartDate(new Date(e.target.value).toISOString())}
+                />
+                <span className="text-slate-300 px-3">→</span>
+                <span className="text-sm text-slate-500 mr-2 font-medium">Đến</span>
+                <input 
+                  type="date" 
+                  className="text-sm border-none focus:outline-none focus:ring-0 text-slate-700 bg-transparent cursor-pointer" 
+                  value={endDate ? new Date(endDate).toISOString().split('T')[0] : ''}
+                  onChange={(e) => setEndDate(new Date(e.target.value).toISOString())}
+                />
+              </div>
+            )}
+          </div>
+        }
+      />
 
       {/* Main Stats Row */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">

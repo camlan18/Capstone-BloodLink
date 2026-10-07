@@ -613,6 +613,7 @@ model blood_transfers {
   blood_type_id       Int
   component_id        Int
   inventory_id        Int?
+  inventory_ids       String?   @db.NVarChar(1000)
   units_requested     Int       @default(1)
   status              String    @default("PENDING") @db.NVarChar(20)
   reason              String?   @db.NVarChar(1000)
