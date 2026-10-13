@@ -29,4 +29,8 @@ export class CreateTransferDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  @IsOptional()
+  @IsString()
+  required_before?: string;
 }

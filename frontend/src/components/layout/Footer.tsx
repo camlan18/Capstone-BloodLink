@@ -1,8 +1,10 @@
 'use client';
-import Link from 'next/link';
+import { Link } from '@/i18n/routing';
 import { Droplet, Heart, Phone, Mail, MapPin, Globe, MessageCircle } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
 export const Footer = () => {
+  const t = useTranslations('Footer');
   return (
     <footer className="bg-navy text-white">
       <div className="container mx-auto px-4 pt-16 pb-8">
@@ -19,7 +21,7 @@ export const Footer = () => {
               </span>
             </Link>
             <p className="text-slate-400 text-sm leading-relaxed mb-6">
-              Kết nối người hiến máu với những người cần máu. Cùng nhau xây dựng cộng đồng hiến máu lớn mạnh trên toàn quốc.
+              {t('desc')}
             </p>
             <div className="flex gap-3">
               <a href="#" className="w-9 h-9 rounded-md bg-slate-700 hover:bg-blood flex items-center justify-center transition-colors">
@@ -33,13 +35,13 @@ export const Footer = () => {
 
           {/* Quick Links */}
           <div>
-            <h3 className="text-sm font-semibold mb-5 uppercase tracking-wider">Liên kết nhanh</h3>
+            <h3 className="text-sm font-semibold mb-5 uppercase tracking-wider">{t('quickLinks')}</h3>
             <ul className="space-y-3">
               {[
-                { name: 'Trang chủ', href: '/' },
-                { name: 'Yêu cầu máu', href: '/blood-requests' },
-                { name: 'Tài liệu', href: '/education' },
-                { name: 'Đăng ký hiến', href: '/register' },
+                { name: t('linkHome'), href: '/' },
+                { name: t('linkRequests'), href: '/blood-requests' },
+                { name: t('linkEducation'), href: '/education' },
+                { name: t('linkRegister'), href: '/register' },
               ].map((link) => (
                 <li key={link.href}>
                   <Link href={link.href} className="text-slate-400 hover:text-blood text-sm transition-colors">
@@ -52,13 +54,13 @@ export const Footer = () => {
 
           {/* Donor */}
           <div>
-            <h3 className="text-sm font-semibold mb-5 uppercase tracking-wider">Người hiến máu</h3>
+            <h3 className="text-sm font-semibold mb-5 uppercase tracking-wider">{t('donor')}</h3>
             <ul className="space-y-3">
               {[
-                { name: 'Hồ sơ của tôi', href: '/donor/profile' },
-                { name: 'Lịch sử hiến máu', href: '/donor/history' },
-                { name: 'Đặt lịch hiến', href: '/donor/book' },
-                { name: 'Quên mật khẩu', href: '/forgot-password' },
+                { name: t('donorProfile'), href: '/donor/profile' },
+                { name: t('donorHistory'), href: '/donor/history' },
+                { name: t('donorBook'), href: '/donor/book' },
+                { name: t('forgotPassword'), href: '/forgot-password' },
               ].map((link) => (
                 <li key={link.href}>
                   <Link href={link.href} className="text-slate-400 hover:text-blood text-sm transition-colors">
@@ -71,11 +73,11 @@ export const Footer = () => {
 
           {/* Contact */}
           <div>
-            <h3 className="text-sm font-semibold mb-5 uppercase tracking-wider">Liên hệ</h3>
+            <h3 className="text-sm font-semibold mb-5 uppercase tracking-wider">{t('contact')}</h3>
             <ul className="space-y-4">
               <li className="flex items-start gap-3 text-sm text-slate-400">
                 <MapPin className="h-4 w-4 text-blood shrink-0 mt-0.5" />
-                <span>Số 600, đường Nguyễn Văn Cừ (nối dài), Phường An Bình, Thành phố Cần Thơ</span>
+                <span>{t('address')}</span>
               </li>
               <li className="flex items-center gap-3 text-sm text-slate-400">
                 <Phone className="h-4 w-4 text-blood shrink-0" />
@@ -95,8 +97,8 @@ export const Footer = () => {
             © {new Date().getFullYear()} BloodLink. Made with <Heart className="h-3 w-3 text-blood fill-blood" /> in Vietnam
           </p>
           <div className="flex gap-6">
-            <Link href="/privacy" className="text-slate-500 hover:text-slate-300 text-sm transition-colors">Chính sách</Link>
-            <Link href="/terms" className="text-slate-500 hover:text-slate-300 text-sm transition-colors">Điều khoản</Link>
+            <Link href="/privacy" className="text-slate-500 hover:text-slate-300 text-sm transition-colors">{t('privacy')}</Link>
+            <Link href="/terms" className="text-slate-500 hover:text-slate-300 text-sm transition-colors">{t('terms')}</Link>
           </div>
         </div>
       </div>

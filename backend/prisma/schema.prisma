@@ -624,6 +624,7 @@ model blood_transfers {
   approved_at         DateTime? @db.DateTime2
   shipped_at          DateTime? @db.DateTime2
   received_at         DateTime? @db.DateTime2
+  required_before     DateTime? @db.DateTime2
   created_at          DateTime  @default(now()) @db.DateTime2
   updated_at          DateTime? @db.DateTime2
 

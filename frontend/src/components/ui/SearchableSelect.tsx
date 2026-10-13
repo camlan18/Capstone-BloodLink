@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { useTranslations } from 'next-intl';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -24,13 +25,16 @@ export function SearchableSelect({
   options,
   value,
   onValueChange,
-  placeholder = 'Chọn một tùy chọn',
-  searchPlaceholder = 'Tìm kiếm...',
+  placeholder,
+  searchPlaceholder,
   className,
   triggerClassName,
   renderValue,
   disabled
 }: SearchableSelectProps) {
+  const tCommon = useTranslations('Common');
+  const placeholderText = placeholder || tCommon('selectOption');
+  const searchPlaceholderText = searchPlaceholder || tCommon('searchPlaceholder');
   const [search, setSearch] = useState('');
 
   const filteredOptions = useMemo(() => {
@@ -55,7 +59,7 @@ export function SearchableSelect({
           selectedOption ? (
             <span data-slot="select-value" className="flex flex-1 text-left line-clamp-1 items-center gap-1.5">{selectedOption.label}</span>
           ) : (
-            <SelectValue placeholder={placeholder} />
+            <SelectValue placeholder={placeholderText} />
           )
         )}
       </SelectTrigger>
@@ -69,7 +73,7 @@ export function SearchableSelect({
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder={searchPlaceholder}
+              placeholder={searchPlaceholderText}
               className="pl-9 h-9 text-sm focus-visible:ring-1 focus-visible:ring-blood/50"
               onKeyDown={(e) => {
                 e.stopPropagation();

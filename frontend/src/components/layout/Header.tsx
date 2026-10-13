@@ -1,6 +1,7 @@
 'use client';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { Link } from '@/i18n/routing';
+import { LocaleSwitcher } from '@/components/layout/LocaleSwitcher';
+import { usePathname } from '@/i18n/routing';
 import { useAuthStore } from '@/lib/stores';
 import { educationService } from '@/lib/services/education';
 import { Droplet, Menu, LogOut, User as UserIcon, X, ChevronDown, Heart, Clock, CalendarPlus, LayoutDashboard, Bell, ClipboardList } from 'lucide-react';
@@ -16,41 +17,43 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useEffect, useState } from 'react';
 import { notificationService } from '@/lib/services/notification';
+import { useTranslations } from 'next-intl';
 
-const navLinks = [
-  { name: 'Trang chủ', href: '/' },
-  { name: 'Tìm người hiến', href: '/blood-requests' },
-  { name: 'Lịch hiến máu', href: '/schedules' },
-  { name: 'Bảng xếp hạng', href: '/leaderboard' },
+const getNavLinks = (t: any) => [
+  { name: t('navHome'), href: '/' },
+  { name: t('navSearch'), href: '/blood-requests' },
+  { name: t('navSchedule'), href: '/schedules' },
+  { name: t('navLeaderboard'), href: '/leaderboard' },
   { 
-    name: 'Về chúng tôi', 
+    name: t('navAbout'), 
     href: '/about',
     submenu: [
-      { name: 'Câu chuyện của chúng tôi', href: '/about#story', description: 'Hành trình và sứ mệnh của BloodLink' },
-      { name: 'Tầm nhìn & Sứ mệnh', href: '/about#vision', description: 'Mục tiêu hướng tới trong tương lai' },
-      { name: 'Đội ngũ', href: '/about#team', description: 'Những người đứng sau dự án' },
-      { name: 'Thành tựu', href: '/about#achievements', description: 'Các cột mốc đáng nhớ' },
+      { name: t('aboutStory'), href: '/about#story', description: t('aboutStoryDesc') },
+      { name: t('aboutVision'), href: '/about#vision', description: t('aboutVisionDesc') },
+      { name: t('aboutTeam'), href: '/about#team', description: t('aboutTeamDesc') },
+      { name: t('aboutAchievements'), href: '/about#achievements', description: t('aboutAchievementsDesc') },
     ]
   },
   { 
-    name: 'Tài liệu', 
+    name: t('navEducation'), 
     href: '/education',
     submenu: [
-      { name: 'Kiến thức chung', href: '/education?category=1', description: 'Những điều cần biết trước khi hiến máu' },
-      { name: 'Quy trình', href: '/education?category=2', description: 'Các bước chuẩn bị và thực hiện' },
-      { name: 'Lợi ích', href: '/education?category=3', description: 'Tại sao hiến máu tốt cho sức khỏe' },
-      { name: 'Hỏi đáp (FAQ)', href: '/education?category=4', description: 'Giải đáp các thắc mắc thường gặp' },
+      { name: t('eduGeneral'), href: '/education?category=1', description: t('eduGeneralDesc') },
+      { name: t('eduProcess'), href: '/education?category=2', description: t('eduProcessDesc') },
+      { name: t('eduBenefits'), href: '/education?category=3', description: t('eduBenefitsDesc') },
+      { name: t('eduFAQ'), href: '/education?category=4', description: t('eduFAQDesc') },
     ]
   },
-  { name: 'Liên hệ', href: '/contact' },
+  { name: t('navContact'), href: '/contact' },
 ];
 
 export const Header = () => {
+  const t = useTranslations('Header');
   const pathname = usePathname();
   const { user, isAuthenticated, logout } = useAuthStore();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const [dynamicLinks, setDynamicLinks] = useState(navLinks);
+  const [dynamicLinks, setDynamicLinks] = useState(getNavLinks(t));
 
   useEffect(() => {
     setMounted(true);
@@ -61,15 +64,24 @@ export const Header = () => {
         if (res.data) {
           const categories = res.data;
           setDynamicLinks(prev => prev.map(link => {
-            if (link.name === 'Tài liệu') {
+            if (link.name === t('navEducation')) {
               return {
                 ...link,
                 submenu: categories && categories.length > 0 
-                  ? categories.map((cat: any) => ({
-                      name: cat.category_name,
-                      href: `/education?category=${cat.category_id}`,
-                      description: cat.description || 'Tìm hiểu thêm thông tin'
-                    }))
+                  ? categories.map((cat: any) => {
+                      let tName = cat.category_name;
+                      let tDesc = cat.description;
+                      if (cat.category_id === 1) { tName = t('eduGeneral'); tDesc = t('eduGeneralDesc'); }
+                      if (cat.category_id === 2) { tName = t('eduProcess'); tDesc = t('eduProcessDesc'); }
+                      if (cat.category_id === 3) { tName = t('eduBenefits'); tDesc = t('eduBenefitsDesc'); }
+                      if (cat.category_id === 4) { tName = t('eduFAQ'); tDesc = t('eduFAQDesc'); }
+                      
+                      return {
+                        name: tName || cat.category_name,
+                        href: `/education?category=${cat.category_id}`,
+                        description: tDesc || cat.description || t('eduMore')
+                      };
+                    })
                   : undefined
               };
             }
@@ -159,9 +171,10 @@ export const Header = () => {
             );
           })}
         </nav>
-
         {/* Desktop Auth */}
-        <div className="hidden lg:flex items-center gap-3">
+        <div className="flex items-center gap-2">
+          <LocaleSwitcher />
+          <div className="hidden lg:flex items-center gap-3">
           {mounted && isAuthenticated ? (
             <>
               <Link href="/donor/notifications" className="relative p-2 text-slate-500 hover:bg-slate-100 rounded-full transition-colors mr-1">
@@ -195,34 +208,34 @@ export const Header = () => {
                 {isAdmin && (
                   <DropdownMenuItem>
                     <Link href="/admin" className="w-full flex items-center gap-2 text-blood font-medium">
-                      <LayoutDashboard className="h-4 w-4" /> Trang Quản lý
+                      <LayoutDashboard className="h-4 w-4" /> {t('adminPage')}
                     </Link>
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuItem>
                   <Link href="/donor/profile" className="w-full flex items-center gap-2">
-                    <UserIcon className="h-4 w-4" /> Hồ sơ hiến máu
+                    <UserIcon className="h-4 w-4" /> {t('donorProfile')}
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem>
                   <Link href="/donor/history" className="w-full flex items-center gap-2">
-                    <Clock className="h-4 w-4" /> Lịch sử hiến máu
+                    <Clock className="h-4 w-4" /> {t('donorHistory')}
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem>
                   <Link href="/donor/book" className="w-full flex items-center gap-2">
-                    <CalendarPlus className="h-4 w-4" /> Đăng ký hiến máu
+                    <CalendarPlus className="h-4 w-4" /> {t('donorBook')}
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem>
                   <Link href="/donor/requests" className="w-full flex items-center gap-2">
-                    <ClipboardList className="h-4 w-4" /> Lịch sử yêu cầu máu
+                    <ClipboardList className="h-4 w-4" /> {t('bloodRequests')}
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem className="text-blood focus:text-blood" onClick={logout}>
                   <LogOut className="mr-2 h-4 w-4" />
-                  <span>Đăng xuất</span>
+                  <span>{t('logout')}</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -233,28 +246,32 @@ export const Header = () => {
                 href="/login"
                 className="px-5 py-2 text-sm font-medium text-navy hover:text-blood transition-colors"
               >
-                Đăng nhập
+                {t('login')}
               </Link>
               <Link
                 href="/register"
                 className="px-6 py-2.5 text-sm font-semibold text-white bg-blood hover:bg-blood-dark rounded-md transition-all hover:shadow-lg hover:shadow-blood/25"
               >
-                Đăng ký
+                {t('register')}
               </Link>
             </div>
           )}
           {!mounted && (
             <div className="w-24 h-10 animate-pulse bg-slate-100 rounded-md"></div>
           )}
+          </div>
         </div>
 
         {/* Mobile Toggle */}
-        <button
-          onClick={() => setMobileOpen(!mobileOpen)}
-          className="lg:hidden p-2 rounded-lg hover:bg-slate-100 transition-colors"
-        >
-          {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-        </button>
+        <div className="lg:hidden flex items-center gap-2">
+          <LocaleSwitcher />
+          <button
+            onClick={() => setMobileOpen(!mobileOpen)}
+            className="p-2 rounded-lg hover:bg-slate-100 transition-colors"
+          >
+            {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </button>
+        </div>
       </div>
 
       {/* Mobile Menu */}
@@ -281,23 +298,23 @@ export const Header = () => {
                 <>
                   {isAdmin && (
                     <Link href="/admin" onClick={() => setMobileOpen(false)} className="px-4 py-3 text-sm font-medium text-blood hover:bg-red-50 rounded-lg transition-colors">
-                      Trang Quản lý
+                      {t('adminPage')}
                     </Link>
                   )}
                   <Link href="/donor/profile" onClick={() => setMobileOpen(false)} className="px-4 py-3 text-sm font-medium text-slate-600 hover:text-blood hover:bg-red-50 rounded-lg transition-colors">
-                    Hồ sơ của tôi
+                    {t('donorProfile')}
                   </Link>
                   <Link href="/donor/requests" onClick={() => setMobileOpen(false)} className="px-4 py-3 text-sm font-medium text-slate-600 hover:text-blood hover:bg-red-50 rounded-lg transition-colors">
-                    Lịch sử yêu cầu máu
+                    {t('bloodRequests')}
                   </Link>
                   <Link href="/donor/notifications" onClick={() => setMobileOpen(false)} className="flex items-center justify-between px-4 py-3 text-sm font-medium text-slate-600 hover:text-blood hover:bg-red-50 rounded-lg transition-colors">
-                    <span>Thông báo</span>
+                    <span>{t('notifications')}</span>
                     {unreadCount > 0 && (
                       <span className="bg-blood text-white text-xs px-2 py-0.5 rounded-full">{unreadCount}</span>
                     )}
                   </Link>
                   <button onClick={() => { logout(); setMobileOpen(false); }} className="px-4 py-3 text-sm font-medium text-blood hover:bg-red-50 rounded-lg transition-colors text-left">
-                    Đăng xuất
+                    {t('logout')}
                   </button>
                 </>
               ) : (
@@ -307,14 +324,14 @@ export const Header = () => {
                     onClick={() => setMobileOpen(false)}
                     className="px-4 py-3 text-sm font-medium text-navy hover:bg-slate-100 rounded-lg transition-colors text-center"
                   >
-                    Đăng nhập
+                    {t('login')}
                   </Link>
                   <Link
                     href="/register"
                     onClick={() => setMobileOpen(false)}
                     className="px-4 py-3 text-sm font-semibold text-white bg-blood hover:bg-blood-dark rounded-md transition-colors text-center"
                   >
-                    Đăng ký
+                    {t('register')}
                   </Link>
                 </>
               )}

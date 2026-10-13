@@ -21,6 +21,10 @@ export const adminTransferService = {
     return await api.post(`/transfers/${id}/ship`);
   },
 
+  deliverTransfer: async (id: number) => {
+    return await api.post(`/transfers/${id}/deliver`);
+  },
+
   receiveTransfer: async (id: number) => {
     return await api.post(`/transfers/${id}/receive`);
   },

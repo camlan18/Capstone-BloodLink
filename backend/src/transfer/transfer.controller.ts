@@ -46,6 +46,12 @@ export class TransferController {
   }
 
   @Roles(RoleCode.ADMIN, RoleCode.STAFF, RoleCode.HOSPITAL_STAFF)
+  @Post(':id/deliver')
+  async deliverTransfer(@Req() req: any, @Param('id', ParseIntPipe) id: number) {
+    return await this.transferService.deliverTransfer(id, req.user);
+  }
+
+  @Roles(RoleCode.ADMIN, RoleCode.STAFF, RoleCode.HOSPITAL_STAFF)
   @Post(':id/receive')
   async receiveTransfer(@Req() req: any, @Param('id', ParseIntPipe) id: number) {
     return await this.transferService.receiveTransfer(id, req.user);

@@ -1,4 +1,5 @@
 import { Injectable, BadRequestException, NotFoundException, Logger } from '@nestjs/common';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService, NotificationType } from '../notifications/notifications.service';
 import { CreateTransferDto } from './dto/create-transfer.dto';
@@ -40,6 +41,16 @@ export class TransferService {
     if (!fromFac) throw new BadRequestException('Cơ sở xuất không tồn tại');
     if (!toFac) throw new BadRequestException('Cơ sở nhận không tồn tại');
 
+    // Validation cho required_before (phải cách hiện tại ít nhất 2h)
+    if ((dto as any).required_before) {
+      const requiredDate = new Date((dto as any).required_before);
+      const twoHoursFromNow = new Date();
+      twoHoursFromNow.setHours(twoHoursFromNow.getHours() + 2);
+      if (requiredDate < twoHoursFromNow) {
+        throw new BadRequestException('Thời gian cần trước phải cách thời điểm hiện tại ít nhất 2 giờ');
+      }
+    }
+
     // If specific inventory_id is provided, validate it
     if (dto.inventory_id) {
       const inv = await this.prisma.blood_inventory.findUnique({
@@ -66,6 +77,7 @@ export class TransferService {
         status: 'PENDING',
         reason: dto.reason || null,
         notes: dto.notes || null,
+        required_before: (dto as any).required_before ? new Date((dto as any).required_before) : null,
         requested_by: user.user_id,
       },
       include: {
@@ -244,7 +256,42 @@ export class TransferService {
   }
 
   /**
-   * 4. Nhận kho (IN_TRANSIT → RECEIVED)
+   * Đã giao (IN_TRANSIT -> DELIVERED)
+   */
+  async deliverTransfer(transferId: number, user: any) {
+    return await this.prisma.$transaction(async (tx) => {
+      const transfer = await tx.blood_transfers.findUnique({
+        where: { transfer_id: transferId },
+      });
+
+      if (!transfer) throw new NotFoundException('Không tìm thấy phiếu chuyển máu');
+      if (transfer.status !== 'IN_TRANSIT') {
+        throw new BadRequestException(`Phiếu đang ở trạng thái ${transfer.status}, chưa được vận chuyển`);
+      }
+
+      // Check permission if needed... usually Sender or Admin
+
+      const updated = await tx.blood_transfers.update({
+        where: { transfer_id: transferId },
+        data: {
+          status: 'DELIVERED',
+          updated_at: new Date(),
+        },
+        include: {
+          from_facility: true,
+          to_facility: true,
+          blood_type: true,
+          component: true,
+          inventory: true,
+        },
+      });
+
+      return { data: updated, message: 'Đã xác nhận giao hàng. Chờ cơ sở nhận xác nhận.' };
+    });
+  }
+
+  /**
+   * 4. Nhận kho (DELIVERED → RECEIVED)
    * Cơ sở nhận xác nhận đã nhận máu, inventory chuyển sang cơ sở mới
    */
   async receiveTransfer(transferId: number, user: any) {
@@ -255,8 +302,8 @@ export class TransferService {
       });
 
       if (!transfer) throw new NotFoundException('Không tìm thấy phiếu chuyển máu');
-      if (transfer.status !== 'IN_TRANSIT') {
-        throw new BadRequestException(`Phiếu đang ở trạng thái ${transfer.status}, chưa được xuất kho`);
+      if (transfer.status !== 'DELIVERED' && transfer.status !== 'IN_TRANSIT') {
+        throw new BadRequestException(`Phiếu đang ở trạng thái ${transfer.status}, chưa được giao đến`);
       }
 
       let finalIds: number[] = [];
@@ -477,4 +524,43 @@ export class TransferService {
     if (!transfer) throw new NotFoundException('Không tìm thấy phiếu chuyển máu');
     return { data: transfer };
   }
+
+  /**
+   * Cron job chạy mỗi phút để quét các phiếu yêu cầu máu đã quá hạn (required_before < now).
+   * Nếu trạng thái vẫn là PENDING hoặc APPROVED (chưa được IN_TRANSIT, DELIVERED, RECEIVED),
+   * thì sẽ tự động chuyển sang CANCELLED.
+   */
+  @Cron(CronExpression.EVERY_MINUTE)
+  async handleExpiredTransfers() {
+    try {
+      const expiredTransfers = await this.prisma.blood_transfers.findMany({
+        where: {
+          required_before: {
+            lt: new Date(),
+          },
+          status: {
+            in: ['PENDING', 'APPROVED'],
+          },
+        },
+      });
+
+      if (expiredTransfers.length > 0) {
+        const ids = expiredTransfers.map(t => t.transfer_id);
+        
+        await this.prisma.blood_transfers.updateMany({
+          where: { transfer_id: { in: ids } },
+          data: {
+            status: 'CANCELLED',
+            reject_reason: 'Hệ thống tự động hủy do quá hạn thời gian yêu cầu',
+            updated_at: new Date(),
+          },
+        });
+
+        this.logger.log(`[Cron] Đã hủy ${ids.length} phiếu yêu cầu máu quá hạn.`);
+      }
+    } catch (error) {
+      this.logger.error('[Cron] Lỗi khi quét phiếu quá hạn', error);
+    }
+  }
+
 }
