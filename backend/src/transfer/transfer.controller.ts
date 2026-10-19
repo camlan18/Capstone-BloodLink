@@ -52,6 +52,15 @@ export class TransferController {
   }
 
   @Roles(RoleCode.ADMIN, RoleCode.STAFF, RoleCode.HOSPITAL_STAFF)
+  @Post('receive-batch')
+  async receiveBatchTransfers(
+    @Req() req: any,
+    @Body() body: { transfer_ids: number[] },
+  ) {
+    return await this.transferService.receiveBatchTransfers(body.transfer_ids, req.user);
+  }
+
+  @Roles(RoleCode.ADMIN, RoleCode.STAFF, RoleCode.HOSPITAL_STAFF)
   @Post(':id/receive')
   async receiveTransfer(@Req() req: any, @Param('id', ParseIntPipe) id: number) {
     return await this.transferService.receiveTransfer(id, req.user);

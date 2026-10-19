@@ -366,6 +366,27 @@ export class TransferService {
   }
 
   /**
+   * 4b. Nhận kho hàng loạt (DELIVERED → RECEIVED)
+   * Xác nhận nhiều phiếu chuyển máu cùng lúc
+   */
+  async receiveBatchTransfers(transferIds: number[], user: any) {
+    if (!Array.isArray(transferIds) || transferIds.length === 0) {
+      throw new BadRequestException('Vui lòng chọn ít nhất một phiếu chuyển máu để xác nhận');
+    }
+
+    const results = [];
+    for (const id of transferIds) {
+      const res = await this.receiveTransfer(Number(id), user);
+      results.push(res.data);
+    }
+
+    return {
+      data: results,
+      message: `Đã xác nhận nhận kho thành công ${results.length} phiếu chuyển máu!`,
+    };
+  }
+
+  /**
    * 5. Từ chối phiếu chuyển (PENDING → REJECTED)
    */
   async rejectTransfer(transferId: number, user: any, rejectReason: string) {

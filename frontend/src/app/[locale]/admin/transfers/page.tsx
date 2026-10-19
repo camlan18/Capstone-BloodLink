@@ -83,6 +83,15 @@ export default function AdminTransfersPage() {
     fetchData();
   }, [page, pageSize, keyword, filterStatus]);
 
+  useEffect(() => {
+    const handleUpdated = () => {
+      fetchData();
+      fetchMasterData();
+    };
+    window.addEventListener('transfer-updated', handleUpdated);
+    return () => window.removeEventListener('transfer-updated', handleUpdated);
+  }, [page, pageSize, keyword, filterStatus]);
+
   const fetchMasterData = async () => {
     try {
       const [facRes, btRes, compRes, statsRes] = await Promise.all([
@@ -494,6 +503,7 @@ export default function AdminTransfersPage() {
                     <SelectItem value="PENDING">Chờ duyệt</SelectItem>
                     <SelectItem value="APPROVED">Đã duyệt</SelectItem>
                     <SelectItem value="IN_TRANSIT">Đang vận chuyển</SelectItem>
+                    <SelectItem value="DELIVERED">Đã giao</SelectItem>
                     <SelectItem value="RECEIVED">Đã nhận</SelectItem>
                     <SelectItem value="REJECTED">Từ chối</SelectItem>
                     <SelectItem value="CANCELLED">Đã hủy</SelectItem>

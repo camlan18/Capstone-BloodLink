@@ -29,6 +29,10 @@ export const adminTransferService = {
     return await api.post(`/transfers/${id}/receive`);
   },
 
+  receiveBatchTransfers: async (transferIds: number[]) => {
+    return await api.post('/transfers/receive-batch', { transfer_ids: transferIds });
+  },
+
   rejectTransfer: async (id: number, reason: string) => {
     return await api.post(`/transfers/${id}/reject`, { reason });
   },

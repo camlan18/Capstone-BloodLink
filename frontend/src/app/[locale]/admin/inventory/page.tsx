@@ -96,6 +96,12 @@ export default function AdminInventoryPage() {
     fetchData();
   }, [page, pageSize, statusCode, bagCode, filterBloodType, filterFacility]);
 
+  useEffect(() => {
+    const handleUpdated = () => fetchData();
+    window.addEventListener('transfer-updated', handleUpdated);
+    return () => window.removeEventListener('transfer-updated', handleUpdated);
+  }, [page, pageSize, statusCode, bagCode, filterBloodType, filterFacility]);
+
   const fetchMasterData = async () => {
     try {
       const [facRes, btRes, compRes] = await Promise.all([
