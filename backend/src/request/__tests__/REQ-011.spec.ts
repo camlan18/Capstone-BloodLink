@@ -1,4 +1,6 @@
+import { BadRequestException, ValidationPipe } from '@nestjs/common';
 import { RequestService } from '../request.service';
+import { CreateRequestDto } from '../dto/create-request.dto';
 
 describe('REQ-011 RequestService.createPublicRequest', () => {
   let prisma: any, tx: any, notif: any, service: RequestService;
@@ -57,5 +59,32 @@ describe('REQ-011 RequestService.createPublicRequest', () => {
     notif.notifyAdmins.mockRejectedValue(err);
     await expect(service.createPublicRequest(dto(), null)).rejects.toBe(err);
     expect(tx.blood_requests.create).toHaveBeenCalled();
+  });
+
+  // ---- DTO validation: ValidationPipe({ whitelist: true, transform: true }) as in src/main.ts ----
+  const pipe = new ValidationPipe({ whitelist: true, transform: true });
+  const run = (body: any) => pipe.transform(body, { type: 'body', metatype: CreateRequestDto, data: '' });
+  const valid = (): any => ({ facility_id: 1, patient_name: 'Nguyen Van A', blood_type_id: 1, component_id: 1, units_needed: 2, urgency_id: 1, is_emergency: true });
+  const omit = (k: string) => { const b = valid(); delete b[k]; return b; };
+
+  it('UTCID07 DTO patient_name empty', async () => {
+    const body: any = { ...valid(), patient_name: '' };
+    await expect(run(body)).rejects.toBeInstanceOf(BadRequestException);
+    const err = await run(body).catch((e: any) => e);
+    expect(err.getResponse().message).toContain("patient_name should not be empty");
+  });
+
+  it('UTCID08 DTO units_needed = 21 (above max)', async () => {
+    const body: any = { ...valid(), units_needed: 21 };
+    await expect(run(body)).rejects.toBeInstanceOf(BadRequestException);
+    const err = await run(body).catch((e: any) => e);
+    expect(err.getResponse().message).toContain("units_needed must not be greater than 20");
+  });
+
+  it('UTCID09 DTO is_emergency missing', async () => {
+    const body: any = omit('is_emergency');
+    await expect(run(body)).rejects.toBeInstanceOf(BadRequestException);
+    const err = await run(body).catch((e: any) => e);
+    expect(err.getResponse().message).toContain("is_emergency must be a boolean value");
   });
 });
