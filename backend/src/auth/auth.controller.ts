@@ -1,7 +1,8 @@
-import { Controller, Post, Body, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Post, Body, HttpCode, HttpStatus, Req } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { RegisterDto, LoginDto, OtpDto, ForgotPasswordDto, ResetPasswordDto, ResendOtpDto, RefreshTokenDto } from './dto/auth.dto';
 import { Public } from '../common/decorators';
+import type { Request } from 'express';
 
 @Controller('api/v1/auth')
 export class AuthController {
@@ -30,8 +31,10 @@ export class AuthController {
   @Public()
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  async login(@Body() dto: LoginDto) {
-    return await this.authService.login(dto);
+  async login(@Body() dto: LoginDto, @Req() req: Request) {
+    const ip_address = (req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress;
+    const device_info = req.headers['user-agent'] as string;
+    return await this.authService.login(dto, { ip_address, device_info });
   }
 
   @Public()
@@ -39,6 +42,13 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async refreshToken(@Body() dto: RefreshTokenDto) {
     return await this.authService.refreshToken(dto.refresh_token);
+  }
+
+  @Public()
+  @Post('logout')
+  @HttpCode(HttpStatus.OK)
+  async logout(@Body() dto: Partial<RefreshTokenDto>) {
+    return await this.authService.logout(dto?.refresh_token);
   }
 
   @Public()

@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { 
   CreateBloodTypeDto, UpdateBloodTypeDto, 
@@ -159,7 +159,7 @@ export class MasterDataService {
 
     const [data, total] = await Promise.all([
       this.prisma.medical_facilities.findMany({ where, skip, take: limit, orderBy }),
-      this.prisma.medical_facilities.count({ where }),
+      this.prisma.medical_facilities.count({ where }), 
     ]);
 
     return { data, meta: { total, page, limit, totalPages: Math.ceil(total / limit) } };
@@ -254,6 +254,48 @@ export class MasterDataService {
     });
   }
 
+  async getMyFacility(user: any) {
+    let targetFacilityId = user.facility_id;
+    if (!targetFacilityId) {
+      const firstFacility = await this.prisma.medical_facilities.findFirst({
+        where: { is_active: true },
+        orderBy: [{ is_primary: 'desc' }, { facility_id: 'asc' }],
+        include: { province: true, ward: true }
+      });
+      if (firstFacility) return firstFacility;
+      throw new NotFoundException('Không tìm thấy cơ sở y tế');
+    }
+    const facility = await this.prisma.medical_facilities.findUnique({
+      where: { facility_id: targetFacilityId },
+      include: { province: true, ward: true }
+    });
+    if (!facility) {
+      throw new NotFoundException('Không tìm thấy cơ sở y tế');
+    }
+    return facility;
+  }
+
+  async updateFacilitySealSignature(id: number, dto: any, user: any) {
+    if (user.role_code === 'HOSPITAL_STAFF' && user.facility_id !== id) {
+      throw new ForbiddenException('Bạn chỉ có quyền cập nhật con dấu và chữ ký của cơ sở y tế mình trực thuộc');
+    }
+
+    const facility = await this.prisma.medical_facilities.findUnique({
+      where: { facility_id: id }
+    });
+    if (!facility) throw new NotFoundException('Không tìm thấy cơ sở y tế');
+
+    return await this.prisma.medical_facilities.update({
+      where: { facility_id: id },
+      data: {
+        seal_image_url: dto.seal_image_url !== undefined ? dto.seal_image_url : facility.seal_image_url,
+        signature_image_url: dto.signature_image_url !== undefined ? dto.signature_image_url : facility.signature_image_url,
+        director_name: dto.director_name !== undefined ? dto.director_name : facility.director_name,
+        director_title: dto.director_title !== undefined ? dto.director_title : facility.director_title,
+      }
+    });
+  }
+
   // --- EXCEL FACILITIES ---
   async exportFacilitiesExcel(query: any): Promise<Buffer> {
     const list = await this.getFacilities({ ...query, limit: 10000 });
@@ -337,6 +379,56 @@ export class MasterDataService {
       where: { blood_type_id: id },
       data: { is_active: false }
     });
+  }
+
+  // B17: Blood Compatibility Checker
+  async checkCompatibility(donorBloodTypeId: number, recipientBloodTypeId: number, componentId: number) {
+    const compatibility = await this.prisma.blood_compatibility.findFirst({
+      where: {
+        donor_blood_type_id: donorBloodTypeId,
+        recipient_blood_type_id: recipientBloodTypeId,
+        component_id: componentId,
+      }
+    });
+
+    if (compatibility) {
+      return { is_compatible: compatibility.is_compatible };
+    }
+
+    // Default fallback rules if not explicitly mapped
+    const donorType = await this.prisma.blood_types.findUnique({ where: { blood_type_id: donorBloodTypeId } });
+    const recipientType = await this.prisma.blood_types.findUnique({ where: { blood_type_id: recipientBloodTypeId } });
+    const component = await this.prisma.blood_components.findUnique({ where: { component_id: componentId } });
+
+    if (!donorType || !recipientType || !component) {
+      throw new BadRequestException('Thông tin nhóm máu hoặc thành phần máu không hợp lệ');
+    }
+
+    // Simple rule for Whole Blood / Red Blood Cells
+    let isCompatible = false;
+    
+    // O is universal donor for RBC, AB is universal recipient
+    // Rh- can donate to Rh+ and Rh-
+    // Rh+ can only donate to Rh+
+    const rhCompatible = donorType.rh_factor === '-' || donorType.rh_factor === recipientType.rh_factor;
+    
+    if (rhCompatible) {
+      if (donorType.abo === 'O') isCompatible = true;
+      else if (recipientType.abo === 'AB') isCompatible = true;
+      else if (donorType.abo === recipientType.abo) isCompatible = true;
+    }
+
+    // Plasma/Platelets have different rules (AB is universal donor, O is universal recipient)
+    if (component.component_code.includes('PLASMA') || component.component_code.includes('PLATELET')) {
+       // Reverse rule for ABO
+       isCompatible = false;
+       if (donorType.abo === 'AB') isCompatible = true;
+       else if (recipientType.abo === 'O') isCompatible = true;
+       else if (donorType.abo === recipientType.abo) isCompatible = true;
+       // Rh doesn't strictly matter for plasma, but we'll assume it's OK if ABO matches for simplicity if not in DB
+    }
+
+    return { is_compatible: isCompatible };
   }
 
   // --- Blood Compatibility ---

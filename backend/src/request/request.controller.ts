@@ -14,7 +14,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 export class RequestController {
   constructor(private readonly requestService: RequestService) {}
 
-  @Roles(RoleCode.FACILITY_ADMIN, RoleCode.ADMIN, RoleCode.STAFF)
+  @Roles(RoleCode.ADMIN, RoleCode.STAFF, RoleCode.HOSPITAL_STAFF)
   @Post()
   async createRequest(@Req() req: any, @Body() dto: CreateRequestDto) {
     return await this.requestService.createRequest(dto, req.user);
@@ -30,6 +30,7 @@ export class RequestController {
   @Public()
   @Get('public')
   async getPublicRequests(@Query() query: any) {
+    query.is_public_view = true;
     return await this.requestService.getRequests(query);
   }
 
@@ -39,7 +40,7 @@ export class RequestController {
     return await this.requestService.getRequestByCode(code);
   }
 
-  @Roles(RoleCode.ADMIN, RoleCode.FACILITY_ADMIN)
+  @Roles(RoleCode.ADMIN, RoleCode.STAFF, RoleCode.HOSPITAL_STAFF)
   @Post(':id/process')
   async processRequest(@Req() req: any, @Param('id', ParseIntPipe) id: number) {
     return await this.requestService.processRequest(id, req.user);
@@ -57,13 +58,13 @@ export class RequestController {
     return await this.requestService.getRequestById(id, userId);
   }
 
-  @Roles(RoleCode.ADMIN, RoleCode.STAFF, RoleCode.FACILITY_ADMIN)
+  @Roles(RoleCode.ADMIN, RoleCode.STAFF, RoleCode.HOSPITAL_STAFF)
   @Get()
   async getRequests(@Query() query: any, @Req() req: any) {
     return await this.requestService.getRequests(query, req.user);
   }
 
-  @Roles(RoleCode.ADMIN, RoleCode.STAFF, RoleCode.FACILITY_ADMIN)
+  @Roles(RoleCode.ADMIN, RoleCode.STAFF, RoleCode.HOSPITAL_STAFF)
   @Get('export')
   async exportExcel(@Query() query: any, @Res() res: Response, @Req() req: any) {
     const buffer = await this.requestService.exportExcel(query, req.user);
@@ -72,7 +73,7 @@ export class RequestController {
     res.send(buffer);
   }
 
-  @Roles(RoleCode.ADMIN, RoleCode.STAFF, RoleCode.FACILITY_ADMIN)
+  @Roles(RoleCode.ADMIN, RoleCode.STAFF, RoleCode.HOSPITAL_STAFF)
   @Get('template')
   async downloadTemplate(@Res() res: Response) {
     const buffer = await this.requestService.getTemplate();
@@ -81,7 +82,7 @@ export class RequestController {
     res.send(buffer);
   }
 
-  @Roles(RoleCode.ADMIN, RoleCode.STAFF, RoleCode.FACILITY_ADMIN)
+  @Roles(RoleCode.ADMIN, RoleCode.STAFF, RoleCode.HOSPITAL_STAFF)
   @Post('import')
   @UseInterceptors(FileInterceptor('file'))
   async importExcel(@UploadedFile() file: Express.Multer.File, @Req() req: any) {
@@ -89,19 +90,19 @@ export class RequestController {
     return await this.requestService.importExcel(file.buffer, req.user);
   }
 
-  @Roles(RoleCode.ADMIN, RoleCode.STAFF, RoleCode.FACILITY_ADMIN)
+  @Roles(RoleCode.ADMIN, RoleCode.STAFF, RoleCode.HOSPITAL_STAFF)
   @Put(':id')
   async updateRequest(@Req() req: any, @Param('id', ParseIntPipe) id: number, @Body() dto: Partial<CreateRequestDto>) {
     return await this.requestService.updateRequest(id, dto, req.user);
   }
 
-  @Roles(RoleCode.ADMIN, RoleCode.STAFF, RoleCode.FACILITY_ADMIN)
+  @Roles(RoleCode.ADMIN, RoleCode.STAFF, RoleCode.HOSPITAL_STAFF)
   @Delete(':id')
   async deleteRequest(@Req() req: any, @Param('id', ParseIntPipe) id: number) {
     return await this.requestService.deleteRequest(id, req.user);
   }
 
-  @Roles(RoleCode.ADMIN, RoleCode.STAFF, RoleCode.FACILITY_ADMIN)
+  @Roles(RoleCode.ADMIN, RoleCode.STAFF, RoleCode.HOSPITAL_STAFF)
   @Post(':id/cancel')
   async cancelRequest(@Req() req: any, @Param('id', ParseIntPipe) id: number) {
     return await this.requestService.cancelRequest(id, req.user);
@@ -109,37 +110,37 @@ export class RequestController {
 
   // --- MATCHING & ALLOCATION (ADMIN ONLY) ---
 
-  @Roles(RoleCode.ADMIN, RoleCode.FACILITY_ADMIN)
+  @Roles(RoleCode.ADMIN, RoleCode.STAFF, RoleCode.HOSPITAL_STAFF)
   @Get(':id/matches')
   async getMatches(@Req() req: any, @Param('id', ParseIntPipe) id: number) {
     return await this.requestService.getMatches(id, req.user);
   }
 
-  @Roles(RoleCode.ADMIN, RoleCode.FACILITY_ADMIN)
+  @Roles(RoleCode.ADMIN, RoleCode.STAFF, RoleCode.HOSPITAL_STAFF)
   @Post(':id/matches/find')
   async findDonorMatches(@Req() req: any, @Param('id', ParseIntPipe) id: number) {
     return await this.requestService.findDonorMatches(id, req.user);
   }
 
-  @Roles(RoleCode.ADMIN, RoleCode.FACILITY_ADMIN)
+  @Roles(RoleCode.ADMIN, RoleCode.STAFF, RoleCode.HOSPITAL_STAFF)
   @Put('matches/:matchId/status')
   async updateMatchStatus(@Req() req: any, @Param('matchId', ParseIntPipe) matchId: number, @Body() dto: UpdateMatchStatusDto) {
     return await this.requestService.updateMatchStatus(matchId, dto.status, req.user);
   }
 
-  @Roles(RoleCode.ADMIN, RoleCode.FACILITY_ADMIN)
+  @Roles(RoleCode.ADMIN, RoleCode.STAFF, RoleCode.HOSPITAL_STAFF)
   @Get(':id/allocations')
   async getAllocations(@Req() req: any, @Param('id', ParseIntPipe) id: number) {
     return await this.requestService.getAllocations(id, req.user);
   }
 
-  @Roles(RoleCode.ADMIN, RoleCode.FACILITY_ADMIN)
+  @Roles(RoleCode.ADMIN, RoleCode.STAFF, RoleCode.HOSPITAL_STAFF)
   @Post(':id/allocations')
   async allocateInventory(@Req() req: any, @Param('id', ParseIntPipe) id: number, @Body() dto: AllocateInventoryDto) {
     return await this.requestService.allocateInventory(id, dto.inventory_ids, req.user);
   }
 
-  @Roles(RoleCode.ADMIN, RoleCode.FACILITY_ADMIN)
+  @Roles(RoleCode.ADMIN, RoleCode.STAFF, RoleCode.HOSPITAL_STAFF)
   @Delete('allocations/:allocationId')
   async releaseAllocation(@Req() req: any, @Param('allocationId', ParseIntPipe) allocationId: number) {
     return await this.requestService.releaseAllocation(allocationId, req.user);

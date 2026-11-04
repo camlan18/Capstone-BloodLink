@@ -39,7 +39,7 @@ export class NotificationsService {
     const admins = await this.prisma.users.findMany({
       where: {
         role: {
-          role_code: 'admin' // RoleCode.ADMIN is 'admin'
+          role_code: 'ADMIN' // RoleCode.ADMIN is 'ADMIN'
         },
         is_active: true
       },

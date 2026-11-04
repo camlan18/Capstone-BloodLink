@@ -1,11 +1,35 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { ExcelUtil } from '../common/utils/excel.util';
 
 @Injectable()
 export class DashboardService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
   async getStats(startDateStr?: string, endDateStr?: string, facilityIdStr?: string, user?: any) {
+    if (user?.role_code === 'MODERATOR') {
+      const postsCount = await this.prisma.blog_posts.count();
+      const categoriesCount = await this.prisma.blog_categories.count();
+      const commentsCount = await this.prisma.blog_comments.count();
+      const pendingCommentsCount = await this.prisma.blog_comments.count({ where: { is_approved: false } });
+      const documentsCount = await this.prisma.education_documents.count();
+      const docCategoriesCount = await this.prisma.education_document_categories.count();
+
+      return {
+        stats: {
+          posts: postsCount,
+          categories: categoriesCount,
+          comments: commentsCount,
+          documents: documentsCount,
+          docCategories: docCategoriesCount
+        },
+        alerts: {
+          pendingComments: pendingCommentsCount
+        },
+        chartData: [] // Có thể bổ sung biểu đồ cho moderator sau
+      };
+    }
+
     // Determine dates
     let startDate = new Date();
     startDate.setDate(startDate.getDate() - 7); // default 7 days ago
@@ -37,7 +61,7 @@ export class DashboardService {
     todayStart.setHours(0, 0, 0, 0);
     const todayEnd = new Date();
     todayEnd.setHours(23, 59, 59, 999);
-    
+
     const todayDonationsCount = await this.prisma.donations.count({
       where: {
         donation_date: {
@@ -70,7 +94,7 @@ export class DashboardService {
     // 3. Người đăng ký mới (New donors in period)
     const newDonorsCount = await this.prisma.users.count({
       where: {
-        role_id: 3, // Assuming 3 is DONOR
+        role: { role_code: 'USER' },
         created_at: {
           gte: startDate,
           lte: endDate
@@ -103,12 +127,12 @@ export class DashboardService {
     // 6. Tổng số người hiến (Total donors overall)
     const totalDonorsCount = await this.prisma.users.count({
       where: {
-        role_id: 3
+        role: { role_code: 'USER' }
       }
     });
 
     // --- ALERTS ---
-    
+
     // Alert 1: Low Blood Inventory (e.g., < 10 bags)
     const inventoryByBloodType = await this.prisma.blood_inventory.groupBy({
       by: ['blood_type_id'],
@@ -122,7 +146,7 @@ export class DashboardService {
         inventory_id: true
       }
     });
-    
+
     const bloodTypes = await this.prisma.blood_types.findMany();
     const lowInventoryTypes = inventoryByBloodType
       .filter(item => item._count.inventory_id < 10)
@@ -159,7 +183,7 @@ export class DashboardService {
     });
 
     // Alert 4: Pending Posts/Comments
-    const pendingCommentsCount = 0; 
+    const pendingCommentsCount = 0;
 
     // --- CHART DATA ---
     const donationsInRange = await this.prisma.donations.findMany({
@@ -178,7 +202,7 @@ export class DashboardService {
     });
 
     const chartMap = new Map<string, number>();
-    
+
     const tempDate = new Date(startDate);
     while (tempDate <= endDate) {
       const dateStr = `${String(tempDate.getDate()).padStart(2, '0')}/${String(tempDate.getMonth() + 1).padStart(2, '0')}`;
@@ -198,6 +222,24 @@ export class DashboardService {
       count
     }));
 
+    // Advanced Charts (B9)
+    // 1. Tỷ lệ nhóm máu trong kho
+    const inventoryStats = await this.prisma.blood_inventory.groupBy({
+      by: ['blood_type_id'],
+      where: { status_code: 'AVAILABLE', ...(facilityId && { facility_id: facilityId }) },
+      _sum: { volume_ml: true },
+      _count: { inventory_id: true }
+    });
+
+    const inventoryChartData = inventoryStats.map(stat => {
+      const bt = bloodTypes.find(b => b.blood_type_id === stat.blood_type_id);
+      return {
+        bloodType: bt ? bt.blood_type_code : 'Unknown',
+        volume: stat._sum.volume_ml || 0,
+        count: stat._count.inventory_id
+      };
+    });
+
     return {
       stats: {
         todayDonations: todayDonationsCount,
@@ -213,7 +255,26 @@ export class DashboardService {
         pendingComments: pendingCommentsCount,
         upcomingSchedules: upcomingSchedulesCount
       },
-      chartData: chartData
+      chartData: chartData,
+      inventoryChartData // B9: Advanced chart
     };
+  }
+
+  // B16: Automated Reports
+  async exportReport(startDateStr?: string, endDateStr?: string, facilityIdStr?: string, user?: any) {
+    const stats = await this.getStats(startDateStr, endDateStr, facilityIdStr, user);
+
+    const excelData = [
+      {
+        'Ngày xuất báo cáo': new Date().toLocaleDateString('vi-VN'),
+        'Lượt hiến máu mới': stats.stats.todayDonations,
+        'Tổng thể tích (ml)': stats.stats.totalVolume,
+        'Người dùng mới': stats.stats.newDonors,
+        'Yêu cầu khẩn cấp': stats.alerts.emergencyRequests,
+        'Cảnh báo kho máu thấp': stats.alerts.lowInventory
+      }
+    ];
+
+    return ExcelUtil.generateExcel(excelData, 'BaoCaoHeThong');
   }
 }

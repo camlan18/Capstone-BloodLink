@@ -1,12 +1,13 @@
 'use client';
 import { useState, useEffect } from 'react';
-import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
-import { LayoutDashboard, Users, Droplets, FileText, Settings, LogOut, FileSearch, MessageSquare, Menu, User, HeartPulse, Building2, Edit3, ChevronDown, Bell, BookOpen, Calendar } from 'lucide-react';
+import { Link } from '@/i18n/routing';
+import { usePathname, useRouter } from '@/i18n/routing';
+import { LayoutDashboard, Users, Droplets, FileText, Settings, LogOut, FileSearch, MessageSquare, Menu, User, HeartPulse, Building2, Edit3, ChevronDown, Bell, BookOpen, Calendar, Award, FileSignature, ArrowRightLeft } from 'lucide-react';
 import { useAuthStore } from '@/lib/stores';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { format } from 'date-fns';
 import { vi } from 'date-fns/locale';
+import { GlobalTransferConfirmModal } from '@/components/layout/GlobalTransferConfirmModal';
 
 export function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -25,8 +26,11 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
   const navItems = [
     { label: 'Tổng quan', href: '/admin', icon: LayoutDashboard, roles: ['ADMIN', 'STAFF', 'MODERATOR', 'HOSPITAL_STAFF'] },
     { label: 'Lịch hiến máu', href: '/admin/schedules', icon: Calendar, roles: ['ADMIN', 'STAFF', 'HOSPITAL_STAFF'] },
-    { label: 'Kho máu', href: '/admin/inventory', icon: Droplets, roles: ['ADMIN', 'STAFF', 'HOSPITAL_STAFF'] },
+    { label: 'Ngân hàng máu', href: '/admin/inventory', icon: Droplets, roles: ['ADMIN', 'STAFF', 'HOSPITAL_STAFF'] },
+    { label: 'Chuyển máu', href: '/admin/transfers', icon: ArrowRightLeft, roles: ['ADMIN', 'STAFF', 'HOSPITAL_STAFF'] },
     { label: 'Đăng ký hiến', href: '/admin/donations', icon: FileSearch, roles: ['ADMIN', 'STAFF', 'HOSPITAL_STAFF'] },
+    { label: 'Chứng nhận hiến', href: '/admin/certificates', icon: Award, roles: ['ADMIN', 'STAFF', 'HOSPITAL_STAFF'] },
+    { label: 'Cấu hình Con dấu', href: '/admin/facility-seal', icon: FileSignature, roles: ['ADMIN', 'HOSPITAL_STAFF'] },
     { label: 'Yêu cầu từ bệnh viện', href: '/admin/requests', icon: FileText, roles: ['ADMIN', 'STAFF', 'HOSPITAL_STAFF'] },
     { label: 'Người dùng', href: '/admin/users', icon: Users, roles: ['ADMIN'] },
     { label: 'Dữ liệu Máu', href: '/admin/blood-master-data', icon: HeartPulse, roles: ['ADMIN'] },
@@ -54,6 +58,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex h-screen bg-slate-50 font-sans overflow-hidden">
+      <GlobalTransferConfirmModal />
       {/* Sidebar - Deep Blood Red */}
       <aside className={`${isSidebarOpen ? 'w-64' : 'w-20'} bg-[#7A0010] text-white flex flex-col shrink-0 transition-all duration-300 ease-in-out z-20 shadow-md relative`}>
         <div className="h-16 flex items-center justify-center border-b border-white/10 shrink-0 px-4">
@@ -138,13 +143,9 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
                     <p className="text-xs text-blood font-medium mt-1 truncate">{user.facility.facility_name}</p>
                   )}
                 </div>
-                <DropdownMenuItem className="cursor-pointer py-2">
+                <DropdownMenuItem onClick={() => router.push('/donor/profile')} className="cursor-pointer py-2">
                   <User className="w-4 h-4 mr-2 text-slate-500" />
                   Hồ sơ cá nhân
-                </DropdownMenuItem>
-                <DropdownMenuItem className="cursor-pointer py-2">
-                  <Settings className="w-4 h-4 mr-2 text-slate-500" />
-                  Cài đặt tài khoản
                 </DropdownMenuItem>
                 <div className="h-px bg-slate-100 my-1"></div>
                 <DropdownMenuItem onClick={() => logout()} className="text-red-600 focus:bg-red-50 focus:text-red-600 cursor-pointer py-2 font-medium">

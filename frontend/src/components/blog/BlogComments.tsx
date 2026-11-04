@@ -11,12 +11,14 @@ import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { Pagination } from '@/components/ui/Pagination';
 import { MessageSquare, Send, User, CornerDownRight, MoreVertical, Edit2, Trash2, X } from 'lucide-react';
 import { toast } from 'sonner';
+import { useTranslations } from 'next-intl';
 
 interface BlogCommentsProps {
   postId: number;
 }
 
 export function BlogComments({ postId }: BlogCommentsProps) {
+  const t = useTranslations('Blog');
   const { user, isAuthenticated } = useAuthStore();
   const [comments, setComments] = useState<BlogComment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -71,7 +73,7 @@ export function BlogComments({ postId }: BlogCommentsProps) {
     const name = parentId ? replyGuestName : guestName;
 
     if (!commentContent.trim()) {
-      toast.error('Vui lòng nhập nội dung bình luận');
+      toast.error(t("commentEmptyError"));
       return;
     }
 
@@ -83,7 +85,7 @@ export function BlogComments({ postId }: BlogCommentsProps) {
     try {
       setSubmitting(true);
       await blogService.addComment(postId, commentContent, isAuthenticated ? undefined : name, parentId);
-      toast.success('Bình luận của bạn đã được đăng thành công!');
+      toast.success(t("commentSuccess"));
       
       // Reset forms
       if (parentId) {
@@ -98,7 +100,7 @@ export function BlogComments({ postId }: BlogCommentsProps) {
       
       fetchComments();
     } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Có lỗi xảy ra khi gửi bình luận');
+      toast.error(error.response?.data?.message || t("commentError"));
     } finally {
       setSubmitting(false);
     }
@@ -109,10 +111,10 @@ export function BlogComments({ postId }: BlogCommentsProps) {
     try {
       setSubmitting(true);
       await blogService.deleteComment(deletingId);
-      toast.success('Đã xóa bình luận');
+      toast.success(t("commentDeleted"));
       fetchComments();
     } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Lỗi khi xóa bình luận');
+      toast.error(error.response?.data?.message || t("commentDeleteError"));
     } finally {
       setSubmitting(false);
       setDeletingId(null);
@@ -128,11 +130,11 @@ export function BlogComments({ postId }: BlogCommentsProps) {
     try {
       setSubmitting(true);
       await blogService.editComment(commentId, editContent);
-      toast.success('Đã cập nhật bình luận');
+      toast.success(t("commentUpdated"));
       setEditingId(null);
       fetchComments();
     } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Lỗi khi cập nhật bình luận');
+      toast.error(error.response?.data?.message || t("commentUpdateError"));
     } finally {
       setSubmitting(false);
     }
@@ -269,20 +271,18 @@ export function BlogComments({ postId }: BlogCommentsProps) {
     <div className="mt-16 pt-10 border-t border-slate-100">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4">
         <h3 className="text-2xl font-extrabold text-navy flex items-center gap-3 mb-0">
-          <MessageSquare className="w-6 h-6 text-blood" />
-          Bình luận ({totalComments})
-        </h3>
+          <MessageSquare className="w-6 h-6 text-blood" />{t("commentsCount", { n: totalComments })}</h3>
         
         <div className="flex items-center gap-4 text-sm">
           <div className="flex items-center gap-2">
-            <span className="text-slate-500 font-medium hidden sm:inline">Sắp xếp:</span>
+            <span className="text-slate-500 font-medium hidden sm:inline">{t("sortBy")}</span>
             <select 
               value={sortOrder}
               onChange={(e) => { setSortOrder(e.target.value); setPage(1); }}
               className="border-slate-200 rounded-lg text-sm focus:ring-blood/20 focus:border-blood text-slate-700 bg-white py-1.5 px-3 outline-none cursor-pointer"
             >
-              <option value="desc">Mới nhất</option>
-              <option value="asc">Cũ nhất</option>
+              <option value="desc">{t("newest")}</option>
+              <option value="asc">{t("oldest")}</option>
             </select>
           </div>
         </div>
@@ -303,7 +303,7 @@ export function BlogComments({ postId }: BlogCommentsProps) {
             </div>
           )}
           <Textarea 
-            placeholder="Chia sẻ suy nghĩ của bạn về bài viết này..."
+            placeholder={t("commentPlaceholder")}
             value={content}
             onChange={(e) => setContent(e.target.value)}
             className="min-h-[120px] resize-y border-slate-200 focus:border-blood focus:ring-blood/20 rounded-xl p-4 text-base"
@@ -317,7 +317,7 @@ export function BlogComments({ postId }: BlogCommentsProps) {
               {submitting ? 'Đang gửi...' : (
                 <>
                   <Send className="w-4 h-4" />
-                  Gửi bình luận
+                  {t("submitComment")}
                 </>
               )}
             </Button>
@@ -340,8 +340,8 @@ export function BlogComments({ postId }: BlogCommentsProps) {
         ) : (
           <div className="text-center py-12 px-4 bg-slate-50 rounded-3xl border border-dashed border-slate-200">
             <MessageSquare className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-            <h4 className="text-navy font-semibold mb-1">Chưa có bình luận nào</h4>
-            <p className="text-slate-500 text-sm">Hãy là người đầu tiên chia sẻ suy nghĩ của bạn!</p>
+            <h4 className="text-navy font-semibold mb-1">{t("noComments")}</h4>
+            <p className="text-slate-500 text-sm">{t("beFirstToComment")}</p>
           </div>
         )}
       </div>
@@ -365,8 +365,8 @@ export function BlogComments({ postId }: BlogCommentsProps) {
         isOpen={!!deletingId}
         onClose={() => setDeletingId(null)}
         onConfirm={handleDelete}
-        title="Xóa bình luận"
-        message="Bạn có chắc chắn muốn xóa bình luận này? Hành động này không thể hoàn tác."
+        title={t("deleteTitle")}
+        message={t("deleteConfirm")}
         confirmText="Xóa"
         cancelText="Hủy"
         type="danger"

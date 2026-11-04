@@ -32,6 +32,11 @@ export class BookDonationSlotDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  @ApiProperty({ example: true, description: 'Sàng lọc sức khỏe đạt', required: false })
+  @IsBoolean()
+  @IsOptional()
+  is_health_cleared?: boolean;
 }
 
 export class UpdateSlotStatusDto {

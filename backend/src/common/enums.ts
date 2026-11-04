@@ -1,12 +1,11 @@
 // ===== ENUMS bám sát DB CHECK constraints =====
 
 export enum RoleCode {
-  GUEST = 'guest',
-  MEMBER = 'USER',
-  STAFF = 'staff',
-  MODERATOR = 'moderator',
-  FACILITY_ADMIN = 'HOSPITAL_STAFF',
-  ADMIN = 'admin',
+  ADMIN = 'ADMIN',
+  STAFF = 'STAFF',
+  MODERATOR = 'MODERATOR',
+  HOSPITAL_STAFF = 'HOSPITAL_STAFF',
+  USER = 'USER',
 }
 
 export enum Gender {
@@ -66,4 +65,9 @@ export enum OtpTypeCode {
 export enum DestinationType {
   EMAIL = 'email',
   PHONE = 'phone',
+}
+
+export enum SystemSettingKey {
+  REMINDER_DAYS_BEFORE_ELIGIBLE = 'reminder_days_before_eligible',
+  MAX_IMAGE_UPLOAD_SIZE_MB = 'max_image_upload_size_mb',
 }

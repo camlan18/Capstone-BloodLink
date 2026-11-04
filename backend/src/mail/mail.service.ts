@@ -167,4 +167,57 @@ export class MailService {
       this.logger.error(`Failed to send change password email to ${email}`, error);
     }
   }
+  async sendDonorMatchEmail(email: string, name: string, patientName: string, bloodType: string, facilityName: string, facilityAddress: string) {
+    const content = `
+      <p>Xin chào <strong>${name}</strong>,</p>
+      <p>Hệ thống <strong>BloodLink</strong> vừa ghi nhận một yêu cầu máu khẩn cấp và bạn là một trong những người hiến máu phù hợp nhất.</p>
+      <div style="background-color: #f1f5f9; padding: 15px; border-left: 4px solid #991b1b; margin: 20px 0;">
+        <p style="margin: 0 0 10px 0;"><strong>Bệnh nhân:</strong> ${patientName}</p>
+        <p style="margin: 0 0 10px 0;"><strong>Nhóm máu cần:</strong> <span style="color: #991b1b; font-weight: bold;">${bloodType}</span></p>
+        <p style="margin: 0 0 10px 0;"><strong>Tại cơ sở:</strong> ${facilityName}</p>
+        <p style="margin: 0;"><strong>Địa chỉ:</strong> ${facilityAddress}</p>
+      </div>
+      <p>Nếu bạn đủ điều kiện sức khỏe và có thể tham gia hiến máu lúc này, vui lòng đăng nhập vào ứng dụng để xác nhận.</p>
+      <p>Trân trọng,<br>Đội ngũ BloodLink</p>
+    `;
+
+    const html = this.getBaseTemplate('Yêu cầu hiến máu khẩn cấp - BloodLink', content);
+
+    try {
+      await this.mailerService.sendMail({
+        to: email,
+        subject: 'Khẩn cấp: Có bệnh nhân đang cần sự giúp đỡ của bạn - BloodLink',
+        html,
+      });
+      this.logger.log(`Donor match email sent to ${email}`);
+    } catch (error) {
+      this.logger.error(`Failed to send donor match email to ${email}`, error);
+    }
+  }
+
+  async sendContactEmail(userEmail: string, name: string, subject: string, message: string) {
+    const userContent = `
+      <p>Xin chào <strong>${name}</strong>,</p>
+      <p>Cảm ơn bạn đã liên hệ với <strong>BloodLink</strong>. Chúng tôi đã nhận được tin nhắn của bạn với nội dung như sau:</p>
+      <div style="background-color: #f1f5f9; padding: 15px; border-left: 4px solid #991b1b; margin: 20px 0;">
+        <p style="margin: 0 0 10px 0;"><strong>Chủ đề:</strong> ${subject}</p>
+        <p style="margin: 0;"><strong>Nội dung:</strong><br/>${message.replace(/\n/g, '<br/>')}</p>
+      </div>
+      <p>Đội ngũ của chúng tôi sẽ xem xét và phản hồi lại bạn sớm nhất thông qua email hoặc số điện thoại bạn đã cung cấp.</p>
+      <p>Trân trọng,<br>Đội ngũ BloodLink</p>
+    `;
+
+    const userHtml = this.getBaseTemplate('Chúng tôi đã nhận được liên hệ của bạn - BloodLink', userContent);
+
+    try {
+      await this.mailerService.sendMail({
+        to: userEmail,
+        subject: 'Xác nhận: Chúng tôi đã nhận được liên hệ của bạn - BloodLink',
+        html: userHtml,
+      });
+      this.logger.log(`Contact confirmation email sent to user ${userEmail}`);
+    } catch (error) {
+      this.logger.error(`Failed to send contact confirmation email to user ${userEmail}`, error);
+    }
+  }
 }

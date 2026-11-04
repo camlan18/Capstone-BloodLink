@@ -67,4 +67,11 @@ export class SystemSettingsService {
     
     return await this.prisma.system_settings.delete({ where: { setting_id: id } });
   }
+
+  async getSettingValue(key: string, defaultValue: string): Promise<string> {
+    const setting = await this.prisma.system_settings.findUnique({
+      where: { setting_key: key }
+    });
+    return setting ? setting.setting_value : defaultValue;
+  }
 }

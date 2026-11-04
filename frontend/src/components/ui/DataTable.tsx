@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useTranslations } from 'next-intl';
 import { Search, ChevronLeft, ChevronRight, SlidersHorizontal, MoreVertical, ArrowUpDown, ArrowUp, ArrowDown, MoreHorizontal } from 'lucide-react';
 
 export interface Column<T> {
@@ -31,6 +32,8 @@ interface DataTableProps<T> {
   sortDirection?: 'asc' | 'desc';
   itemName?: string;
   selectable?: boolean;
+  searchPlaceholder?: string;
+  actionLabel?: string;
   onPageChange: (page: number) => void;
   onPageSizeChange: (pageSize: number) => void;
   onSearch: (keyword: string) => void;
@@ -52,8 +55,10 @@ export function DataTable<T extends Record<string, any>>({
   keyword,
   sortBy,
   sortDirection,
-  itemName = 'dữ liệu',
   selectable = false,
+  searchPlaceholder,
+  actionLabel,
+  itemName,
   onPageChange,
   onPageSizeChange,
   onSearch,
@@ -63,6 +68,10 @@ export function DataTable<T extends Record<string, any>>({
   selectedIds = [],
   onSelectionChange
 }: DataTableProps<T>) {
+  const tCommon = useTranslations('Common');
+  const placeholder = searchPlaceholder || tCommon('searchPlaceholder');
+  const actionsHeader = actionLabel || tCommon('actionLabel');
+  const itemText = itemName || tCommon('itemName');
   const [searchValue, setSearchValue] = useState(keyword);
   const [goToPage, setGoToPage] = useState('');
   const [showColumnMenu, setShowColumnMenu] = useState(false);
@@ -198,7 +207,7 @@ export function DataTable<T extends Record<string, any>>({
           <input
             type="text"
             className="block h-11 w-full pl-10 pr-3 py-2.5 border border-slate-200 rounded-md text-sm placeholder-slate-400 focus:outline-none focus:border-blood focus:ring-1 focus:ring-blood transition-all bg-white"
-            placeholder="Tìm kiếm..."
+            placeholder={placeholder}
             value={searchValue}
             onChange={(e) => setSearchValue(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && onSearch(searchValue)}
@@ -289,7 +298,7 @@ export function DataTable<T extends Record<string, any>>({
                 {/* Cột Actions (Ghim cố định bên phải) */}
                 {rowActions && (
                   <th className="px-4 py-4 text-center whitespace-nowrap sticky right-0 bg-white z-10 w-16">
-                    Thao tác
+                    {actionsHeader}
                   </th>
                 )}
               </tr>

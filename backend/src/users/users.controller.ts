@@ -7,10 +7,15 @@ import { RoleCode } from '../common/enums';
 import { PaginationDto } from '../common/pagination.dto';
 import { ChangePasswordVerifyDto, CreateUserAdminDto, UpdateUserAdminDto } from './dto/users.dto';
 import { UserFilterDto } from './dto/user-filter.dto';
+import { SystemSettingsService } from '../system-settings/system-settings.service';
+import { SystemSettingKey } from '../common/enums';
 
 @Controller('api/v1/users')
 export class UsersController {
-  constructor(private readonly usersService: UsersService) {}
+  constructor(
+    private readonly usersService: UsersService,
+    private readonly systemSettingsService: SystemSettingsService
+  ) {}
 
   @Get('profile')
   async getProfile(@Req() req: any) {
@@ -25,6 +30,11 @@ export class UsersController {
   @Post('avatar')
   @UseInterceptors(FileInterceptor('file'))
   async uploadAvatar(@Req() req: any, @UploadedFile() file: Express.Multer.File) {
+    const maxMbStr = await this.systemSettingsService.getSettingValue(SystemSettingKey.MAX_IMAGE_UPLOAD_SIZE_MB, '5');
+    const maxMb = parseFloat(maxMbStr) || 5;
+    if (file.size > maxMb * 1024 * 1024) {
+      throw new BadRequestException(`Dung lượng file vượt quá giới hạn cho phép (${maxMb}MB)`);
+    }
     return await this.usersService.uploadAvatar(req.user.user_id, file);
   }
 
@@ -39,7 +49,7 @@ export class UsersController {
   }
 
   // Admin Only
-  @Roles(RoleCode.ADMIN, RoleCode.FACILITY_ADMIN, RoleCode.STAFF)
+  @Roles(RoleCode.ADMIN, RoleCode.STAFF, RoleCode.HOSPITAL_STAFF)
   @Get()
   async getAllUsers(@Query() query: UserFilterDto) {
     return await this.usersService.getAllUsers(query);
@@ -71,7 +81,7 @@ export class UsersController {
     return await this.usersService.importExcel(file.buffer, req.user.user_id);
   }
 
-  @Roles(RoleCode.ADMIN)
+  @Roles(RoleCode.ADMIN, RoleCode.STAFF, RoleCode.HOSPITAL_STAFF)
   @Get(':id')
   async getUserById(@Param('id', ParseIntPipe) id: number) {
     return await this.usersService.getUserById(id);

@@ -138,6 +138,10 @@ export class CreateUserAdminDto {
   is_email_verified?: boolean;
 
   @IsOptional()
+  @IsBoolean()
+  is_active?: boolean;
+
+  @IsOptional()
   @IsInt()
   @Type(() => Number)
   facility_id?: number;

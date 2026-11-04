@@ -3,6 +3,7 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateScheduleDto, UpdateScheduleDto, ScheduleFilterDto } from './dto/schedules.dto';
 import { NotificationsService, NotificationType } from '../notifications/notifications.service';
+import { ExcelUtil } from '../common/utils/excel.util';
 
 @Injectable()
 export class SchedulesService implements OnModuleInit {
@@ -54,9 +55,15 @@ export class SchedulesService implements OnModuleInit {
     if (query.date) where.date = new Date(query.date);
 
     if (user.role_code === 'HOSPITAL_STAFF') {
+      if (!user.facility_id) {
+        return { data: [], meta: { total: 0, page, limit, totalPages: 0 } };
+      }
       where.facility_id = user.facility_id;
     } else if (query.facility_id) {
-      where.facility_id = Number(query.facility_id);
+      const parsedId = Number(query.facility_id);
+      if (!isNaN(parsedId)) {
+        where.facility_id = parsedId;
+      }
     }
 
     const [data, total] = await Promise.all([
@@ -84,6 +91,7 @@ export class SchedulesService implements OnModuleInit {
   async getScheduleById(id: number, user: any) {
     const where: any = { schedule_id: id };
     if (user.role_code === 'HOSPITAL_STAFF') {
+      if (!user.facility_id) throw new NotFoundException('Lịch hiến máu không tồn tại hoặc bạn không có quyền xem');
       where.facility_id = user.facility_id;
     }
 
@@ -129,7 +137,10 @@ export class SchedulesService implements OnModuleInit {
 
   async updateSchedule(id: number, dto: UpdateScheduleDto, user: any) {
     const where: any = { schedule_id: id };
-    if (user.role_code === 'HOSPITAL_STAFF') where.facility_id = user.facility_id;
+    if (user.role_code === 'HOSPITAL_STAFF') {
+      if (!user.facility_id) throw new NotFoundException('Lịch hiến máu không tồn tại hoặc bạn không có quyền sửa');
+      where.facility_id = user.facility_id;
+    }
 
     const schedule = await this.prisma.facility_donation_schedules.findFirst({ where });
     if (!schedule) throw new NotFoundException('Lịch hiến máu không tồn tại hoặc bạn không có quyền sửa');
@@ -180,7 +191,10 @@ export class SchedulesService implements OnModuleInit {
 
   async deleteSchedule(id: number, user: any) {
     const where: any = { schedule_id: id };
-    if (user.role_code === 'HOSPITAL_STAFF') where.facility_id = user.facility_id;
+    if (user.role_code === 'HOSPITAL_STAFF') {
+      if (!user.facility_id) throw new NotFoundException('Lịch hiến máu không tồn tại');
+      where.facility_id = user.facility_id;
+    }
 
     const schedule = await this.prisma.facility_donation_schedules.findFirst({ 
       where,
@@ -301,7 +315,6 @@ export class SchedulesService implements OnModuleInit {
       'Ngày đăng ký': slot.created_at ? new Date(slot.created_at).toLocaleString('vi-VN') : '',
     }));
 
-    const ExcelUtil = require('../common/utils/excel.util').ExcelUtil;
     const buffer = ExcelUtil.generateExcel(dataToExport, 'Danh Sách Đăng Ký');
 
     return {

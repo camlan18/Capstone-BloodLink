@@ -5,8 +5,8 @@ export const adminInventoryService = {
     return await api.get('/inventory', { params });
   },
 
-  getInventoryStats: async () => {
-    return await api.get('/inventory/stats');
+  getInventoryStats: async (params?: any) => {
+    return await api.get('/inventory/stats', { params });
   },
 
   receiveBlood: async (data: any) => {
@@ -19,6 +19,10 @@ export const adminInventoryService = {
 
   discardBlood: async (id: number, reason: string) => {
     return await api.post(`/inventory/${id}/discard`, { reason });
+  },
+
+  transferBlood: async (id: number, data: { to_facility_id: number, notes?: string }) => {
+    return await api.post(`/inventory/${id}/transfer`, data);
   },
 
   exportExcel: async (params?: any) => {
