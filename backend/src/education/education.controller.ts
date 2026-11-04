@@ -30,8 +30,10 @@ export class EducationController {
   @Public()
   @Get('documents')
   @ApiOperation({ summary: 'Lấy danh sách tài liệu' })
-  async getDocuments(@Query() query: EducationFilterDto) {
-    return await this.educationService.getDocuments(query);
+  async getDocuments(@Req() req: any, @Query() query: EducationFilterDto) {
+    const role = String(req.user?.role_code || '').toLowerCase();
+    const includeDrafts = role === String(RoleCode.ADMIN).toLowerCase() || role === String(RoleCode.MODERATOR).toLowerCase();
+    return await this.educationService.getDocuments(query, includeDrafts);
   }
 
   @Public()
