@@ -26,6 +26,7 @@ export class DonorService {
     });
     if (existing) throw new BadRequestException('Hồ sơ hiến máu đã tồn tại');
 
+    try {
     return await this.prisma.$transaction(async (tx) => {
       const profile = await tx.donor_profiles.create({
         data: {
@@ -46,6 +47,10 @@ export class DonorService {
 
       return profile;
     });
+    } catch (error: any) {
+      if (error?.code === 'P2003') throw new BadRequestException('Nhóm máu không hợp lệ');
+      throw error;
+    }
   }
 
   async calculateDonorEligibility(userId: number) {
@@ -197,6 +202,22 @@ export class DonorService {
 
     let finalScheduleId = data.schedule_id;
     let bloodRequest: any = null;
+    let implicitSchedule = false;
+
+    // Kiểm tra quy tắc khoảng cách hiến máu (next_eligible_date) so với ngày của lịch
+    const assertEligibleOn = async (date: Date | string) => {
+      const eligibility = await this.calculateDonorEligibility(userId);
+      if (eligibility.nextEligibleDate) {
+        const scheduleDate = new Date(date);
+        scheduleDate.setHours(0, 0, 0, 0);
+        const nextDate = new Date(eligibility.nextEligibleDate);
+        nextDate.setHours(0, 0, 0, 0);
+
+        if (scheduleDate < nextDate) {
+          throw new BadRequestException(`Bạn chưa đủ điều kiện thời gian để hiến máu tiếp. Ngày có thể hiến tiếp theo là ${nextDate.toLocaleDateString('vi-VN')}`);
+        }
+      }
+    };
 
     // 1. Nếu đang đăng ký cho một yêu cầu cụ thể
     if (data.request_id) {
@@ -242,6 +263,8 @@ export class DonorService {
       // 1.2. Xử lý tạo lịch ngầm định (Lịch khẩn cấp luôn tạo mới 1 slot riêng biệt cho người này)
       if (!finalScheduleId && data.facility_id && data.specific_date) {
         const specificDate = new Date(data.specific_date);
+        await assertEligibleOn(specificDate);
+        implicitSchedule = true;
         const startTime = new Date(specificDate);
         const endTime = new Date(specificDate);
 
@@ -282,18 +305,7 @@ export class DonorService {
     }
 
     // Kiểm tra quy tắc khoảng cách hiến máu (next_eligible_date)
-    const eligibility = await this.calculateDonorEligibility(userId);
-
-    if (eligibility.nextEligibleDate) {
-      const scheduleDate = new Date(schedule.date);
-      scheduleDate.setHours(0, 0, 0, 0);
-      const nextDate = new Date(eligibility.nextEligibleDate);
-      nextDate.setHours(0, 0, 0, 0);
-
-      if (scheduleDate < nextDate) {
-        throw new BadRequestException(`Bạn chưa đủ điều kiện thời gian để hiến máu tiếp. Ngày có thể hiến tiếp theo là ${nextDate.toLocaleDateString('vi-VN')}`);
-      }
-    }
+    if (!implicitSchedule) await assertEligibleOn(schedule.date);
 
     if (schedule.current_donors >= schedule.max_donors) {
       throw new BadRequestException('Lịch này đã đủ số lượng đăng ký');
@@ -425,14 +437,17 @@ export class DonorService {
     });
 
     // Map slots to a unified history
+    const usedDonationIds = new Set<number>();
     const history = slots.map(slot => {
       const slotDate = slot.specific_date || slot.schedule?.date;
 
-      // Find matching donation if status is COMPLETED
+      // Find matching donation (mỗi lượt hiến chỉ gắn với một slot)
       const donation = donations.find(d =>
+        !usedDonationIds.has(d.donation_id) &&
         slotDate && new Date(d.donation_date).toISOString().split('T')[0] ===
         new Date(slotDate).toISOString().split('T')[0]
       );
+      if (donation) usedDonationIds.add(donation.donation_id);
 
       return {
         donation_id: donation?.donation_id || slot.slot_id,
@@ -892,7 +907,7 @@ export class DonorService {
 
   async getMySlots(userId: number) {
     return await this.prisma.donor_availability_slots.findMany({
-      where: { user_id: userId, is_active: true },
+      where: { user_id: userId, is_active: true, status: { not: 'CANCELLED' } },
       include: {
         schedule: {
           include: { facility: true }
@@ -1029,6 +1044,15 @@ export class DonorService {
       }
     }
 
+    if (dto.schedule_id) {
+      const target = await this.prisma.facility_donation_schedules.findUnique({
+        where: { schedule_id: Number(dto.schedule_id) }
+      });
+      if (!target) throw new NotFoundException('Lịch hiến máu không tồn tại');
+      if (target.status !== 'OPEN') throw new BadRequestException('Lịch này không còn nhận đăng ký');
+      if (target.current_donors >= target.max_donors) throw new BadRequestException('Lịch này đã đủ số lượng đăng ký');
+    }
+
     const createdSlot = await this.prisma.donor_availability_slots.create({
       data: {
         user_id: Number(dto.user_id),
@@ -1064,6 +1088,7 @@ export class DonorService {
       where: { slot_id: slotId },
       data: {
         status: dto.status,
+        ...(dto.status === 'CANCELLED' && { is_active: false }),
         ...(dto.notes !== undefined && { notes: dto.notes })
       },
     });
@@ -1110,6 +1135,7 @@ export class DonorService {
         }
       }
 
+      const screeningPassed = dto.health_check_passed !== false;
       const donation = await tx.donations.create({
         data: {
           donation_code: donationCode,
@@ -1119,7 +1145,7 @@ export class DonorService {
           component_id: dto.component_id,
           volume_ml: dto.volume_ml,
           donation_date: new Date(dto.donation_date),
-          status_code: 'COMPLETED',
+          status_code: screeningPassed ? 'COMPLETED' : 'REJECTED',
           staff_user_id: user.user_id,
           health_check_passed: dto.health_check_passed !== undefined ? dto.health_check_passed : true,
           result_notes: dto.result_notes,
@@ -1127,7 +1153,7 @@ export class DonorService {
         }
       });
 
-      if (requestId && dto.health_check_passed !== false && matchedRequest) {
+      if (requestId && screeningPassed && matchedRequest && matchedRequest.units_fulfilled < matchedRequest.units_needed) {
         const newFulfilled = matchedRequest.units_fulfilled + 1;
         let newStatusId = matchedRequest.status_id;
         if (newFulfilled >= matchedRequest.units_needed) {
@@ -1152,7 +1178,8 @@ export class DonorService {
         }
       }
 
-      if (dto.health_check_passed !== false) {
+      if (screeningPassed) {
+        const requestOpen = !!requestId && !!matchedRequest && matchedRequest.units_fulfilled < matchedRequest.units_needed;
         // Mặc định hạn sử dụng máu là 35 ngày
         const shelfLifeDays = 35;
         const expiryDate = new Date(dto.donation_date);
@@ -1167,7 +1194,7 @@ export class DonorService {
             volume_ml: dto.volume_ml,
             collection_date: new Date(dto.donation_date),
             expiry_date: expiryDate,
-            status_code: requestId ? 'RESERVED' : 'AVAILABLE',
+            status_code: requestOpen ? 'RESERVED' : 'AVAILABLE',
             source_donation_id: donation.donation_id
           }
         });
@@ -1183,7 +1210,7 @@ export class DonorService {
           }
         });
 
-        if (requestId) {
+        if (requestOpen && requestId) {
           await tx.blood_request_inventory_allocations.create({
             data: {
               request_id: requestId,
@@ -1256,15 +1283,17 @@ export class DonorService {
         });
       }
 
-      // Auto-create certificate (PENDING — cần admin/staff duyệt)
-      const certCode = `BL-${new Date(dto.donation_date).getFullYear()}-${String(donation.donation_id).padStart(5, '0')}`;
-      await tx.donation_certificates.create({
-        data: {
-          donation_id: donation.donation_id,
-          certificate_code: certCode,
-          status: 'PENDING'
-        }
-      });
+      // Auto-create certificate (PENDING — cần admin/staff duyệt), chỉ khi sàng lọc đạt
+      if (screeningPassed) {
+        const certCode = `BL-${new Date(dto.donation_date).getFullYear()}-${String(donation.donation_id).padStart(5, '0')}`;
+        await tx.donation_certificates.create({
+          data: {
+            donation_id: donation.donation_id,
+            certificate_code: certCode,
+            status: 'PENDING'
+          }
+        });
+      }
 
       return donation;
     });
