@@ -5,6 +5,11 @@ import { CreateScheduleDto, UpdateScheduleDto, ScheduleFilterDto } from './dto/s
 import { NotificationsService, NotificationType } from '../notifications/notifications.service';
 import { ExcelUtil } from '../common/utils/excel.util';
 
+const toMinutes = (t: string) => {
+  const [h, m] = t.split(':').map(Number);
+  return h * 60 + (m || 0);
+};
+
 @Injectable()
 export class SchedulesService implements OnModuleInit {
   private readonly logger = new Logger(SchedulesService.name);
@@ -115,7 +120,7 @@ export class SchedulesService implements OnModuleInit {
       return dt;
     };
 
-    if (dto.start_time >= dto.end_time) {
+    if (toMinutes(dto.start_time) >= toMinutes(dto.end_time)) {
       throw new BadRequestException('Giờ kết thúc phải lớn hơn giờ bắt đầu trong cùng một ngày');
     }
     
@@ -160,19 +165,26 @@ export class SchedulesService implements OnModuleInit {
     // Actually, schedule.start_time and schedule.end_time are Date objects from Prisma.
     // It's safer to just check if both dto.start_time and dto.end_time are provided.
     if (dto.start_time && dto.end_time) {
-      if (dto.start_time >= dto.end_time) {
+      if (toMinutes(dto.start_time) >= toMinutes(dto.end_time)) {
         throw new BadRequestException('Giờ kết thúc phải lớn hơn giờ bắt đầu trong cùng một ngày');
       }
     } else if (dto.start_time && !dto.end_time) {
       const endStr = schedule.end_time.toISOString().substring(11, 16);
-      if (dto.start_time >= endStr) {
+      if (toMinutes(dto.start_time) >= toMinutes(endStr)) {
         throw new BadRequestException('Giờ kết thúc phải lớn hơn giờ bắt đầu trong cùng một ngày');
       }
     } else if (!dto.start_time && dto.end_time) {
       const startStr = schedule.start_time.toISOString().substring(11, 16);
-      if (startStr >= dto.end_time) {
+      if (toMinutes(startStr) >= toMinutes(dto.end_time)) {
         throw new BadRequestException('Giờ kết thúc phải lớn hơn giờ bắt đầu trong cùng một ngày');
       }
+    }
+
+    if (user.role_code === 'HOSPITAL_STAFF' && dto.facility_id && dto.facility_id !== user.facility_id) {
+      throw new BadRequestException('Bạn không có quyền chuyển lịch sang cơ sở khác');
+    }
+    if (dto.max_donors !== undefined && dto.max_donors < schedule.current_donors) {
+      throw new BadRequestException('Số lượng tối đa không được nhỏ hơn số người đã đăng ký');
     }
 
     return await this.prisma.facility_donation_schedules.update({
@@ -265,10 +277,19 @@ export class SchedulesService implements OnModuleInit {
       throw new NotFoundException('Không tìm thấy thông tin đăng ký');
     }
 
+    if (!status) throw new BadRequestException('Trạng thái không hợp lệ');
+
     const updatedSlot = await this.prisma.donor_availability_slots.update({
       where: { slot_id: slotId },
-      data: { status }
+      data: { status, ...(status === 'CANCELLED' && { is_active: false }) }
     });
+
+    if (status === 'CANCELLED' && slot.status !== 'CANCELLED') {
+      await this.prisma.facility_donation_schedules.update({
+        where: { schedule_id: scheduleId },
+        data: { current_donors: { decrement: 1 } }
+      });
+    }
 
     await this.notificationsService.createNotification({
       user_ids: [updatedSlot.user_id],
