@@ -1,3 +1,6 @@
+import { CreatePostDto, UpdatePostDto, AddCommentDto, CreateCategoryDto, UpdateCategoryDto } from '../dto/blog.dto';
+import { BlogFilterDto } from '../dto/blog-filter.dto';
+import { validate, expectDtoErr } from './_helpers';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { BlogService } from '../blog.service';
 import { expectErr } from './_helpers';
@@ -58,5 +61,27 @@ describe('BLOG-007 BlogService.createCategory/updateCategory/deleteCategory', ()
     prisma.blog_categories.findUnique.mockResolvedValue(null);
     await expectErr(service.deleteCategory(999), NotFoundException, 'Danh mục không tồn tại');
     expect(prisma.blog_categories.delete).not.toHaveBeenCalled();
+  });
+});
+
+describe('BLOG-007 DTO validation (ValidationPipe whitelist+transform)', () => {
+  const vPost = { title: 'Hiến máu cứu người', slug: 'hien-mau-cuu-nguoi', content: '<p>Nội dung</p>', blog_category_id: 1, is_published: true };
+  const vCat = { category_name: 'Tin tức', slug: 'tin-tuc' };
+  const vCmt = { content: 'Bài viết rất hữu ích!', guest_name: 'Khách' };
+
+  it('UTCID10 create: empty category_name', async () => {
+    await expectDtoErr(validate(CreateCategoryDto, { ...vCat, category_name: '' }, 'body'), "Tên danh mục không được để trống");
+  });
+  it('UTCID11 create: category_name not a string', async () => {
+    await expectDtoErr(validate(CreateCategoryDto, { ...vCat, category_name: 123 }, 'body'), "category_name must be a string");
+  });
+  it('UTCID12 create: empty slug', async () => {
+    await expectDtoErr(validate(CreateCategoryDto, { ...vCat, slug: '' }, 'body'), "Slug không được để trống");
+  });
+  it('UTCID13 create: category_name longer than NVarChar(150)', async () => {
+    await expectDtoErr(validate(CreateCategoryDto, { ...vCat, category_name: 'a'.repeat(151) }, 'body'), "category_name must be shorter than or equal to 150 characters");
+  });
+  it('UTCID14 update: empty slug', async () => {
+    await expectDtoErr(validate(UpdateCategoryDto, { ...vCat, slug: '' }, 'body'), "Slug không được để trống");
   });
 });

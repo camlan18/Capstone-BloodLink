@@ -1,3 +1,5 @@
+import { CreateEducationCategoryDto, UpdateEducationCategoryDto, CreateEducationDocumentDto, UpdateEducationDocumentDto, EducationFilterDto } from '../dto/education.dto';
+import { validate, expectDtoErr } from './_helpers';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { EducationService } from '../education.service';
 import { expectErr } from './_helpers';
@@ -38,5 +40,20 @@ describe('EDU-009 EducationService.updateDocument', () => {
     prisma.education_documents.findUnique.mockResolvedValue(null);
     await expectErr(service.updateDocument(999, { slug: 'b' } as any), NotFoundException, 'Tài liệu không tồn tại');
     expect(prisma.education_documents.update).not.toHaveBeenCalled();
+  });
+});
+
+describe('EDU-009 DTO validation (ValidationPipe whitelist+transform)', () => {
+  const vCat = { category_name: 'Kiến thức hiến máu', sort_order: 2 };
+  const vDoc = { title: 'Lợi ích hiến máu', slug: 'loi-ich-hien-mau', content_html: '<p>Nội dung</p>', category_id: 1, is_published: true };
+
+  it('UTCID06 missing slug (PUT needs full body)', async () => {
+    await expectDtoErr(validate(UpdateEducationDocumentDto, { ...vDoc, slug: undefined }, 'body'), "Slug không được để trống");
+  });
+  it('UTCID07 empty title', async () => {
+    await expectDtoErr(validate(UpdateEducationDocumentDto, { ...vDoc, title: '' }, 'body'), "Tiêu đề không được để trống");
+  });
+  it('UTCID08 missing category_id', async () => {
+    await expectDtoErr(validate(UpdateEducationDocumentDto, { ...vDoc, category_id: undefined }, 'body'), "category_id must be an integer number");
   });
 });

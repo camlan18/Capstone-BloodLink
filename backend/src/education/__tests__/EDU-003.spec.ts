@@ -1,3 +1,5 @@
+import { CreateEducationCategoryDto, UpdateEducationCategoryDto, CreateEducationDocumentDto, UpdateEducationDocumentDto, EducationFilterDto } from '../dto/education.dto';
+import { validate, expectDtoErr } from './_helpers';
 import { NotFoundException } from '@nestjs/common';
 import { EducationService } from '../education.service';
 import { expectErr } from './_helpers';
@@ -30,5 +32,17 @@ describe('EDU-003 EducationService.updateCategory', () => {
     prisma.education_document_categories.findUnique.mockResolvedValue(null);
     await expectErr(service.updateCategory(999, { category_name: 'x', sort_order: 3 } as any), NotFoundException, 'Danh mục không tồn tại');
     expect(prisma.education_document_categories.update).not.toHaveBeenCalled();
+  });
+});
+
+describe('EDU-003 DTO validation (ValidationPipe whitelist+transform)', () => {
+  const vCat = { category_name: 'Kiến thức hiến máu', sort_order: 2 };
+  const vDoc = { title: 'Lợi ích hiến máu', slug: 'loi-ich-hien-mau', content_html: '<p>Nội dung</p>', category_id: 1, is_published: true };
+
+  it('UTCID05 empty category_name', async () => {
+    await expectDtoErr(validate(UpdateEducationCategoryDto, { ...vCat, category_name: '' }, 'body'), "Tên danh mục không được để trống");
+  });
+  it('UTCID06 missing category_name (PUT needs full body)', async () => {
+    await expectDtoErr(validate(UpdateEducationCategoryDto, { sort_order: 3 }, 'body'), "category_name must be a string");
   });
 });

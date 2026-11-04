@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsOptional, IsInt, IsBoolean } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsInt, IsBoolean, MaxLength, Min } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 
@@ -6,6 +6,7 @@ export class CreateEducationCategoryDto {
   @ApiProperty({ example: 'Hướng dẫn hiến máu', description: 'Tên danh mục' })
   @IsString()
   @IsNotEmpty({ message: 'Tên danh mục không được để trống' })
+  @MaxLength(150)
   category_name: string;
 
   @ApiProperty({ example: 'Mo ta ngan', required: false })
@@ -26,6 +27,7 @@ export class CreateEducationDocumentDto {
   @ApiProperty({ example: 'Hiến máu cứu người', description: 'Tiêu đề' })
   @IsString()
   @IsNotEmpty({ message: 'Tiêu đề không được để trống' })
+  @MaxLength(300)
   title: string;
 
   @ApiProperty({ example: 'hien-mau-cuu-nguoi', description: 'Đường dẫn (slug)' })
@@ -70,6 +72,7 @@ export class UpdateEducationDocumentDto extends CreateEducationDocumentDto {}
 export class EducationFilterDto {
   @IsOptional()
   @IsInt()
+  @Min(1)
   @Type(() => Number)
   page?: number;
 
