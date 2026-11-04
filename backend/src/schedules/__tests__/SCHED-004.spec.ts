@@ -1,3 +1,5 @@
+import { ValidationPipe, BadRequestException as DtoBadRequest } from '@nestjs/common';
+import { UpdateScheduleDto } from '../dto/schedules.dto';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { makeSched } from './helpers';
 
@@ -89,5 +91,27 @@ describe('SCHED-004 SchedulesService.updateSchedule', () => {
   it('UTCID12 max_donors below current_donors must be rejected (defect)', async () => {
     await expect(s.service.updateSchedule(1, { max_donors: 5 } as any, admin)).rejects.toThrow(BadRequestException);
     expect(upd()).not.toHaveBeenCalled();
+  });
+
+  // --- DTO validation: UpdateScheduleDto via ValidationPipe({ whitelist: true, transform: true }) ---
+  const vPipe = new ValidationPipe({ whitelist: true, transform: true });
+  const vRun = (v: any) => vPipe.transform(v, { type: 'body', metatype: UpdateScheduleDto, data: '' });
+  const vBase = { max_donors: 40, status: 'CLOSED' };
+  const vBad = async (v: any, msg: string) => {
+    await expect(vRun(v)).rejects.toBeInstanceOf(DtoBadRequest);
+    const err = await vRun(v).catch((e: any) => e);
+    expect(err.getResponse().message).toContain(msg);
+  };
+
+  it('UTCID13 start_time not a string', async () => {
+    await vBad({ ...vBase, start_time: 700 }, 'start_time must be a string');
+  });
+
+  it('UTCID14 max_donors not integer', async () => {
+    await vBad({ ...vBase, max_donors: '40' }, 'max_donors must be an integer number');
+  });
+
+  it('UTCID15 date not ISO', async () => {
+    await vBad({ ...vBase, date: 'abc' }, 'date must be a valid ISO 8601 date string');
   });
 });

@@ -1,3 +1,5 @@
+import { ValidationPipe, BadRequestException as DtoBadRequest } from '@nestjs/common';
+import { RecordDonationDto } from '../dto/donor.dto';
 import { BadRequestException } from '@nestjs/common';
 import { makeDonor, D, addDays } from './helpers';
 
@@ -148,5 +150,63 @@ describe('DONOR-007 DonorService.recordDonation', () => {
     // SRS: closed/fulfilled requests are not updated further and no blood is reserved for them
     expect(p().blood_requests.update).not.toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ units_fulfilled: 3 }) }));
     expect(p().blood_inventory.create).not.toHaveBeenCalledWith({ data: expect.objectContaining({ status_code: 'RESERVED' }) });
+  });
+
+  // --- DTO validation: RecordDonationDto via ValidationPipe({ whitelist: true, transform: true }) ---
+  const vPipe = new ValidationPipe({ whitelist: true, transform: true });
+  const vRun = (v: any) => vPipe.transform(v, { type: 'body', metatype: RecordDonationDto, data: '' });
+  const vBase = { facility_id: 1, donor_user_id: 5, blood_type_id: 1, component_id: 1, volume_ml: 350, donation_date: '2026-11-01' };
+  const vBad = async (v: any, msg: string) => {
+    await expect(vRun(v)).rejects.toBeInstanceOf(DtoBadRequest);
+    const err = await vRun(v).catch((e: any) => e);
+    expect(err.getResponse().message).toContain(msg);
+  };
+
+  it('UTCID15 facility_id missing', async () => {
+    await vBad({ ...vBase, facility_id: undefined }, 'facility_id must be an integer number');
+  });
+
+  it('UTCID16 facility_id not integer', async () => {
+    await vBad({ ...vBase, facility_id: 1.5 }, 'facility_id must be an integer number');
+  });
+
+  it('UTCID17 donor_user_id missing', async () => {
+    await vBad({ ...vBase, donor_user_id: undefined }, 'donor_user_id must be an integer number');
+  });
+
+  it('UTCID18 component_id not integer', async () => {
+    await vBad({ ...vBase, component_id: 'abc' }, 'component_id must be an integer number');
+  });
+
+  it('UTCID19 blood_type_id missing', async () => {
+    await vBad({ ...vBase, blood_type_id: undefined }, 'blood_type_id must be an integer number');
+  });
+
+  it('UTCID20 volume_ml missing', async () => {
+    await vBad({ ...vBase, volume_ml: undefined }, 'volume_ml must be a number conforming to the specified constraints');
+  });
+
+  it('UTCID21 volume_ml not a number', async () => {
+    await vBad({ ...vBase, volume_ml: 'abc' }, 'volume_ml must be a number conforming to the specified constraints');
+  });
+
+  it('UTCID22 donation_date missing', async () => {
+    await vBad({ ...vBase, donation_date: undefined }, 'donation_date must be a valid ISO 8601 date string');
+  });
+
+  it('UTCID23 donation_date not ISO', async () => {
+    await vBad({ ...vBase, donation_date: '31/05/2026' }, 'donation_date must be a valid ISO 8601 date string');
+  });
+
+  it('UTCID24 health_check_passed not boolean', async () => {
+    await vBad({ ...vBase, health_check_passed: 'yes' }, 'health_check_passed must be a boolean value');
+  });
+
+  it('UTCID25 request_code not a string', async () => {
+    await vBad({ ...vBase, request_code: 123 }, 'request_code must be a string');
+  });
+
+  it('UTCID26 numeric strings converted by @Type', async () => {
+    await expect(vRun({ ...vBase, facility_id: '1', donor_user_id: '5', component_id: '1' })).resolves.toEqual(expect.objectContaining({ facility_id: 1, donor_user_id: 5, component_id: 1 }));
   });
 });

@@ -1,3 +1,5 @@
+import { ValidationPipe, BadRequestException as DtoBadRequest } from '@nestjs/common';
+import { UpdateDonorProfileDto } from '../dto/donor.dto';
 import { BadRequestException } from '@nestjs/common';
 import { makeDonor } from './helpers';
 
@@ -75,5 +77,51 @@ describe('DONOR-002 DonorService.updateDonorProfile', () => {
     expect(s.prisma.users.update).toHaveBeenCalledTimes(1);
     expect(s.prisma.users.update).toHaveBeenCalledWith({ where: { user_id: 5 }, data: { full_name: 'Nguyen Van A' } });
     expect(s.prisma.donor_profiles.create).not.toHaveBeenCalled();
+  });
+
+  // --- DTO validation: UpdateDonorProfileDto via ValidationPipe({ whitelist: true, transform: true }) ---
+  const vPipe = new ValidationPipe({ whitelist: true, transform: true });
+  const vRun = (v: any) => vPipe.transform(v, { type: 'body', metatype: UpdateDonorProfileDto, data: '' });
+  const vBase = { full_name: 'Nguyen Van A', weight_kg: 65 };
+  const vBad = async (v: any, msg: string) => {
+    await expect(vRun(v)).rejects.toBeInstanceOf(DtoBadRequest);
+    const err = await vRun(v).catch((e: any) => e);
+    expect(err.getResponse().message).toContain(msg);
+  };
+
+  it('UTCID09 full_name 150 chars accepted', async () => {
+    await expect(vRun({ ...vBase, full_name: 'a'.repeat(150) })).resolves.toEqual(expect.objectContaining({ full_name: 'a'.repeat(150) }));
+  });
+
+  it('UTCID10 full_name 151 chars rejected', async () => {
+    await vBad({ ...vBase, full_name: 'a'.repeat(151) }, 'full_name must be shorter than or equal to 150 characters');
+  });
+
+  it('UTCID11 full_name not a string', async () => {
+    await vBad({ ...vBase, full_name: 123 }, 'full_name must be a string');
+  });
+
+  it('UTCID12 phone_number 20 chars accepted', async () => {
+    await expect(vRun({ ...vBase, phone_number: '0'.repeat(20) })).resolves.toEqual(expect.objectContaining({ phone_number: '0'.repeat(20) }));
+  });
+
+  it('UTCID13 phone_number 21 chars rejected', async () => {
+    await vBad({ ...vBase, phone_number: '0'.repeat(21) }, 'phone_number must be shorter than or equal to 20 characters');
+  });
+
+  it('UTCID14 date_of_birth not ISO date', async () => {
+    await vBad({ ...vBase, date_of_birth: '01/01/1990' }, 'date_of_birth must be a valid ISO 8601 date string');
+  });
+
+  it('UTCID15 blood_type_id not integer', async () => {
+    await vBad({ ...vBase, blood_type_id: 1.5 }, 'blood_type_id must be an integer number');
+  });
+
+  it('UTCID16 weight_kg not a number', async () => {
+    await vBad({ ...vBase, weight_kg: 'abc' }, 'weight_kg must be a number conforming to the specified constraints');
+  });
+
+  it('UTCID17 gender outside M/F/O', async () => {
+    await vBad({ ...vBase, gender: 'X' }, 'gender must be one of the following values: M, F, O');
   });
 });

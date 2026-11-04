@@ -1,3 +1,5 @@
+import { ValidationPipe, BadRequestException as DtoBadRequest } from '@nestjs/common';
+import { ScheduleFilterDto } from '../dto/schedules.dto';
 import { makeSched } from './helpers';
 
 describe('SCHED-001 SchedulesService.getAllSchedules', () => {
@@ -53,5 +55,27 @@ describe('SCHED-001 SchedulesService.getAllSchedules', () => {
   it('UTCID08 empty', async () => {
     const r = await s.service.getAllSchedules({} as any, admin);
     expect(r).toEqual({ data: [], meta: { total: 0, page: 1, limit: 20, totalPages: 0 } });
+  });
+
+  // --- DTO validation: ScheduleFilterDto via ValidationPipe({ whitelist: true, transform: true }) ---
+  const vPipe = new ValidationPipe({ whitelist: true, transform: true });
+  const vRun = (v: any) => vPipe.transform(v, { type: 'query', metatype: ScheduleFilterDto, data: '' });
+  const vBase = {};
+  const vBad = async (v: any, msg: string) => {
+    await expect(vRun(v)).rejects.toBeInstanceOf(DtoBadRequest);
+    const err = await vRun(v).catch((e: any) => e);
+    expect(err.getResponse().message).toContain(msg);
+  };
+
+  it('UTCID09 date not ISO', async () => {
+    await vBad({ ...vBase, date: '20-11-2026' }, 'date must be a valid ISO 8601 date string');
+  });
+
+  it('UTCID10 page 0 rejected', async () => {
+    await vBad({ ...vBase, page: '0' }, 'page must not be less than 1');
+  });
+
+  it('UTCID11 sortOrder outside asc/desc', async () => {
+    await vBad({ ...vBase, sortOrder: 'up' }, 'sortOrder must be one of the following values: asc, desc');
   });
 });
