@@ -1,5 +1,6 @@
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, NotFoundException, ValidationPipe } from '@nestjs/common';
 import { RequestService } from '../request.service';
+import { AllocateInventoryDto } from '../dto/matching-allocation.dto';
 
 describe('REQ-009 RequestService.allocateInventory', () => {
   let prisma: any, tx: any, service: RequestService;
@@ -124,5 +125,43 @@ describe('REQ-009 RequestService.allocateInventory', () => {
     const res = await service.allocateInventory(1, [20], admin);
     expect(res.message).toContain('Đã cấp phát thành công');
     expect(tx.blood_inventory.update).toHaveBeenCalledWith(expect.objectContaining({ data: { status_code: 'RESERVED' } }));
+  });
+
+  // ---- DTO validation: ValidationPipe({ whitelist: true, transform: true }) as in src/main.ts ----
+  const pipe = new ValidationPipe({ whitelist: true, transform: true });
+  const run = (body: any) => pipe.transform(body, { type: 'body', metatype: AllocateInventoryDto, data: '' });
+  const valid = (): any => ({ inventory_ids: [10, 11] });
+  const omit = (k: string) => { const b = valid(); delete b[k]; return b; };
+
+  it('UTCID13 DTO inventory_ids missing', async () => {
+    const body: any = omit('inventory_ids');
+    await expect(run(body)).rejects.toBeInstanceOf(BadRequestException);
+    const err = await run(body).catch((e: any) => e);
+    expect(err.getResponse().message).toContain("inventory_ids must be an array");
+  });
+
+  it('UTCID14 DTO inventory_ids not an array', async () => {
+    const body: any = { ...valid(), inventory_ids: 10 };
+    await expect(run(body)).rejects.toBeInstanceOf(BadRequestException);
+    const err = await run(body).catch((e: any) => e);
+    expect(err.getResponse().message).toContain("inventory_ids must be an array");
+  });
+
+  it('UTCID15 DTO inventory_ids element not integer', async () => {
+    const body: any = { ...valid(), inventory_ids: [10, 1.5] };
+    await expect(run(body)).rejects.toBeInstanceOf(BadRequestException);
+    const err = await run(body).catch((e: any) => e);
+    expect(err.getResponse().message).toContain("each value in inventory_ids must be an integer number");
+  });
+
+  it('UTCID16 DTO inventory_ids empty array', async () => {
+    const body: any = { ...valid(), inventory_ids: [] };
+    await expect(run(body)).rejects.toBeInstanceOf(BadRequestException);
+    const err = await run(body).catch((e: any) => e);
+    expect(err.getResponse().message).toContain("inventory_ids should not be empty");
+  });
+
+  it('UTCID17 DTO inventory_ids one element (min size)', async () => {
+    await expect(run({ ...valid(), inventory_ids: [10] })).resolves.toEqual(expect.objectContaining({ inventory_ids: [10] }));
   });
 });

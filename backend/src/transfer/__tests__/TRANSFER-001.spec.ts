@@ -1,5 +1,6 @@
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, ValidationPipe } from '@nestjs/common';
 import { TransferService } from '../transfer.service';
+import { CreateTransferDto } from '../dto/create-transfer.dto';
 
 describe('TRANSFER-001 TransferService.createTransfer', () => {
   let prisma: any, notif: any, service: TransferService;
@@ -116,5 +117,126 @@ describe('TRANSFER-001 TransferService.createTransfer', () => {
     const res = await service.createTransfer(dto(), { user_id: 5, role_code: 'HOSPITAL_STAFF', facility_id: 1 });
     expect(res.data).toEqual(created);
     expect(prisma.blood_transfers.create).toHaveBeenCalled();
+  });
+
+  // ---- DTO validation: ValidationPipe({ whitelist: true, transform: true }) as in src/main.ts ----
+  const pipe = new ValidationPipe({ whitelist: true, transform: true });
+  const run = (body: any) => pipe.transform(body, { type: 'body', metatype: CreateTransferDto, data: '' });
+  const valid = (): any => ({ from_facility_id: 1, to_facility_id: 2, blood_type_id: 1, component_id: 1 });
+  const omit = (k: string) => { const b = valid(); delete b[k]; return b; };
+
+  it('UTCID13 DTO from_facility_id missing', async () => {
+    const body: any = omit('from_facility_id');
+    await expect(run(body)).rejects.toBeInstanceOf(BadRequestException);
+    const err = await run(body).catch((e: any) => e);
+    expect(err.getResponse().message).toContain("from_facility_id must be an integer number");
+  });
+
+  it('UTCID14 DTO from_facility_id not integer (1.5)', async () => {
+    const body: any = { ...valid(), from_facility_id: 1.5 };
+    await expect(run(body)).rejects.toBeInstanceOf(BadRequestException);
+    const err = await run(body).catch((e: any) => e);
+    expect(err.getResponse().message).toContain("from_facility_id must be an integer number");
+  });
+
+  it('UTCID15 DTO to_facility_id missing', async () => {
+    const body: any = omit('to_facility_id');
+    await expect(run(body)).rejects.toBeInstanceOf(BadRequestException);
+    const err = await run(body).catch((e: any) => e);
+    expect(err.getResponse().message).toContain("to_facility_id must be an integer number");
+  });
+
+  it('UTCID16 DTO to_facility_id not integer (1.5)', async () => {
+    const body: any = { ...valid(), to_facility_id: 1.5 };
+    await expect(run(body)).rejects.toBeInstanceOf(BadRequestException);
+    const err = await run(body).catch((e: any) => e);
+    expect(err.getResponse().message).toContain("to_facility_id must be an integer number");
+  });
+
+  it('UTCID17 DTO blood_type_id missing', async () => {
+    const body: any = omit('blood_type_id');
+    await expect(run(body)).rejects.toBeInstanceOf(BadRequestException);
+    const err = await run(body).catch((e: any) => e);
+    expect(err.getResponse().message).toContain("blood_type_id must be an integer number");
+  });
+
+  it('UTCID18 DTO blood_type_id not integer (1.5)', async () => {
+    const body: any = { ...valid(), blood_type_id: 1.5 };
+    await expect(run(body)).rejects.toBeInstanceOf(BadRequestException);
+    const err = await run(body).catch((e: any) => e);
+    expect(err.getResponse().message).toContain("blood_type_id must be an integer number");
+  });
+
+  it('UTCID19 DTO component_id missing', async () => {
+    const body: any = omit('component_id');
+    await expect(run(body)).rejects.toBeInstanceOf(BadRequestException);
+    const err = await run(body).catch((e: any) => e);
+    expect(err.getResponse().message).toContain("component_id must be an integer number");
+  });
+
+  it('UTCID20 DTO component_id not integer (1.5)', async () => {
+    const body: any = { ...valid(), component_id: 1.5 };
+    await expect(run(body)).rejects.toBeInstanceOf(BadRequestException);
+    const err = await run(body).catch((e: any) => e);
+    expect(err.getResponse().message).toContain("component_id must be an integer number");
+  });
+
+  it('UTCID21 DTO inventory_id not integer', async () => {
+    const body: any = { ...valid(), inventory_id: 1.5 };
+    await expect(run(body)).rejects.toBeInstanceOf(BadRequestException);
+    const err = await run(body).catch((e: any) => e);
+    expect(err.getResponse().message).toContain("inventory_id must be an integer number");
+  });
+
+  it('UTCID22 DTO units_requested not integer', async () => {
+    const body: any = { ...valid(), units_requested: 1.5 };
+    await expect(run(body)).rejects.toBeInstanceOf(BadRequestException);
+    const err = await run(body).catch((e: any) => e);
+    expect(err.getResponse().message).toContain("units_requested must be an integer number");
+  });
+
+  it('UTCID23 DTO units_requested = 0 (below min)', async () => {
+    const body: any = { ...valid(), units_requested: 0 };
+    await expect(run(body)).rejects.toBeInstanceOf(BadRequestException);
+    const err = await run(body).catch((e: any) => e);
+    expect(err.getResponse().message).toContain("units_requested must not be less than 1");
+  });
+
+  it('UTCID24 DTO units_requested = 1 (min boundary)', async () => {
+    await expect(run({ ...valid(), units_requested: 1 })).resolves.toEqual(expect.objectContaining({ units_requested: 1 }));
+  });
+
+  it('UTCID25 DTO reason not a string', async () => {
+    const body: any = { ...valid(), reason: 123 };
+    await expect(run(body)).rejects.toBeInstanceOf(BadRequestException);
+    const err = await run(body).catch((e: any) => e);
+    expect(err.getResponse().message).toContain("reason must be a string");
+  });
+
+  it('UTCID26 DTO notes not a string', async () => {
+    const body: any = { ...valid(), notes: 123 };
+    await expect(run(body)).rejects.toBeInstanceOf(BadRequestException);
+    const err = await run(body).catch((e: any) => e);
+    expect(err.getResponse().message).toContain("notes must be a string");
+  });
+
+  it('UTCID27 DTO required_before not a string', async () => {
+    const body: any = { ...valid(), required_before: 123 };
+    await expect(run(body)).rejects.toBeInstanceOf(BadRequestException);
+    const err = await run(body).catch((e: any) => e);
+    expect(err.getResponse().message).toContain("required_before must be a string");
+  });
+
+  it('UTCID28 DTO required_before not a date string', async () => {
+    const body: any = { ...valid(), required_before: 'not-a-date' };
+    await expect(run(body)).rejects.toBeInstanceOf(BadRequestException);
+    const err = await run(body).catch((e: any) => e);
+    expect(err.getResponse().message).toContain("required_before must be a valid ISO 8601 date string");
+  });
+
+  it('UTCID29 DTO unknown property status stripped', async () => {
+    const out: any = await run({ ...valid(), status: 'RECEIVED' });
+    expect(out).not.toHaveProperty('status');
+    expect(out).toEqual(expect.objectContaining(valid()));
   });
 });
