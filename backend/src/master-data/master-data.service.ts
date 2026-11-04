@@ -536,14 +536,19 @@ export class MasterDataService {
   }
 
   async createDonationIntervalRule(dto: CreateDonationIntervalRuleDto) {
-    return await this.prisma.donation_interval_rules.create({
-      data: {
-        component_id: dto.component_id,
-        min_interval_days: dto.min_interval_days,
-        max_donations_per_year: dto.max_donations_per_year,
-        description: dto.description,
-      }
-    });
+    try {
+      return await this.prisma.donation_interval_rules.create({
+        data: {
+          component_id: dto.component_id,
+          min_interval_days: dto.min_interval_days,
+          max_donations_per_year: dto.max_donations_per_year,
+          description: dto.description,
+        }
+      });
+    } catch (e: any) {
+      if (e?.code === 'P2002') throw new BadRequestException('Quy tắc khoảng cách hiến máu cho thành phần này đã tồn tại');
+      throw e;
+    }
   }
 
   async updateDonationIntervalRule(id: number, dto: UpdateDonationIntervalRuleDto) {
