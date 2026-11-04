@@ -1,6 +1,12 @@
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, ValidationPipe } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { AuthService } from '../auth.service';
+import { ResetPasswordDto } from '../dto/auth.dto';
+
+// DTO validation helpers (mirrors main.ts: new ValidationPipe({ whitelist: true, transform: true }))
+const dtoPipe = new ValidationPipe({ whitelist: true, transform: true });
+const dtoValid: any = { email: 'member01@test.vn', otp_code: '123456', new_password: 'NewPass@123' };
+const runDto = (value: any) => dtoPipe.transform(value, { type: 'body', metatype: ResetPasswordDto, data: '' });
 jest.mock('bcrypt');
 
 describe('AUTH-007 AuthService.resetPassword', () => {
@@ -87,5 +93,55 @@ describe('AUTH-007 AuthService.resetPassword', () => {
     await expect(p).rejects.toThrow('Mã OTP không hợp lệ');
     expect(prisma.user_otps.update).toHaveBeenCalledWith({ where: { otp_id: 7 }, data: { attempt_count: { increment: 1 } } });
     expect(prisma.users.update).not.toHaveBeenCalled();
+  });
+
+  it('UTCID09 DTO: email empty', async () => {
+    const err = await runDto({ ...dtoValid, email: '' }).catch((e) => e);
+    expect(err).toBeInstanceOf(BadRequestException);
+    expect(err.getResponse().message).toContain("Email không được để trống");
+  });
+
+  it('UTCID10 DTO: email invalid format', async () => {
+    const err = await runDto({ ...dtoValid, email: 'member01.test.vn' }).catch((e) => e);
+    expect(err).toBeInstanceOf(BadRequestException);
+    expect(err.getResponse().message).toContain("Email không hợp lệ");
+  });
+
+  it('UTCID11 DTO: otp_code empty', async () => {
+    const err = await runDto({ ...dtoValid, otp_code: '' }).catch((e) => e);
+    expect(err).toBeInstanceOf(BadRequestException);
+    expect(err.getResponse().message).toContain("OTP không được để trống");
+  });
+
+  it('UTCID12 DTO: otp_code 5 chars rejected', async () => {
+    const err = await runDto({ ...dtoValid, otp_code: '12345' }).catch((e) => e);
+    expect(err).toBeInstanceOf(BadRequestException);
+    expect(err.getResponse().message).toContain("OTP phải có 6 ký tự");
+  });
+
+  it('UTCID13 DTO: otp_code 6 chars accepted', async () => {
+    await expect(runDto({ ...dtoValid, otp_code: '654321' })).resolves.toEqual(expect.objectContaining({ otp_code: '654321' }));
+  });
+
+  it('UTCID14 DTO: otp_code 7 chars rejected', async () => {
+    const err = await runDto({ ...dtoValid, otp_code: '1234567' }).catch((e) => e);
+    expect(err).toBeInstanceOf(BadRequestException);
+    expect(err.getResponse().message).toContain("otp_code must be shorter than or equal to 6 characters");
+  });
+
+  it('UTCID15 DTO: new_password empty', async () => {
+    const err = await runDto({ ...dtoValid, new_password: '' }).catch((e) => e);
+    expect(err).toBeInstanceOf(BadRequestException);
+    expect(err.getResponse().message).toContain("Mật khẩu mới không được để trống");
+  });
+
+  it('UTCID16 DTO: new_password 5 chars rejected', async () => {
+    const err = await runDto({ ...dtoValid, new_password: '12345' }).catch((e) => e);
+    expect(err).toBeInstanceOf(BadRequestException);
+    expect(err.getResponse().message).toContain("Mật khẩu mới phải có ít nhất 6 ký tự");
+  });
+
+  it('UTCID17 DTO: new_password 6 chars accepted', async () => {
+    await expect(runDto({ ...dtoValid, new_password: '123456' })).resolves.toEqual(expect.objectContaining({ new_password: '123456' }));
   });
 });

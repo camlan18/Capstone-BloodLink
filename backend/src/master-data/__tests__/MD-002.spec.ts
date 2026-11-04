@@ -1,3 +1,6 @@
+import { CreateBloodTypeDto, UpdateBloodTypeDto, CreateFacilityDto, UpdateFacilityDto, CreateBloodComponentDto, UpdateBloodComponentDto, CreateBloodCompatibilityDto, UpdateBloodCompatibilityDto, CreateDonationIntervalRuleDto, UpdateDonationIntervalRuleDto } from '../dto/master-data.dto';
+import { MasterDataFilterDto } from '../dto/master-data-filter.dto';
+import { validate, expectDtoErr } from './_helpers';
 import { BadRequestException } from '@nestjs/common';
 import { MasterDataService } from '../master-data.service';
 import { expectErr, errOf } from './_helpers';
@@ -50,5 +53,36 @@ describe('MD-002 MasterDataService blood types CRUD', () => {
     prisma.blood_types.update.mockResolvedValue({ blood_type_id: 1, is_active: false });
     expect(await service.deleteBloodType(1)).toEqual({ blood_type_id: 1, is_active: false });
     expect(prisma.blood_types.update).toHaveBeenCalledWith({ where: { blood_type_id: 1 }, data: { is_active: false } });
+  });
+});
+
+describe('MD-002 DTO validation (ValidationPipe whitelist+transform)', () => {
+  const vComp = { component_code: 'RBC', component_name: 'Hồng cầu lắng' };
+  const vType = { blood_group: 'A', rh_factor: '+' };
+  const vFac = { facility_code: 'BV-CR', facility_name: 'Bệnh viện Chợ Rẫy', address: '201B Nguyễn Chí Thanh', is_primary: false };
+  const vCompat = { component_id: 1, donor_blood_type_id: 1, recipient_blood_type_id: 2, is_compatible: true };
+  const vRule = { component_id: 1, min_interval_days: 84 };
+
+  it('UTCID09 create: empty blood_group', async () => {
+    await expectDtoErr(validate(CreateBloodTypeDto, { ...vType, blood_group: '' }, 'body'), "blood_group should not be empty");
+  });
+  it('UTCID10 create: empty rh_factor', async () => {
+    await expectDtoErr(validate(CreateBloodTypeDto, { ...vType, rh_factor: '' }, 'body'), "rh_factor should not be empty");
+  });
+  it('UTCID11 create: display_order not numeric', async () => {
+    await expectDtoErr(validate(CreateBloodTypeDto, { ...vType, display_order: 'abc' }, 'body'), "display_order must be an integer number");
+  });
+  it('UTCID12 create: numeric string display_order transformed', async () => {
+    const out: any = await validate(CreateBloodTypeDto, { ...vType, display_order: '2' }, 'body');
+    expect(out.display_order).toBe(2);
+  });
+  it('UTCID13 update: missing blood_group (PUT needs full body)', async () => {
+    await expectDtoErr(validate(UpdateBloodTypeDto, { rh_factor: '-' }, 'body'), "blood_group should not be empty");
+  });
+  it('UTCID14 update: is_active not boolean', async () => {
+    await expectDtoErr(validate(UpdateBloodTypeDto, { ...vType, is_active: 'yes' }, 'body'), "is_active must be a boolean value");
+  });
+  it('UTCID15 list: limit 0 below @Min(1)', async () => {
+    await expectDtoErr(validate(MasterDataFilterDto, { limit: '0' }, 'query'), "limit must not be less than 1");
   });
 });

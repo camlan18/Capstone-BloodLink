@@ -1,3 +1,6 @@
+import { CreateBloodTypeDto, UpdateBloodTypeDto, CreateFacilityDto, UpdateFacilityDto, CreateBloodComponentDto, UpdateBloodComponentDto, CreateBloodCompatibilityDto, UpdateBloodCompatibilityDto, CreateDonationIntervalRuleDto, UpdateDonationIntervalRuleDto } from '../dto/master-data.dto';
+import { MasterDataFilterDto } from '../dto/master-data-filter.dto';
+import { validate, expectDtoErr } from './_helpers';
 import { BadRequestException } from '@nestjs/common';
 import { MasterDataService } from '../master-data.service';
 import { expectErr, errOf } from './_helpers';
@@ -43,5 +46,45 @@ describe('MD-005 MasterDataService donation interval rules CRUD', () => {
     r_.update.mockResolvedValue({ rule_id: 1, is_active: false });
     expect(await service.deleteDonationIntervalRule(1)).toEqual({ rule_id: 1, is_active: false });
     expect(r_.update).toHaveBeenCalledWith({ where: { rule_id: 1 }, data: { is_active: false } });
+  });
+});
+
+describe('MD-005 DTO validation (ValidationPipe whitelist+transform)', () => {
+  const vComp = { component_code: 'RBC', component_name: 'Hồng cầu lắng' };
+  const vType = { blood_group: 'A', rh_factor: '+' };
+  const vFac = { facility_code: 'BV-CR', facility_name: 'Bệnh viện Chợ Rẫy', address: '201B Nguyễn Chí Thanh', is_primary: false };
+  const vCompat = { component_id: 1, donor_blood_type_id: 1, recipient_blood_type_id: 2, is_compatible: true };
+  const vRule = { component_id: 1, min_interval_days: 84 };
+
+  it('UTCID08 create: missing component_id', async () => {
+    await expectDtoErr(validate(CreateDonationIntervalRuleDto, { ...vRule, component_id: undefined }, 'body'), "component_id must be an integer number");
+  });
+  it('UTCID09 create: component_id not numeric', async () => {
+    await expectDtoErr(validate(CreateDonationIntervalRuleDto, { ...vRule, component_id: 'abc' }, 'body'), "component_id must be an integer number");
+  });
+  it('UTCID10 create: missing min_interval_days', async () => {
+    await expectDtoErr(validate(CreateDonationIntervalRuleDto, { ...vRule, min_interval_days: undefined }, 'body'), "min_interval_days must be an integer number");
+  });
+  it('UTCID11 create: min_interval_days not an integer', async () => {
+    await expectDtoErr(validate(CreateDonationIntervalRuleDto, { ...vRule, min_interval_days: 84.5 }, 'body'), "min_interval_days must be an integer number");
+  });
+  it('UTCID12 create: numeric string min_interval_days transformed', async () => {
+    const out: any = await validate(CreateDonationIntervalRuleDto, { ...vRule, min_interval_days: '84' }, 'body');
+    expect(out.min_interval_days).toBe(84);
+  });
+  it('UTCID13 create: negative min_interval_days', async () => {
+    await expectDtoErr(validate(CreateDonationIntervalRuleDto, { ...vRule, min_interval_days: -1 }, 'body'), "min_interval_days must not be less than 1");
+  });
+  it('UTCID14 create: max_donations_per_year not numeric', async () => {
+    await expectDtoErr(validate(CreateDonationIntervalRuleDto, { ...vRule, max_donations_per_year: 'abc' }, 'body'), "max_donations_per_year must be an integer number");
+  });
+  it('UTCID15 create: description not a string', async () => {
+    await expectDtoErr(validate(CreateDonationIntervalRuleDto, { ...vRule, description: 123 }, 'body'), "description must be a string");
+  });
+  it('UTCID16 update: is_active not boolean', async () => {
+    await expectDtoErr(validate(UpdateDonationIntervalRuleDto, { ...vRule, is_active: 'yes' }, 'body'), "is_active must be a boolean value");
+  });
+  it('UTCID17 list: page not an integer', async () => {
+    await expectDtoErr(validate(MasterDataFilterDto, { page: 'abc' }, 'query'), "page must be an integer number");
   });
 });

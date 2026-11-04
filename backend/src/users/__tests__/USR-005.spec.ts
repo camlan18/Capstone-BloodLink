@@ -1,6 +1,12 @@
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, NotFoundException, ValidationPipe } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { UsersService } from '../users.service';
+import { ChangePasswordVerifyDto } from '../dto/users.dto';
+
+// DTO validation helpers (mirrors main.ts: new ValidationPipe({ whitelist: true, transform: true }))
+const dtoPipe = new ValidationPipe({ whitelist: true, transform: true });
+const dtoValid: any = { otp_code: '123456', new_password: 'NewPass@123' };
+const runDto = (value: any) => dtoPipe.transform(value, { type: 'body', metatype: ChangePasswordVerifyDto, data: '' });
 jest.mock('bcrypt');
 
 describe('USR-005 UsersService.changePassword', () => {
@@ -82,5 +88,27 @@ describe('USR-005 UsersService.changePassword', () => {
     await bad('Mã OTP không hợp lệ');
     expect(prisma.user_otps.update).toHaveBeenCalledWith({ where: { otp_id: 7 }, data: { attempt_count: { increment: 1 } } });
     expect(prisma.users.update).not.toHaveBeenCalled();
+  });
+
+  it('UTCID09 DTO: otp_code empty', async () => {
+    const err = await runDto({ ...dtoValid, otp_code: '' }).catch((e) => e);
+    expect(err).toBeInstanceOf(BadRequestException);
+    expect(err.getResponse().message).toContain("Mã OTP không được để trống");
+  });
+
+  it('UTCID10 DTO: new_password empty', async () => {
+    const err = await runDto({ ...dtoValid, new_password: '' }).catch((e) => e);
+    expect(err).toBeInstanceOf(BadRequestException);
+    expect(err.getResponse().message).toContain("Mật khẩu mới không được để trống");
+  });
+
+  it('UTCID11 DTO: new_password 5 chars rejected', async () => {
+    const err = await runDto({ ...dtoValid, new_password: '12345' }).catch((e) => e);
+    expect(err).toBeInstanceOf(BadRequestException);
+    expect(err.getResponse().message).toContain("Mật khẩu mới phải có ít nhất 6 ký tự");
+  });
+
+  it('UTCID12 DTO: new_password 6 chars accepted', async () => {
+    await expect(runDto({ ...dtoValid, new_password: '123456' })).resolves.toEqual(expect.objectContaining({ new_password: '123456' }));
   });
 });

@@ -1,7 +1,13 @@
-import { UnauthorizedException } from '@nestjs/common';
+import { UnauthorizedException, ValidationPipe, BadRequestException } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
 import { AuthService } from '../auth.service';
+import { LoginDto } from '../dto/auth.dto';
+
+// DTO validation helpers (mirrors main.ts: new ValidationPipe({ whitelist: true, transform: true }))
+const dtoPipe = new ValidationPipe({ whitelist: true, transform: true });
+const dtoValid: any = { identifier: 'member01@test.vn', password: 'Abc@123' };
+const runDto = (value: any) => dtoPipe.transform(value, { type: 'body', metatype: LoginDto, data: '' });
 jest.mock('bcrypt');
 
 describe('AUTH-001 AuthService.login', () => {
@@ -107,5 +113,33 @@ describe('AUTH-001 AuthService.login', () => {
     await expect(p).rejects.toThrow(UnauthorizedException);
     await expect(p).rejects.toThrow('Tài khoản chưa xác thực email');
     expect(bcrypt.compare).not.toHaveBeenCalled();
+  });
+
+  it('UTCID09 DTO: identifier empty', async () => {
+    const err = await runDto({ ...dtoValid, identifier: '' }).catch((e) => e);
+    expect(err).toBeInstanceOf(BadRequestException);
+    expect(err.getResponse().message).toContain("Email hoặc Tên đăng nhập không được để trống");
+  });
+
+  it('UTCID10 DTO: identifier not a string', async () => {
+    const err = await runDto({ ...dtoValid, identifier: 12345 }).catch((e) => e);
+    expect(err).toBeInstanceOf(BadRequestException);
+    expect(err.getResponse().message).toContain("identifier must be a string");
+  });
+
+  it('UTCID11 DTO: password empty', async () => {
+    const err = await runDto({ ...dtoValid, password: '' }).catch((e) => e);
+    expect(err).toBeInstanceOf(BadRequestException);
+    expect(err.getResponse().message).toContain("Mật khẩu không được để trống");
+  });
+
+  it('UTCID12 DTO: password 5 chars rejected', async () => {
+    const err = await runDto({ ...dtoValid, password: '12345' }).catch((e) => e);
+    expect(err).toBeInstanceOf(BadRequestException);
+    expect(err.getResponse().message).toContain("Mật khẩu phải có ít nhất 6 ký tự");
+  });
+
+  it('UTCID13 DTO: password 6 chars accepted', async () => {
+    await expect(runDto({ ...dtoValid, password: '123456' })).resolves.toEqual(expect.objectContaining({ password: '123456' }));
   });
 });

@@ -1,6 +1,12 @@
-import { UnauthorizedException } from '@nestjs/common';
+import { UnauthorizedException, ValidationPipe, BadRequestException } from '@nestjs/common';
 import * as crypto from 'crypto';
 import { AuthService } from '../auth.service';
+import { RefreshTokenDto } from '../dto/auth.dto';
+
+// DTO validation helpers (mirrors main.ts: new ValidationPipe({ whitelist: true, transform: true }))
+const dtoPipe = new ValidationPipe({ whitelist: true, transform: true });
+const dtoValid: any = { refresh_token: 'a1b2c3' };
+const runDto = (value: any) => dtoPipe.transform(value, { type: 'body', metatype: RefreshTokenDto, data: '' });
 
 describe('AUTH-005 AuthService.refreshToken', () => {
   let prisma: any, jwt: any, service: AuthService;
@@ -79,5 +85,17 @@ describe('AUTH-005 AuthService.refreshToken', () => {
     await expect(p).rejects.toThrow(UnauthorizedException);
     await expect(p).rejects.toThrow('Refresh token không hợp lệ hoặc đã hết hạn');
     expect(prisma.user_sessions.update).not.toHaveBeenCalled();
+  });
+
+  it('UTCID08 DTO: refresh_token empty', async () => {
+    const err = await runDto({ ...dtoValid, refresh_token: '' }).catch((e) => e);
+    expect(err).toBeInstanceOf(BadRequestException);
+    expect(err.getResponse().message).toContain("Refresh token không được để trống");
+  });
+
+  it('UTCID09 DTO: refresh_token not a string', async () => {
+    const err = await runDto({ ...dtoValid, refresh_token: 12345 }).catch((e) => e);
+    expect(err).toBeInstanceOf(BadRequestException);
+    expect(err.getResponse().message).toContain("refresh_token must be a string");
   });
 });

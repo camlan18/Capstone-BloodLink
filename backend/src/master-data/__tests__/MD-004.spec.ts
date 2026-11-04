@@ -1,3 +1,6 @@
+import { CreateBloodTypeDto, UpdateBloodTypeDto, CreateFacilityDto, UpdateFacilityDto, CreateBloodComponentDto, UpdateBloodComponentDto, CreateBloodCompatibilityDto, UpdateBloodCompatibilityDto, CreateDonationIntervalRuleDto, UpdateDonationIntervalRuleDto } from '../dto/master-data.dto';
+import { MasterDataFilterDto } from '../dto/master-data-filter.dto';
+import { validate, expectDtoErr } from './_helpers';
 import { BadRequestException } from '@nestjs/common';
 import { MasterDataService } from '../master-data.service';
 import { expectErr, errOf } from './_helpers';
@@ -60,5 +63,39 @@ describe('MD-004 MasterDataService blood compatibility CRUD', () => {
     const err = Object.assign(new Error('P2025'), { code: 'P2025' });
     bc.delete.mockRejectedValue(err);
     expect(await errOf(service.deleteBloodCompatibility(999))).toBe(err);
+  });
+});
+
+describe('MD-004 DTO validation (ValidationPipe whitelist+transform)', () => {
+  const vComp = { component_code: 'RBC', component_name: 'Hồng cầu lắng' };
+  const vType = { blood_group: 'A', rh_factor: '+' };
+  const vFac = { facility_code: 'BV-CR', facility_name: 'Bệnh viện Chợ Rẫy', address: '201B Nguyễn Chí Thanh', is_primary: false };
+  const vCompat = { component_id: 1, donor_blood_type_id: 1, recipient_blood_type_id: 2, is_compatible: true };
+  const vRule = { component_id: 1, min_interval_days: 84 };
+
+  it('UTCID11 create: missing component_id', async () => {
+    await expectDtoErr(validate(CreateBloodCompatibilityDto, { ...vCompat, component_id: undefined }, 'body'), "component_id must be an integer number");
+  });
+  it('UTCID12 create: donor_blood_type_id not numeric', async () => {
+    await expectDtoErr(validate(CreateBloodCompatibilityDto, { ...vCompat, donor_blood_type_id: 'abc' }, 'body'), "donor_blood_type_id must be an integer number");
+  });
+  it('UTCID13 create: missing recipient_blood_type_id', async () => {
+    await expectDtoErr(validate(CreateBloodCompatibilityDto, { ...vCompat, recipient_blood_type_id: undefined }, 'body'), "recipient_blood_type_id must be an integer number");
+  });
+  it('UTCID14 create: numeric string ids transformed', async () => {
+    const out: any = await validate(CreateBloodCompatibilityDto, { ...vCompat, component_id: '1', donor_blood_type_id: '1', recipient_blood_type_id: '2' }, 'body');
+    expect(out).toEqual(expect.objectContaining({ component_id: 1, donor_blood_type_id: 1, recipient_blood_type_id: 2 }));
+  });
+  it('UTCID15 create: is_compatible not boolean', async () => {
+    await expectDtoErr(validate(CreateBloodCompatibilityDto, { ...vCompat, is_compatible: 'yes' }, 'body'), "is_compatible must be a boolean value");
+  });
+  it('UTCID16 create: notes not a string', async () => {
+    await expectDtoErr(validate(CreateBloodCompatibilityDto, { ...vCompat, notes: 123 }, 'body'), "notes must be a string");
+  });
+  it('UTCID17 update: missing component_id', async () => {
+    await expectDtoErr(validate(UpdateBloodCompatibilityDto, { ...vCompat, component_id: undefined }, 'body'), "component_id must be an integer number");
+  });
+  it('UTCID18 list: sortOrder not in enum', async () => {
+    await expectDtoErr(validate(MasterDataFilterDto, { sortOrder: 'up' }, 'query'), "sortOrder must be one of the following values: asc, desc");
   });
 });
