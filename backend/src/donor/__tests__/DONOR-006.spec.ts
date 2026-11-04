@@ -1,3 +1,5 @@
+import { ValidationPipe, BadRequestException as DtoBadRequest } from '@nestjs/common';
+import { UpdateSlotStatusDto } from '../dto/donor.dto';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { makeDonor } from './helpers';
 
@@ -87,9 +89,36 @@ describe('DONOR-006 DonorService.updateSlotStatus', () => {
     expect(sched()).not.toHaveBeenCalled();
   });
 
-  it('UTCID11 cancel must clear is_active (defect)', async () => {
+  it('UTCID11 staff cancel with notes must clear is_active (defect)', async () => {
     s.prisma.donor_availability_slots.findUnique.mockResolvedValue(slot({ status: 'CONFIRMED' }));
-    await s.service.updateSlotStatus(1, { status: 'CANCELLED' } as any, admin);
-    expect(upd()).toHaveBeenCalledWith({ where: { slot_id: 1 }, data: expect.objectContaining({ status: 'CANCELLED', is_active: false }) });
+    await s.service.updateSlotStatus(1, { status: 'CANCELLED', notes: 'Người hiến bận' } as any, staff);
+    expect(upd()).toHaveBeenCalledWith({ where: { slot_id: 1 }, data: { status: 'CANCELLED', is_active: false, notes: 'Người hiến bận' } });
+  });
+
+  // --- DTO validation: UpdateSlotStatusDto via ValidationPipe({ whitelist: true, transform: true }) ---
+  const vPipe = new ValidationPipe({ whitelist: true, transform: true });
+  const vRun = (v: any) => vPipe.transform(v, { type: 'body', metatype: UpdateSlotStatusDto, data: '' });
+  const vBase = { status: 'CONFIRMED', notes: 'OK' };
+  const vBad = async (v: any, msg: string) => {
+    await expect(vRun(v)).rejects.toBeInstanceOf(DtoBadRequest);
+    const err = await vRun(v).catch((e: any) => e);
+    expect(err.getResponse().message).toContain(msg);
+  };
+
+  it('UTCID12 status empty', async () => {
+    await vBad({ ...vBase, status: '' }, 'status should not be empty');
+  });
+
+  it('UTCID13 status not a string', async () => {
+    await vBad({ ...vBase, status: 123 }, 'status must be a string');
+  });
+
+  it('UTCID14 notes not a string', async () => {
+    await vBad({ ...vBase, notes: 123 }, 'notes must be a string');
+  });
+
+  it('UTCID15 status outside slot statuses (defect)', async () => {
+    // expected: status must be one of PENDING, CONFIRMED, COMPLETED, CANCELLED, NO_SHOW
+    await expect(vRun({ ...vBase, status: 'FOO' })).rejects.toBeInstanceOf(DtoBadRequest);
   });
 });

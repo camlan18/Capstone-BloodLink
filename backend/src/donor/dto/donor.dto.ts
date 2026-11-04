@@ -43,6 +43,7 @@ export class UpdateSlotStatusDto {
   @ApiProperty({ example: 'COMPLETED', description: 'Trạng thái slot hiến máu (VD: COMPLETED, CANCELLED)' })
   @IsString()
   @IsNotEmpty()
+  @IsIn(['PENDING', 'CONFIRMED', 'COMPLETED', 'CANCELLED', 'NO_SHOW'])
   status: string; // VD: 'COMPLETED', 'CANCELLED'
 
   @ApiProperty({ example: 'Huyết áp cao', description: 'Ghi chú thêm', required: false })

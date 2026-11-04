@@ -25,10 +25,14 @@ describe('DONOR-012 DonorService.handleCronDonationReminders', () => {
     expect(s.prisma.donation_reminders.update).not.toHaveBeenCalled();
   });
 
-  it('UTCID03 where uses today midnight', async () => {
-    await s.service.handleCronDonationReminders();
+  it('UTCID03 reminder dated today is included and sent', async () => {
     const today = new Date(); today.setHours(0, 0, 0, 0);
+    s.prisma.donation_reminders.findMany.mockResolvedValue([rem({ reminder_id: 3, reminder_type: 'NOW_ELIGIBLE', reminder_date: today })]);
+    await s.service.handleCronDonationReminders();
     expect(s.prisma.donation_reminders.findMany).toHaveBeenCalledWith({ where: { is_sent: false, reminder_date: { lte: today } } });
+    expect(s.notifications.createNotification).toHaveBeenCalledTimes(1);
+    expect(s.notifications.createNotification).toHaveBeenCalledWith(expect.objectContaining({ title: 'Đã đến hạn hiến máu' }));
+    expect(s.prisma.donation_reminders.update).toHaveBeenCalledWith({ where: { reminder_id: 3 }, data: { is_sent: true, sent_at: expect.any(Date) } });
   });
 
   it('UTCID04 reminder without donation_id', async () => {

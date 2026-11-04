@@ -1,3 +1,5 @@
+import { ValidationPipe, BadRequestException as DtoBadRequest } from '@nestjs/common';
+import { CreateScheduleDto } from '../dto/schedules.dto';
 import { BadRequestException } from '@nestjs/common';
 import { makeSched } from './helpers';
 
@@ -66,5 +68,64 @@ describe('SCHED-003 SchedulesService.createSchedule', () => {
     const r = await s.service.createSchedule(dto({ start_time: '9:00', end_time: '10:00' }), admin);
     expect(r).toBeDefined();
     expect(create()).toHaveBeenCalled();
+  });
+
+  // --- DTO validation: CreateScheduleDto via ValidationPipe({ whitelist: true, transform: true }) ---
+  const vPipe = new ValidationPipe({ whitelist: true, transform: true });
+  const vRun = (v: any) => vPipe.transform(v, { type: 'body', metatype: CreateScheduleDto, data: '' });
+  const vBase = { facility_id: 1, date: '2026-11-20', start_time: '08:00', end_time: '11:30', max_donors: 30 };
+  const vBad = async (v: any, msg: string) => {
+    await expect(vRun(v)).rejects.toBeInstanceOf(DtoBadRequest);
+    const err = await vRun(v).catch((e: any) => e);
+    expect(err.getResponse().message).toContain(msg);
+  };
+
+  it('UTCID10 facility_id empty', async () => {
+    await vBad({ ...vBase, facility_id: '' }, 'facility_id should not be empty');
+  });
+
+  it('UTCID11 facility_id string rejected', async () => {
+    await vBad({ ...vBase, facility_id: '1' }, 'facility_id must be an integer number');
+  });
+
+  it('UTCID12 date empty', async () => {
+    await vBad({ ...vBase, date: '' }, 'date should not be empty');
+  });
+
+  it('UTCID13 date not ISO', async () => {
+    await vBad({ ...vBase, date: '20/11/2026' }, 'date must be a valid ISO 8601 date string');
+  });
+
+  it('UTCID14 start_time empty', async () => {
+    await vBad({ ...vBase, start_time: '' }, 'start_time should not be empty');
+  });
+
+  it('UTCID15 start_time not a string', async () => {
+    await vBad({ ...vBase, start_time: 800 }, 'start_time must be a string');
+  });
+
+  it('UTCID16 end_time empty', async () => {
+    await vBad({ ...vBase, end_time: '' }, 'end_time should not be empty');
+  });
+
+  it('UTCID17 end_time not a string', async () => {
+    await vBad({ ...vBase, end_time: 1130 }, 'end_time must be a string');
+  });
+
+  it('UTCID18 max_donors not integer', async () => {
+    await vBad({ ...vBase, max_donors: '30' }, 'max_donors must be an integer number');
+  });
+
+  it('UTCID19 max_donors negative (defect)', async () => {
+    // expected: max_donors must not be less than 1
+    await expect(vRun({ ...vBase, max_donors: -1 })).rejects.toBeInstanceOf(DtoBadRequest);
+  });
+
+  it('UTCID20 unknown properties stripped', async () => {
+    const r: any = await vRun({ ...vBase, current_donors: 99, schedule_id: 5 });
+    expect(r).toBeInstanceOf(CreateScheduleDto);
+    expect(r).not.toHaveProperty('current_donors');
+    expect(r).not.toHaveProperty('schedule_id');
+    expect(r).toEqual(expect.objectContaining(vBase));
   });
 });

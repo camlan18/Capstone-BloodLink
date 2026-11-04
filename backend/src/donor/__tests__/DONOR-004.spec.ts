@@ -1,3 +1,5 @@
+import { ValidationPipe, BadRequestException as DtoBadRequest } from '@nestjs/common';
+import { PaginationDto } from '../../common/pagination.dto';
 import { makeDonor, D } from './helpers';
 
 describe('DONOR-004 DonorService.getSlots', () => {
@@ -85,5 +87,43 @@ describe('DONOR-004 DonorService.getSlots', () => {
   it('UTCID12 unknown sortBy fallback', async () => {
     await s.service.getSlots({ sortBy: 'full_name', sortOrder: 'asc' } as any, admin);
     expect(find().mock.calls[0][0].orderBy).toEqual([{ created_at: 'asc' }, { slot_id: 'desc' }]);
+  });
+
+  // --- DTO validation: PaginationDto via ValidationPipe({ whitelist: true, transform: true }) ---
+  const vPipe = new ValidationPipe({ whitelist: true, transform: true });
+  const vRun = (v: any) => vPipe.transform(v, { type: 'query', metatype: PaginationDto, data: '' });
+  const vBase = { page: '1', limit: '20' };
+  const vBad = async (v: any, msg: string) => {
+    await expect(vRun(v)).rejects.toBeInstanceOf(DtoBadRequest);
+    const err = await vRun(v).catch((e: any) => e);
+    expect(err.getResponse().message).toContain(msg);
+  };
+
+  it('UTCID13 page 0 rejected', async () => {
+    await vBad({ ...vBase, page: '0' }, 'page must not be less than 1');
+  });
+
+  it('UTCID14 page 1 accepted', async () => {
+    await expect(vRun({ ...vBase, page: '1' })).resolves.toEqual(expect.objectContaining({ page: 1, limit: 20 }));
+  });
+
+  it('UTCID15 limit 0 rejected', async () => {
+    await vBad({ ...vBase, limit: '0' }, 'limit must not be less than 1');
+  });
+
+  it('UTCID16 limit 1 accepted', async () => {
+    await expect(vRun({ ...vBase, limit: '1' })).resolves.toEqual(expect.objectContaining({ page: 1, limit: 1 }));
+  });
+
+  it('UTCID17 page not integer', async () => {
+    await vBad({ ...vBase, page: 'abc' }, 'page must be an integer number');
+  });
+
+  it('UTCID18 sortOrder outside asc/desc', async () => {
+    await vBad({ ...vBase, sortOrder: 'up' }, 'sortOrder must be one of the following values: asc, desc');
+  });
+
+  it('UTCID19 empty query gets defaults', async () => {
+    await expect(vRun({})).resolves.toEqual(expect.objectContaining({ page: 1, limit: 20, sortOrder: 'desc' }));
   });
 });

@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsInt, IsString, IsOptional, IsNotEmpty, IsDateString, Matches } from 'class-validator';
+import { IsInt, IsString, IsOptional, IsNotEmpty, IsDateString, Matches, Min } from 'class-validator';
 import { PaginationDto } from '../../common/pagination.dto';
 
 export class CreateScheduleDto {
@@ -25,6 +25,7 @@ export class CreateScheduleDto {
 
   @ApiPropertyOptional()
   @IsInt()
+  @Min(1)
   @IsOptional()
   max_donors?: number;
 
@@ -62,6 +63,7 @@ export class UpdateScheduleDto {
 
   @ApiPropertyOptional()
   @IsInt()
+  @Min(1)
   @IsOptional()
   max_donors?: number;
 

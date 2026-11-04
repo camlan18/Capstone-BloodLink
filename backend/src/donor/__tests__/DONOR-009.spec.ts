@@ -1,3 +1,5 @@
+import { ValidationPipe, BadRequestException as DtoBadRequest } from '@nestjs/common';
+import { BookDonationSlotDto } from '../dto/donor.dto';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { makeDonor, D } from './helpers';
 
@@ -161,5 +163,51 @@ describe('DONOR-009 DonorService.bookDonationSlot', () => {
     await expect(pr).rejects.toThrow('Bạn chưa đủ điều kiện thời gian để hiến máu tiếp');
     // SRS: eligibility is checked before any write / the whole flow is transactional
     expect(p().facility_donation_schedules.create).not.toHaveBeenCalled();
+  });
+
+  // --- DTO validation: BookDonationSlotDto via ValidationPipe({ whitelist: true, transform: true }) ---
+  const vPipe = new ValidationPipe({ whitelist: true, transform: true });
+  const vRun = (v: any) => vPipe.transform(v, { type: 'body', metatype: BookDonationSlotDto, data: '' });
+  const vBase = { schedule_id: 1, is_health_cleared: true };
+  const vBad = async (v: any, msg: string) => {
+    await expect(vRun(v)).rejects.toBeInstanceOf(DtoBadRequest);
+    const err = await vRun(v).catch((e: any) => e);
+    expect(err.getResponse().message).toContain(msg);
+  };
+
+  it('UTCID16 schedule_id string rejected', async () => {
+    await vBad({ ...vBase, schedule_id: '1' }, 'schedule_id must be an integer number');
+  });
+
+  it('UTCID17 request_id not integer', async () => {
+    await vBad({ ...vBase, schedule_id: undefined, request_id: 1.5, facility_id: 1, specific_date: '2026-11-10' }, 'request_id must be an integer number');
+  });
+
+  it('UTCID18 facility_id not integer', async () => {
+    await vBad({ ...vBase, schedule_id: undefined, request_id: 10, facility_id: 'abc', specific_date: '2026-11-10' }, 'facility_id must be an integer number');
+  });
+
+  it('UTCID19 specific_date not ISO', async () => {
+    await vBad({ ...vBase, schedule_id: undefined, request_id: 10, facility_id: 1, specific_date: '10/11/2026' }, 'specific_date must be a valid ISO 8601 date string');
+  });
+
+  it('UTCID20 expected_time not a string', async () => {
+    await vBad({ ...vBase, expected_time: 830 }, 'expected_time must be a string');
+  });
+
+  it('UTCID21 notes not a string', async () => {
+    await vBad({ ...vBase, notes: 123 }, 'notes must be a string');
+  });
+
+  it('UTCID22 is_health_cleared not boolean', async () => {
+    await vBad({ ...vBase, is_health_cleared: 'true' }, 'is_health_cleared must be a boolean value');
+  });
+
+  it('UTCID23 unknown properties stripped', async () => {
+    const r: any = await vRun({ ...vBase, user_id: 99, status: 'CONFIRMED' });
+    expect(r).toBeInstanceOf(BookDonationSlotDto);
+    expect(r).not.toHaveProperty('user_id');
+    expect(r).not.toHaveProperty('status');
+    expect(r).toEqual(expect.objectContaining(vBase));
   });
 });
