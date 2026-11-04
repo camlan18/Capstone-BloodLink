@@ -399,6 +399,26 @@ export class TransferService {
       throw new BadRequestException(`Phiếu đang ở trạng thái ${transfer.status}, không thể từ chối`);
     }
 
+    // Nếu phiếu đã duyệt và đã giữ túi máu, trả túi về kho
+    if (transfer.status === 'APPROVED') {
+      let finalIds: number[] = [];
+      if (transfer.inventory_ids) {
+        try {
+          const parsed = JSON.parse(transfer.inventory_ids);
+          finalIds = parsed.map((x: any) => (typeof x === 'object' ? x.id : x));
+        } catch (e) {}
+      }
+      if (finalIds.length === 0 && transfer.inventory_id) {
+        finalIds = [transfer.inventory_id];
+      }
+      for (const invId of finalIds) {
+        await this.prisma.blood_inventory.update({
+          where: { inventory_id: invId },
+          data: { status_code: 'AVAILABLE' },
+        });
+      }
+    }
+
     const updated = await this.prisma.blood_transfers.update({
       where: { transfer_id: transferId },
       data: {

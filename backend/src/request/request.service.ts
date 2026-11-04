@@ -59,6 +59,8 @@ export class RequestService {
     const facility_id = user?.role_code === 'HOSPITAL_STAFF' ? user.facility_id : dto.facility_id;
     if (!facility_id) throw new BadRequestException('Vui lòng chọn cơ sở y tế');
 
+    const requestCode = `RQ-${Date.now()}`;
+
     const result = await this.prisma.$transaction(async (tx) => {
       // Tìm status 'pending'
       const pendingStatus = await tx.blood_request_statuses.findFirst({
@@ -66,8 +68,6 @@ export class RequestService {
       });
 
       if (!pendingStatus) throw new Error('System error: pending status not found');
-
-      const requestCode = `RQ-${Date.now()}`;
 
       // 1. Tạo request
       const request = await tx.blood_requests.create({
@@ -111,7 +111,7 @@ export class RequestService {
     // Gửi thông báo cho Admin
     await this.notificationsService.notifyAdmins(
       'Yêu cầu máu mới',
-      `Bệnh nhân ${dto.patient_name} vừa tạo một yêu cầu máu mới (Mã: RQ-${Date.now()}).`,
+      `Bệnh nhân ${dto.patient_name} vừa tạo một yêu cầu máu mới (Mã: ${requestCode}).`,
       NotificationType.WARNING,
       'REQUEST',
       result.request_id
@@ -211,7 +211,7 @@ export class RequestService {
         // Cập nhật trạng thái request
         await tx.blood_requests.update({
           where: { request_id: requestId },
-          data: { status_id: allocatedStatus!.status_id, assigned_staff_id: user.user_id },
+          data: { status_id: allocatedStatus!.status_id, assigned_staff_id: user.user_id, units_fulfilled: availableInventory.length },
         });
 
         for (const bag of availableInventory) {
@@ -818,8 +818,11 @@ export class RequestService {
 
   async allocateInventory(requestId: number, inventoryIds: number[], user: any) {
     return await this.prisma.$transaction(async (tx) => {
-      const request = await tx.blood_requests.findUnique({ where: { request_id: requestId } });
+      const request = await tx.blood_requests.findUnique({ where: { request_id: requestId }, include: { status: true } });
       if (!request) throw new NotFoundException('Yêu cầu không tồn tại');
+      if (['cancelled', 'completed', 'rejected'].includes(request.status?.status_code?.toLowerCase())) {
+        throw new BadRequestException('Không thể cấp phát cho yêu cầu đã hoàn thành, bị từ chối hoặc đã hủy');
+      }
       if (user.role_code === 'HOSPITAL_STAFF' && request.facility_id !== user.facility_id) {
         throw new BadRequestException('Bạn không có quyền cấp phát cho yêu cầu này');
       }
