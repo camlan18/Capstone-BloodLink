@@ -76,10 +76,11 @@ describe('USR-010 UsersService.importExcel', () => {
     expect(prisma.users.create).not.toHaveBeenCalled();
   });
 
-  it('UTCID10 imported users have no is_email_verified', async () => {
-    rows([row()]);
+  it('UTCID10 optional columns mapped; imported user has no is_email_verified', async () => {
+    rows([row({ 'Số điện thoại': 912345678, CCCD: 12345678901, 'Ngày sinh (YYYY-MM-DD)': '1995-05-20', 'Giới tính (M/F)': 'M' })]);
     await expect(service.importExcel(buf, 1)).resolves.toEqual(msg(1, 0));
     const data = prisma.users.create.mock.calls[0][0].data;
+    expect(data).toEqual(expect.objectContaining({ phone: '912345678', identity_card: '12345678901', date_of_birth: new Date('1995-05-20'), gender: 'M' }));
     expect(data).not.toHaveProperty('is_email_verified');
   });
 });

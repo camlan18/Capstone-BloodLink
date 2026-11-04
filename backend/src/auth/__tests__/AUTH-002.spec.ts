@@ -1,6 +1,12 @@
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, ValidationPipe } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { AuthService } from '../auth.service';
+import { RegisterDto } from '../dto/auth.dto';
+
+// DTO validation helpers (mirrors main.ts: new ValidationPipe({ whitelist: true, transform: true }))
+const dtoPipe = new ValidationPipe({ whitelist: true, transform: true });
+const dtoValid: any = { email: 'new01@test.vn', password: 'Abc@123', full_name: 'Nguyen Van A', username: 'newuser01' };
+const runDto = (value: any) => dtoPipe.transform(value, { type: 'body', metatype: RegisterDto, data: '' });
 jest.mock('bcrypt');
 
 describe('AUTH-002 AuthService.register', () => {
@@ -83,5 +89,61 @@ describe('AUTH-002 AuthService.register', () => {
     expect(prisma.$transaction).toHaveBeenCalledTimes(1);
     expect(tx.users.create).toHaveBeenCalled();
     expect(tx.user_otps.create).toHaveBeenCalled();
+  });
+
+  it('UTCID08 DTO: email empty', async () => {
+    const err = await runDto({ ...dtoValid, email: '' }).catch((e) => e);
+    expect(err).toBeInstanceOf(BadRequestException);
+    expect(err.getResponse().message).toContain("Email không được để trống");
+  });
+
+  it('UTCID09 DTO: email invalid format', async () => {
+    const err = await runDto({ ...dtoValid, email: 'new01@' }).catch((e) => e);
+    expect(err).toBeInstanceOf(BadRequestException);
+    expect(err.getResponse().message).toContain("Email không hợp lệ");
+  });
+
+  it('UTCID10 DTO: password empty', async () => {
+    const err = await runDto({ ...dtoValid, password: '' }).catch((e) => e);
+    expect(err).toBeInstanceOf(BadRequestException);
+    expect(err.getResponse().message).toContain("Mật khẩu không được để trống");
+  });
+
+  it('UTCID11 DTO: password 5 chars rejected', async () => {
+    const err = await runDto({ ...dtoValid, password: '12345' }).catch((e) => e);
+    expect(err).toBeInstanceOf(BadRequestException);
+    expect(err.getResponse().message).toContain("Mật khẩu phải có ít nhất 6 ký tự");
+  });
+
+  it('UTCID12 DTO: password 6 chars accepted', async () => {
+    await expect(runDto({ ...dtoValid, password: '123456' })).resolves.toEqual(expect.objectContaining({ password: '123456' }));
+  });
+
+  it('UTCID13 DTO: full_name empty', async () => {
+    const err = await runDto({ ...dtoValid, full_name: '' }).catch((e) => e);
+    expect(err).toBeInstanceOf(BadRequestException);
+    expect(err.getResponse().message).toContain("Họ tên không được để trống");
+  });
+
+  it('UTCID14 DTO: full_name 150 chars accepted', async () => {
+    await expect(runDto({ ...dtoValid, full_name: 'a'.repeat(150) })).resolves.toEqual(expect.objectContaining({ full_name: 'a'.repeat(150) }));
+  });
+
+  it('UTCID15 DTO: full_name 151 chars rejected', async () => {
+    const err = await runDto({ ...dtoValid, full_name: 'a'.repeat(151) }).catch((e) => e);
+    expect(err).toBeInstanceOf(BadRequestException);
+    expect(err.getResponse().message).toContain("full_name must be shorter than or equal to 150 characters");
+  });
+
+  it('UTCID16 DTO: username not a string', async () => {
+    const err = await runDto({ ...dtoValid, username: 12345 }).catch((e) => e);
+    expect(err).toBeInstanceOf(BadRequestException);
+    expect(err.getResponse().message).toContain("username must be a string");
+  });
+
+  it('UTCID17 DTO: unknown property stripped by whitelist', async () => {
+    const res = await runDto({ ...dtoValid, role_id: 1 });
+    expect(res).toEqual(expect.objectContaining(dtoValid));
+    expect(res).not.toHaveProperty('role_id');
   });
 });

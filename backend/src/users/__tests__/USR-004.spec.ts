@@ -1,4 +1,11 @@
+import { ValidationPipe, BadRequestException } from '@nestjs/common';
 import { UsersService } from '../users.service';
+import { UserFilterDto } from '../dto/user-filter.dto';
+
+// DTO validation helpers (mirrors main.ts: new ValidationPipe({ whitelist: true, transform: true }))
+const dtoPipe = new ValidationPipe({ whitelist: true, transform: true });
+const dtoValid: any = {};
+const runDto = (value: any) => dtoPipe.transform(value, { type: 'query', metatype: UserFilterDto, data: '' });
 
 describe('USR-004 UsersService.getAllUsers', () => {
   let prisma: any, service: UsersService;
@@ -76,5 +83,53 @@ describe('USR-004 UsersService.getAllUsers', () => {
     expect(res.data).toEqual([]);
     expect(res.meta.total).toBe(0);
     expect(res.meta.totalPages).toBe(0);
+  });
+
+  it('UTCID11 DTO: page 0 rejected', async () => {
+    const err = await runDto({ ...dtoValid, page: '0' }).catch((e) => e);
+    expect(err).toBeInstanceOf(BadRequestException);
+    expect(err.getResponse().message).toContain("page must not be less than 1");
+  });
+
+  it('UTCID12 DTO: page 1 accepted and converted to number', async () => {
+    await expect(runDto({ ...dtoValid, page: '1' })).resolves.toEqual(expect.objectContaining({ page: 1 }));
+  });
+
+  it('UTCID13 DTO: page not an integer', async () => {
+    const err = await runDto({ ...dtoValid, page: 'abc' }).catch((e) => e);
+    expect(err).toBeInstanceOf(BadRequestException);
+    expect(err.getResponse().message).toContain("page must be an integer number");
+  });
+
+  it('UTCID14 DTO: limit 0 rejected', async () => {
+    const err = await runDto({ ...dtoValid, limit: '0' }).catch((e) => e);
+    expect(err).toBeInstanceOf(BadRequestException);
+    expect(err.getResponse().message).toContain("limit must not be less than 1");
+  });
+
+  it('UTCID15 DTO: limit 1 accepted', async () => {
+    await expect(runDto({ ...dtoValid, limit: '1' })).resolves.toEqual(expect.objectContaining({ limit: 1 }));
+  });
+
+  it('UTCID16 DTO: role_id not an integer', async () => {
+    const err = await runDto({ ...dtoValid, role_id: 'abc' }).catch((e) => e);
+    expect(err).toBeInstanceOf(BadRequestException);
+    expect(err.getResponse().message).toContain("role_id must be an integer number");
+  });
+
+  it('UTCID17 DTO: sortOrder not in enum', async () => {
+    const err = await runDto({ ...dtoValid, sortOrder: 'up' }).catch((e) => e);
+    expect(err).toBeInstanceOf(BadRequestException);
+    expect(err.getResponse().message).toContain("sortOrder must be one of the following values: asc, desc");
+  });
+
+  it('UTCID18 DTO: is_active string false converted to boolean false', async () => {
+    await expect(runDto({ ...dtoValid, is_active: 'false' })).resolves.toEqual(expect.objectContaining({ is_active: false }));
+  });
+
+  it('UTCID19 DTO: search not a string', async () => {
+    const err = await runDto({ ...dtoValid, search: 123 }).catch((e) => e);
+    expect(err).toBeInstanceOf(BadRequestException);
+    expect(err.getResponse().message).toContain("search must be a string");
   });
 });

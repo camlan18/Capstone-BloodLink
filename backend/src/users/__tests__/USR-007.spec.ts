@@ -1,6 +1,12 @@
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, ValidationPipe } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { UsersService } from '../users.service';
+import { UpdateUserAdminDto } from '../dto/users.dto';
+
+// DTO validation helpers (mirrors main.ts: new ValidationPipe({ whitelist: true, transform: true }))
+const dtoPipe = new ValidationPipe({ whitelist: true, transform: true });
+const dtoValid: any = { full_name: 'Tran Thi B' };
+const runDto = (value: any) => dtoPipe.transform(value, { type: 'body', metatype: UpdateUserAdminDto, data: '' });
 jest.mock('bcrypt');
 
 describe('USR-007 UsersService.updateUserAdmin', () => {
@@ -92,5 +98,23 @@ describe('USR-007 UsersService.updateUserAdmin', () => {
     prisma.users.update.mockRejectedValue(Object.assign(new Error('Record to update not found'), { code: 'P2025' }));
     await expect(service.updateUserAdmin(999, { full_name: ' Tran Thi B ' } as any)).rejects.toThrow('Record to update not found');
     expect(prisma.users.update).toHaveBeenCalled();
+  });
+
+  it('UTCID12 DTO: email invalid format', async () => {
+    const err = await runDto({ ...dtoValid, email: 'tranthib' }).catch((e) => e);
+    expect(err).toBeInstanceOf(BadRequestException);
+    expect(err.getResponse().message).toContain("Email không hợp lệ");
+  });
+
+  it('UTCID13 DTO: password 5 chars rejected', async () => {
+    const err = await runDto({ ...dtoValid, password: '12345' }).catch((e) => e);
+    expect(err).toBeInstanceOf(BadRequestException);
+    expect(err.getResponse().message).toContain("Mật khẩu phải có ít nhất 6 ký tự");
+  });
+
+  it('UTCID14 DTO: full_name 151 chars rejected', async () => {
+    const err = await runDto({ ...dtoValid, full_name: 'a'.repeat(151) }).catch((e) => e);
+    expect(err).toBeInstanceOf(BadRequestException);
+    expect(err.getResponse().message).toContain("full_name must be shorter than or equal to 150 characters");
   });
 });

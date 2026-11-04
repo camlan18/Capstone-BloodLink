@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsOptional, IsBoolean, IsInt, IsNumber } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsBoolean, IsInt, IsNumber, Min } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 
@@ -175,6 +175,7 @@ export class CreateDonationIntervalRuleDto {
 
   @ApiProperty({ example: 84, description: 'Khoảng cách tối thiểu (ngày)' })
   @IsInt()
+  @Min(1)
   @Type(() => Number)
   @IsNotEmpty()
   min_interval_days: number;

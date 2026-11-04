@@ -1,6 +1,12 @@
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, ValidationPipe } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { AuthService } from '../auth.service';
+import { ForgotPasswordDto } from '../dto/auth.dto';
+
+// DTO validation helpers (mirrors main.ts: new ValidationPipe({ whitelist: true, transform: true }))
+const dtoPipe = new ValidationPipe({ whitelist: true, transform: true });
+const dtoValid: any = { email: 'member01@test.vn' };
+const runDto = (value: any) => dtoPipe.transform(value, { type: 'body', metatype: ForgotPasswordDto, data: '' });
 jest.mock('bcrypt');
 
 describe('AUTH-006 AuthService.forgotPassword', () => {
@@ -59,5 +65,17 @@ describe('AUTH-006 AuthService.forgotPassword', () => {
     mail.sendForgotPasswordEmail.mockRejectedValue(new Error('SMTP down'));
     await expect(service.forgotPassword({ email: 'member01@test.vn' } as any)).rejects.toThrow('SMTP down');
     expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+  });
+
+  it('UTCID06 DTO: email empty', async () => {
+    const err = await runDto({ ...dtoValid, email: '' }).catch((e) => e);
+    expect(err).toBeInstanceOf(BadRequestException);
+    expect(err.getResponse().message).toContain("Email không được để trống");
+  });
+
+  it('UTCID07 DTO: email invalid format', async () => {
+    const err = await runDto({ ...dtoValid, email: 'member01@test' }).catch((e) => e);
+    expect(err).toBeInstanceOf(BadRequestException);
+    expect(err.getResponse().message).toContain("Email không hợp lệ");
   });
 });

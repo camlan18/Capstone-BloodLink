@@ -1,3 +1,6 @@
+import { CreateBloodTypeDto, UpdateBloodTypeDto, CreateFacilityDto, UpdateFacilityDto, CreateBloodComponentDto, UpdateBloodComponentDto, CreateBloodCompatibilityDto, UpdateBloodCompatibilityDto, CreateDonationIntervalRuleDto, UpdateDonationIntervalRuleDto } from '../dto/master-data.dto';
+import { MasterDataFilterDto } from '../dto/master-data-filter.dto';
+import { validate, expectDtoErr } from './_helpers';
 import { BadRequestException } from '@nestjs/common';
 import { MasterDataService } from '../master-data.service';
 import { expectErr, errOf } from './_helpers';
@@ -61,5 +64,53 @@ describe('MD-001 MasterDataService blood components CRUD', () => {
     prisma.blood_components.update.mockRejectedValue(err);
     expect(await errOf(service.deleteBloodComponent(999))).toBe(err);
     expect(prisma.blood_components.update).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('MD-001 DTO validation (ValidationPipe whitelist+transform)', () => {
+  const vComp = { component_code: 'RBC', component_name: 'Hồng cầu lắng' };
+  const vType = { blood_group: 'A', rh_factor: '+' };
+  const vFac = { facility_code: 'BV-CR', facility_name: 'Bệnh viện Chợ Rẫy', address: '201B Nguyễn Chí Thanh', is_primary: false };
+  const vCompat = { component_id: 1, donor_blood_type_id: 1, recipient_blood_type_id: 2, is_compatible: true };
+  const vRule = { component_id: 1, min_interval_days: 84 };
+
+  it('UTCID10 list: page 0 below @Min(1)', async () => {
+    await expectDtoErr(validate(MasterDataFilterDto, { page: '0' }, 'query'), "page must not be less than 1");
+  });
+  it('UTCID11 list: page 1 accepted', async () => {
+    const out: any = await validate(MasterDataFilterDto, { page: '1' }, 'query');
+    expect(out.page).toBe(1); expect(out.limit).toBe(20);
+  });
+  it('UTCID12 list: limit 0 below @Min(1)', async () => {
+    await expectDtoErr(validate(MasterDataFilterDto, { limit: '0' }, 'query'), "limit must not be less than 1");
+  });
+  it('UTCID13 list: limit 1 accepted', async () => {
+    const out: any = await validate(MasterDataFilterDto, { limit: '1' }, 'query');
+    expect(out.limit).toBe(1);
+  });
+  it('UTCID14 list: page not an integer', async () => {
+    await expectDtoErr(validate(MasterDataFilterDto, { page: 'abc' }, 'query'), "page must be an integer number");
+  });
+  it('UTCID15 list: sortOrder not in enum', async () => {
+    await expectDtoErr(validate(MasterDataFilterDto, { sortOrder: 'up' }, 'query'), "sortOrder must be one of the following values: asc, desc");
+  });
+  it('UTCID16 list: is_active=false string', async () => {
+    const out: any = await validate(MasterDataFilterDto, { is_active: 'false' }, 'query');
+    expect(out.is_active).toBe(false);
+  });
+  it('UTCID17 create: empty component_code', async () => {
+    await expectDtoErr(validate(CreateBloodComponentDto, { ...vComp, component_code: '' }, 'body'), "component_code should not be empty");
+  });
+  it('UTCID18 create: empty component_name', async () => {
+    await expectDtoErr(validate(CreateBloodComponentDto, { ...vComp, component_name: '' }, 'body'), "component_name should not be empty");
+  });
+  it('UTCID19 create: description not a string', async () => {
+    await expectDtoErr(validate(CreateBloodComponentDto, { ...vComp, description: 123 }, 'body'), "description must be a string");
+  });
+  it('UTCID20 update: empty component_name', async () => {
+    await expectDtoErr(validate(UpdateBloodComponentDto, { ...vComp, component_name: '' }, 'body'), "component_name should not be empty");
+  });
+  it('UTCID21 update: is_active not boolean', async () => {
+    await expectDtoErr(validate(UpdateBloodComponentDto, { ...vComp, is_active: 'yes' }, 'body'), "is_active must be a boolean value");
   });
 });
