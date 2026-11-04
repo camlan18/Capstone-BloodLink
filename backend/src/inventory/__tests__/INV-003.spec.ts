@@ -1,5 +1,6 @@
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, NotFoundException, ValidationPipe } from '@nestjs/common';
 import { InventoryService } from '../inventory.service';
+import { DiscardBloodDto } from '../dto/discard-blood.dto';
 
 describe('INV-003 InventoryService.discardBlood', () => {
   let prisma: any, tx: any, service: InventoryService;
@@ -71,5 +72,43 @@ describe('INV-003 InventoryService.discardBlood', () => {
     const res = await service.discardBlood(10, admin, undefined as any);
     expect(res.status_code).toBe('DISCARDED');
     expect(tx.inventory_transactions.create).toHaveBeenCalledWith({ data: expect.objectContaining({ notes: undefined }) });
+  });
+
+  // ---- DTO validation: ValidationPipe({ whitelist: true, transform: true }) as in src/main.ts ----
+  const pipe = new ValidationPipe({ whitelist: true, transform: true });
+  const run = (body: any) => pipe.transform(body, { type: 'body', metatype: DiscardBloodDto, data: '' });
+  const valid = (): any => ({ reason: 'Vỡ túi' });
+  const omit = (k: string) => { const b = valid(); delete b[k]; return b; };
+
+  it('UTCID08 DTO reason empty', async () => {
+    const body: any = { ...valid(), reason: '' };
+    await expect(run(body)).rejects.toBeInstanceOf(BadRequestException);
+    const err = await run(body).catch((e: any) => e);
+    expect(err.getResponse().message).toContain("reason should not be empty");
+  });
+
+  it('UTCID09 DTO reason missing', async () => {
+    const body: any = omit('reason');
+    await expect(run(body)).rejects.toBeInstanceOf(BadRequestException);
+    const err = await run(body).catch((e: any) => e);
+    expect(err.getResponse().message).toContain("reason should not be empty");
+  });
+
+  it('UTCID10 DTO reason not a string', async () => {
+    const body: any = { ...valid(), reason: 123 };
+    await expect(run(body)).rejects.toBeInstanceOf(BadRequestException);
+    const err = await run(body).catch((e: any) => e);
+    expect(err.getResponse().message).toContain("reason must be a string");
+  });
+
+  it('UTCID11 DTO reason length 500 (max)', async () => {
+    await expect(run({ ...valid(), reason: 'a'.repeat(500) })).resolves.toEqual(expect.objectContaining({ reason: 'a'.repeat(500) }));
+  });
+
+  it('UTCID12 DTO reason length 501', async () => {
+    const body: any = { ...valid(), reason: 'a'.repeat(501) };
+    await expect(run(body)).rejects.toBeInstanceOf(BadRequestException);
+    const err = await run(body).catch((e: any) => e);
+    expect(err.getResponse().message).toContain("reason must be shorter than or equal to 500 characters");
   });
 });

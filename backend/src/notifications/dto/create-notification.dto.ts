@@ -1,9 +1,10 @@
-import { IsString, IsNotEmpty, IsArray, IsOptional, IsInt, MaxLength } from 'class-validator';
+import { IsString, IsNotEmpty, IsArray, IsOptional, IsInt, MaxLength, ArrayMinSize } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateNotificationDto {
   @ApiProperty({ description: 'Mảng ID người dùng sẽ nhận thông báo', type: [Number] })
   @IsArray()
+  @ArrayMinSize(1)
   @IsNotEmpty()
   user_ids: number[];
 
