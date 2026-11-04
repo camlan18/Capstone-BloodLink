@@ -1,3 +1,6 @@
+import { CreatePostDto, UpdatePostDto, AddCommentDto, CreateCategoryDto, UpdateCategoryDto } from '../dto/blog.dto';
+import { BlogFilterDto } from '../dto/blog-filter.dto';
+import { validate, expectDtoErr } from './_helpers';
 import { BlogService } from '../blog.service';
 
 describe('BLOG-001 BlogService.getAllPosts', () => {
@@ -44,5 +47,35 @@ describe('BLOG-001 BlogService.getAllPosts', () => {
   it('UTCID06 no result', async () => {
     const r = await service.getAllPosts({ search: 'xyz' } as any);
     expect(r).toEqual({ data: [], meta: { total: 0, page: 1, limit: 20, totalPages: 0 } });
+  });
+});
+
+describe('BLOG-001 DTO validation (ValidationPipe whitelist+transform)', () => {
+  const vPost = { title: 'Hiến máu cứu người', slug: 'hien-mau-cuu-nguoi', content: '<p>Nội dung</p>', blog_category_id: 1, is_published: true };
+  const vCat = { category_name: 'Tin tức', slug: 'tin-tuc' };
+  const vCmt = { content: 'Bài viết rất hữu ích!', guest_name: 'Khách' };
+
+  it('UTCID07 page 0 below @Min(1)', async () => {
+    await expectDtoErr(validate(BlogFilterDto, { page: '0' }, 'query'), "page must not be less than 1");
+  });
+  it('UTCID08 page 1 accepted, transformed to number', async () => {
+    const out: any = await validate(BlogFilterDto, { page: '1' }, 'query');
+    expect(out.page).toBe(1); expect(out.limit).toBe(20);
+  });
+  it('UTCID09 limit 0 below @Min(1)', async () => {
+    await expectDtoErr(validate(BlogFilterDto, { limit: '0' }, 'query'), "limit must not be less than 1");
+  });
+  it('UTCID10 limit 1 accepted', async () => {
+    const out: any = await validate(BlogFilterDto, { limit: '1' }, 'query');
+    expect(out.limit).toBe(1);
+  });
+  it('UTCID11 page not an integer', async () => {
+    await expectDtoErr(validate(BlogFilterDto, { page: 'abc' }, 'query'), "page must be an integer number");
+  });
+  it('UTCID12 category_id not an integer', async () => {
+    await expectDtoErr(validate(BlogFilterDto, { category_id: 'abc' }, 'query'), "category_id must be an integer number");
+  });
+  it('UTCID13 sortOrder not in enum', async () => {
+    await expectDtoErr(validate(BlogFilterDto, { sortOrder: 'up' }, 'query'), "sortOrder must be one of the following values: asc, desc");
   });
 });

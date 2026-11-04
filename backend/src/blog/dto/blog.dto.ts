@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsOptional, IsInt, IsBoolean } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsInt, IsBoolean, MaxLength } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 
@@ -6,6 +6,7 @@ export class CreatePostDto {
   @ApiProperty({ example: 'Hiến máu cứu người', description: 'Tiêu đề bài viết' })
   @IsString()
   @IsNotEmpty({ message: 'Tiêu đề không được để trống' })
+  @MaxLength(300)
   title: string;
 
   @ApiProperty({ example: 'hien-mau-cuu-nguoi', description: 'Đường dẫn thân thiện (slug)' })
@@ -45,6 +46,7 @@ export class AddCommentDto {
   @ApiProperty({ example: 'Bài viết rất hay', description: 'Nội dung bình luận' })
   @IsString()
   @IsNotEmpty({ message: 'Nội dung bình luận không được để trống' })
+  @MaxLength(2000)
   content: string;
 
   @ApiProperty({ example: 'Khách', description: 'Tên người dùng nếu không đăng nhập', required: false })
@@ -63,6 +65,7 @@ export class CreateCategoryDto {
   @ApiProperty({ example: 'Tin tức', description: 'Tên danh mục' })
   @IsString()
   @IsNotEmpty({ message: 'Tên danh mục không được để trống' })
+  @MaxLength(150)
   category_name: string;
 
   @ApiProperty({ example: 'tin-tuc', description: 'Đường dẫn danh mục' })

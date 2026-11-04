@@ -1,3 +1,5 @@
+import { CreateEducationCategoryDto, UpdateEducationCategoryDto, CreateEducationDocumentDto, UpdateEducationDocumentDto, EducationFilterDto } from '../dto/education.dto';
+import { validate, expectDtoErr } from './_helpers';
 import { EducationService } from '../education.service';
 
 describe('EDU-005 EducationService.getDocuments', () => {
@@ -41,5 +43,30 @@ describe('EDU-005 EducationService.getDocuments', () => {
   it('UTCID06 drafts excluded from public list (SRS; defect: no is_published filter)', async () => {
     await service.getDocuments({} as any);
     expect(prisma.education_documents.findMany.mock.calls[0][0].where).toEqual(expect.objectContaining({ is_published: true }));
+  });
+});
+
+describe('EDU-005 DTO validation (ValidationPipe whitelist+transform)', () => {
+  const vCat = { category_name: 'Kiến thức hiến máu', sort_order: 2 };
+  const vDoc = { title: 'Lợi ích hiến máu', slug: 'loi-ich-hien-mau', content_html: '<p>Nội dung</p>', category_id: 1, is_published: true };
+
+  it('UTCID07 page not an integer', async () => {
+    await expectDtoErr(validate(EducationFilterDto, { page: 'abc' }, 'query'), "page must be an integer number");
+  });
+  it('UTCID08 limit not an integer', async () => {
+    await expectDtoErr(validate(EducationFilterDto, { limit: 'abc' }, 'query'), "limit must be an integer number");
+  });
+  it('UTCID09 category_id not an integer', async () => {
+    await expectDtoErr(validate(EducationFilterDto, { category_id: 'abc' }, 'query'), "category_id must be an integer number");
+  });
+  it('UTCID10 blood_type_id not an integer', async () => {
+    await expectDtoErr(validate(EducationFilterDto, { blood_type_id: 'x' }, 'query'), "blood_type_id must be an integer number");
+  });
+  it('UTCID11 numeric strings transformed', async () => {
+    const out: any = await validate(EducationFilterDto, { page: '1', limit: '10' }, 'query');
+    expect(out.page).toBe(1); expect(out.limit).toBe(10);
+  });
+  it('UTCID12 negative page', async () => {
+    await expectDtoErr(validate(EducationFilterDto, { page: '-1' }, 'query'), "page must not be less than 1");
   });
 });

@@ -1,3 +1,6 @@
+import { CreatePostDto, UpdatePostDto, AddCommentDto, CreateCategoryDto, UpdateCategoryDto } from '../dto/blog.dto';
+import { BlogFilterDto } from '../dto/blog-filter.dto';
+import { validate, expectDtoErr } from './_helpers';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { BlogService } from '../blog.service';
 import { expectErr } from './_helpers';
@@ -70,5 +73,28 @@ describe('BLOG-008 BlogService.addComment/editComment/deleteMyComment/getComment
     expect(prisma.blog_comments.findMany).toHaveBeenCalledWith(expect.objectContaining({
       where: { post_id: 1, is_approved: true, parent_comment_id: null }, take: 5,
       orderBy: [{ created_at: 'desc' }, { comment_id: 'desc' }] }));
+  });
+});
+
+describe('BLOG-008 DTO validation (ValidationPipe whitelist+transform)', () => {
+  const vPost = { title: 'Hiến máu cứu người', slug: 'hien-mau-cuu-nguoi', content: '<p>Nội dung</p>', blog_category_id: 1, is_published: true };
+  const vCat = { category_name: 'Tin tức', slug: 'tin-tuc' };
+  const vCmt = { content: 'Bài viết rất hữu ích!', guest_name: 'Khách' };
+
+  it('UTCID11 add: empty content', async () => {
+    await expectDtoErr(validate(AddCommentDto, { ...vCmt, content: '' }, 'body'), "Nội dung bình luận không được để trống");
+  });
+  it('UTCID12 add: guest_name not a string', async () => {
+    await expectDtoErr(validate(AddCommentDto, { ...vCmt, guest_name: 123 }, 'body'), "guest_name must be a string");
+  });
+  it('UTCID13 add: parent_comment_id not numeric', async () => {
+    await expectDtoErr(validate(AddCommentDto, { ...vCmt, parent_comment_id: 'abc' }, 'body'), "parent_comment_id must be an integer number");
+  });
+  it('UTCID14 add: numeric string parent_comment_id transformed', async () => {
+    const out: any = await validate(AddCommentDto, { ...vCmt, parent_comment_id: '2' }, 'body');
+    expect(out.parent_comment_id).toBe(2);
+  });
+  it('UTCID15 add: content longer than NVarChar(2000)', async () => {
+    await expectDtoErr(validate(AddCommentDto, { ...vCmt, content: 'a'.repeat(2001) }, 'body'), "content must be shorter than or equal to 2000 characters");
   });
 });
