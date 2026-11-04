@@ -149,7 +149,7 @@ export class BlogService {
         guest_name: userId ? null : data.guest_name,
         content: data.content,
         parent_comment_id: data.parent_comment_id,
-        is_approved: true,
+        is_approved: userId ? true : false,
       },
     });
   }
@@ -234,7 +234,8 @@ export class BlogService {
     const post = await this.prisma.blog_posts.findUnique({ where: { post_id: postId } });
     if (!post) throw new NotFoundException('Bài viết không tồn tại');
 
-    return await this.prisma.blog_posts.update({
+    try {
+      return await this.prisma.blog_posts.update({
       where: { post_id: postId },
       data: {
         title: dto.title,
@@ -246,7 +247,11 @@ export class BlogService {
         is_published: dto.is_published,
         published_at: dto.is_published && !post.is_published ? new Date() : post.published_at,
       }
-    });
+      });
+    } catch (e: any) {
+      if (e?.code === 'P2002') throw new BadRequestException('Slug đã tồn tại');
+      throw e;
+    }
   }
 
   async deletePost(postId: number) {

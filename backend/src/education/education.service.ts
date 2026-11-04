@@ -60,12 +60,13 @@ export class EducationService {
   }
 
   // --- DOCUMENTS ---
-  async getDocuments(query: EducationFilterDto) {
+  async getDocuments(query: EducationFilterDto, includeDrafts = false) {
     const page = query.page || 1;
     const limit = query.limit || 20;
     const skip = (page - 1) * limit;
 
     const where: any = {};
+    if (!includeDrafts) where.is_published = true;
     if (query.category_id) where.category_id = query.category_id;
     if (query.blood_type_id) where.blood_type_id = query.blood_type_id;
     if (query.search) {
@@ -111,7 +112,7 @@ export class EducationService {
       include: { category: true, blood_type: true, creator: { select: { full_name: true } } },
     });
     
-    if (!doc) throw new NotFoundException('Tài liệu không tồn tại');
+    if (!doc || !doc.is_published) throw new NotFoundException('Tài liệu không tồn tại');
     
     // Tăng view count
     await this.prisma.education_documents.update({
