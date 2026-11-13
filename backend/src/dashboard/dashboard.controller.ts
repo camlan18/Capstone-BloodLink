@@ -6,11 +6,17 @@ import { RolesGuard } from '../common/roles.guard';
 import { Roles, CurrentUser } from '../common/decorators';
 import { RoleCode } from '../common/enums';
 
+/**
+ * Controller cung cấp số liệu thống kê và xuất báo cáo tổng quan cho dashboard.
+ */
 @Controller('api/v1/dashboard')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class DashboardController {
   constructor(private readonly dashboardService: DashboardService) {}
 
+  /**
+   * Lấy dữ liệu thống kê tổng quan theo khoảng thời gian và cơ sở y tế.
+   */
   @Get('stats')
   @Roles(RoleCode.ADMIN, RoleCode.STAFF, RoleCode.HOSPITAL_STAFF, RoleCode.MODERATOR)
   async getStats(
@@ -21,6 +27,9 @@ export class DashboardController {
   ) {
     return await this.dashboardService.getStats(startDate, endDate, facilityId, user);
   }
+  /**
+   * Xuất file Excel báo cáo hệ thống theo bộ lọc thời gian và cơ sở y tế.
+   */
   @Get('export-report')
   @Roles(RoleCode.ADMIN, RoleCode.STAFF, RoleCode.HOSPITAL_STAFF, RoleCode.MODERATOR)
   async exportReport(

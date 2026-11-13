@@ -3,6 +3,9 @@ import { Transform } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 import { SystemSettingKey } from '../../common/enums';
 
+/**
+ * DTO tạo mới hoặc cập nhật một cấu hình hệ thống theo khóa.
+ */
 export class UpsertSettingDto {
   @ApiProperty({ description: 'Khóa cài đặt (VD: MAX_SEARCH_RADIUS_KM)', enum: SystemSettingKey })
   @Transform(({ value }) => typeof value === 'string' ? value.toLowerCase() : value)

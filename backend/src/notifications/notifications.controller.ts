@@ -9,6 +9,9 @@ import { MailService } from '../mail/mail.service';
 import { Public } from '../common/decorators';
 import { NotificationType } from './notifications.service';
 
+/**
+ * Controller cung cấp API thông báo của người dùng, quản trị thông báo và gửi liên hệ.
+ */
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('api/v1/notifications')
 export class NotificationsController {
@@ -17,47 +20,71 @@ export class NotificationsController {
     private readonly mailService: MailService
   ) {}
 
+  /**
+   * Lấy danh sách thông báo của người dùng đang đăng nhập.
+   */
   @Get('my')
   async getMyNotifications(@Req() req: any, @Query() query: any) {
     const userId = req.user.user_id;
     return await this.notificationsService.getNotifications({ ...query, user_id: userId });
   }
 
+  /**
+   * Đếm số lượng thông báo chưa đọc của người dùng hiện tại.
+   */
   @Get('my/unread-count')
   async getUnreadCount(@Req() req: any) {
     const userId = req.user.user_id;
     return await this.notificationsService.getUnreadCount(userId);
   }
 
+  /**
+   * Đánh dấu toàn bộ thông báo của người dùng hiện tại là đã đọc.
+   */
   @Put('my/mark-all-read')
   async markAllAsRead(@Req() req: any) {
     const userId = req.user.user_id;
     return await this.notificationsService.markAllAsRead(userId);
   }
 
+  /**
+   * Tạo và gửi thông báo tới danh sách người dùng chỉ định.
+   */
   @Roles(RoleCode.ADMIN, RoleCode.STAFF)
   @Post()
   async createNotification(@Body() dto: CreateNotificationDto) {
     return await this.notificationsService.createNotification(dto);
   }
 
+  /**
+   * Lấy danh sách tất cả thông báo trong hệ thống (dành cho Admin/Staff).
+   */
   @Roles(RoleCode.ADMIN, RoleCode.STAFF)
   @Get()
   async getNotifications(@Query() query: any) {
     return await this.notificationsService.getNotifications(query);
   }
 
+  /**
+   * Xóa một thông báo theo ID.
+   */
   @Roles(RoleCode.ADMIN, RoleCode.STAFF)
   @Delete(':id')
   async deleteNotification(@Param('id', ParseIntPipe) id: number) {
     return await this.notificationsService.deleteNotification(id);
   }
 
+  /**
+   * Đánh dấu một thông báo cụ thể là đã đọc.
+   */
   @Put(':id/read')
   async markAsRead(@Param('id', ParseIntPipe) id: number) {
     return await this.notificationsService.markAsRead(id);
   }
 
+  /**
+   * Tiếp nhận biểu mẫu liên hệ công khai, gửi email và thông báo tới quản trị viên.
+   */
   @Public()
   @Post('contact')
   async submitContactForm(@Body() dto: any) {

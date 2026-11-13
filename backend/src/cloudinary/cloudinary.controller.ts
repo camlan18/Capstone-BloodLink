@@ -5,6 +5,9 @@ import { Roles } from '../common/decorators';
 import { RoleCode, SystemSettingKey } from '../common/enums';
 import { SystemSettingsService } from '../system-settings/system-settings.service';
 
+/**
+ * Controller cung cấp API tải ảnh lên Cloudinary.
+ */
 @Controller('api/v1/upload')
 export class CloudinaryController {
   constructor(
@@ -12,6 +15,9 @@ export class CloudinaryController {
     private readonly systemSettingsService: SystemSettingsService
   ) {}
 
+  /**
+   * Tải một tệp hình ảnh lên Cloudinary sau khi kiểm tra giới hạn dung lượng hệ thống.
+   */
   @Roles(RoleCode.ADMIN, RoleCode.MODERATOR, RoleCode.STAFF, RoleCode.HOSPITAL_STAFF)
   @Post('image')
   @UseInterceptors(FileInterceptor('file'))

@@ -1,6 +1,9 @@
 import { IsString, IsNotEmpty, IsArray, IsOptional, IsInt, MaxLength, ArrayMinSize } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
+/**
+ * DTO tạo và gửi thông báo tới danh sách người dùng.
+ */
 export class CreateNotificationDto {
   @ApiProperty({ description: 'Mảng ID người dùng sẽ nhận thông báo', type: [Number] })
   @IsArray()

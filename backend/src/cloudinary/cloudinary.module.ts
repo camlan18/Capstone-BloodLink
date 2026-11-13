@@ -4,6 +4,9 @@ import { CloudinaryService } from './cloudinary.service';
 import { CloudinaryController } from './cloudinary.controller';
 import { SystemSettingsModule } from '../system-settings/system-settings.module';
 
+/**
+ * Module tích hợp Cloudinary phục vụ tải lên và lưu trữ hình ảnh.
+ */
 @Module({
   imports: [SystemSettingsModule],
   controllers: [CloudinaryController],

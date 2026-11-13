@@ -2,6 +2,9 @@ import { IsInt, IsNotEmpty, IsString, IsPositive, IsDateString, IsOptional, MaxL
 import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 
+/**
+ * DTO tiếp nhận và nhập mới một túi máu vào kho.
+ */
 export class ReceiveBloodDto {
   @ApiProperty({ example: 1, description: 'ID cơ sở y tế' })
   @IsInt()
