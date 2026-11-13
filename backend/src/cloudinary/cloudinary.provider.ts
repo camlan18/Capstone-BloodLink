@@ -1,5 +1,8 @@
 import { v2 as cloudinary } from 'cloudinary';
 
+/**
+ * Provider khởi tạo cấu hình SDK Cloudinary từ biến môi trường.
+ */
 export const CloudinaryProvider = {
   provide: 'CLOUDINARY',
   useFactory: () => {

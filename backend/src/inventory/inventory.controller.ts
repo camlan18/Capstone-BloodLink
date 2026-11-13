@@ -9,11 +9,17 @@ import { RolesGuard } from '../common/roles.guard';
 import type { Response } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
 
+/**
+ * Controller xử lý các API quản lý kho máu, nhập/xuất Excel và điều chuyển túi máu.
+ */
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('api/v1/inventory')
 export class InventoryController {
   constructor(private readonly inventoryService: InventoryService) {}
 
+  /**
+   * Tiếp nhận và nhập một túi máu mới vào kho.
+   */
   @Roles(RoleCode.ADMIN, RoleCode.STAFF, RoleCode.HOSPITAL_STAFF)
   @Post('receive')
   async receiveBlood(@Req() req: any, @Body() dto: ReceiveBloodDto) {
@@ -23,6 +29,9 @@ export class InventoryController {
     }, req.user);
   }
 
+  /**
+   * Cập nhật thông tin một túi máu trong kho theo ID.
+   */
   @Roles(RoleCode.ADMIN, RoleCode.STAFF, RoleCode.HOSPITAL_STAFF)
   @Put(':id')
   async updateBlood(
@@ -33,6 +42,9 @@ export class InventoryController {
     return await this.inventoryService.updateBlood(inventoryId, dto, req.user);
   }
 
+  /**
+   * Đánh dấu hủy một túi máu trong kho kèm lý do.
+   */
   @Roles(RoleCode.ADMIN, RoleCode.STAFF, RoleCode.HOSPITAL_STAFF)
   @Post(':id/discard')
   async discardBlood(
@@ -43,6 +55,9 @@ export class InventoryController {
     return await this.inventoryService.discardBlood(inventoryId, req.user, dto.reason);
   }
 
+  /**
+   * Điều chuyển nhanh một túi máu sang cơ sở y tế khác.
+   */
   @Roles(RoleCode.ADMIN, RoleCode.STAFF, RoleCode.HOSPITAL_STAFF)
   @Post(':id/transfer')
   async transferBlood(
@@ -54,18 +69,27 @@ export class InventoryController {
     return await this.inventoryService.transferBlood(inventoryId, dto.to_facility_id, req.user, dto.notes || '');
   }
 
+  /**
+   * Lấy số liệu thống kê tồn kho máu theo cơ sở hoặc toàn hệ thống.
+   */
   @Roles(RoleCode.ADMIN, RoleCode.STAFF, RoleCode.HOSPITAL_STAFF)
   @Get('stats')
   async getStats(@Req() req: any, @Query('global') global?: string) {
     return await this.inventoryService.getInventoryStats(req.user, global === 'true');
   }
 
+  /**
+   * Lấy danh sách túi máu trong kho có phân trang và bộ lọc.
+   */
   @Roles(RoleCode.ADMIN, RoleCode.STAFF, RoleCode.HOSPITAL_STAFF)
   @Get()
   async getInventoryList(@Query() query: any, @Req() req: any) {
     return await this.inventoryService.getInventoryList(query, req.user);
   }
 
+  /**
+   * Xuất danh sách tồn kho máu ra tệp Excel.
+   */
   @Roles(RoleCode.ADMIN, RoleCode.STAFF, RoleCode.HOSPITAL_STAFF)
   @Get('export')
   async exportExcel(@Query() query: any, @Res() res: Response, @Req() req: any) {
@@ -75,6 +99,9 @@ export class InventoryController {
     res.send(buffer);
   }
 
+  /**
+   * Tải tệp Excel mẫu để nhập kho máu hàng loạt.
+   */
   @Roles(RoleCode.ADMIN, RoleCode.STAFF, RoleCode.HOSPITAL_STAFF)
   @Get('template')
   async downloadTemplate(@Res() res: Response) {
@@ -84,6 +111,9 @@ export class InventoryController {
     res.send(buffer);
   }
 
+  /**
+   * Nhập dữ liệu túi máu hàng loạt từ tệp Excel tải lên.
+   */
   @Roles(RoleCode.ADMIN, RoleCode.STAFF, RoleCode.HOSPITAL_STAFF)
   @Post('import')
   @UseInterceptors(FileInterceptor('file'))
