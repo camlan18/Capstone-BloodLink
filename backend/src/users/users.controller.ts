@@ -10,6 +10,9 @@ import { UserFilterDto } from './dto/user-filter.dto';
 import { SystemSettingsService } from '../system-settings/system-settings.service';
 import { SystemSettingKey } from '../common/enums';
 
+/**
+ * Controller cung cấp API quản lý hồ sơ cá nhân và quản trị danh sách người dùng.
+ */
 @Controller('api/v1/users')
 export class UsersController {
   constructor(
@@ -17,16 +20,25 @@ export class UsersController {
     private readonly systemSettingsService: SystemSettingsService
   ) {}
 
+  /**
+   * Lấy thông tin hồ sơ của người dùng đang đăng nhập.
+   */
   @Get('profile')
   async getProfile(@Req() req: any) {
     return await this.usersService.getProfile(req.user.user_id);
   }
 
+  /**
+   * Cập nhật thông tin hồ sơ cá nhân của người dùng hiện tại.
+   */
   @Put('profile')
   async updateProfile(@Req() req: any, @Body() body: any) {
     return await this.usersService.updateProfile(req.user.user_id, body);
   }
 
+  /**
+   * Tải ảnh đại diện mới cho người dùng sau khi kiểm tra giới hạn dung lượng.
+   */
   @Post('avatar')
   @UseInterceptors(FileInterceptor('file'))
   async uploadAvatar(@Req() req: any, @UploadedFile() file: Express.Multer.File) {
@@ -38,16 +50,25 @@ export class UsersController {
     return await this.usersService.uploadAvatar(req.user.user_id, file);
   }
 
+  /**
+   * Gửi mã OTP qua email để xác nhận yêu cầu đổi mật khẩu.
+   */
   @Post('change-password-otp')
   async requestChangePasswordOtp(@Req() req: any) {
     return await this.usersService.sendChangePasswordOtp(req.user.user_id);
   }
 
+  /**
+   * Xác nhận OTP và thay đổi mật khẩu cho tài khoản đang đăng nhập.
+   */
   @Put('change-password')
   async changePassword(@Req() req: any, @Body() dto: ChangePasswordVerifyDto) {
     return await this.usersService.changePassword(req.user.user_id, dto);
   }
 
+  /**
+   * Lấy danh sách người dùng có lọc và phân trang (dành cho Admin/Staff).
+   */
   // Admin Only
   @Roles(RoleCode.ADMIN, RoleCode.STAFF, RoleCode.HOSPITAL_STAFF)
   @Get()
@@ -55,6 +76,9 @@ export class UsersController {
     return await this.usersService.getAllUsers(query);
   }
 
+  /**
+   * Xuất danh sách người dùng ra tệp Excel.
+   */
   @Roles(RoleCode.ADMIN)
   @Get('export')
   async exportExcel(@Query() query: UserFilterDto, @Res() res: Response) {
@@ -64,6 +88,9 @@ export class UsersController {
     res.send(buffer);
   }
 
+  /**
+   * Tải tệp Excel mẫu để nhập danh sách người dùng hàng loạt.
+   */
   @Roles(RoleCode.ADMIN)
   @Get('template')
   async downloadTemplate(@Res() res: Response) {
@@ -73,6 +100,9 @@ export class UsersController {
     res.send(buffer);
   }
 
+  /**
+   * Nhập danh sách tài khoản người dùng từ tệp Excel.
+   */
   @Roles(RoleCode.ADMIN)
   @Post('import')
   @UseInterceptors(FileInterceptor('file'))
@@ -81,24 +111,36 @@ export class UsersController {
     return await this.usersService.importExcel(file.buffer, req.user.user_id);
   }
 
+  /**
+   * Lấy thông tin chi tiết một người dùng theo ID.
+   */
   @Roles(RoleCode.ADMIN, RoleCode.STAFF, RoleCode.HOSPITAL_STAFF)
   @Get(':id')
   async getUserById(@Param('id', ParseIntPipe) id: number) {
     return await this.usersService.getUserById(id);
   }
 
+  /**
+   * Quản trị viên tạo mới tài khoản người dùng.
+   */
   @Roles(RoleCode.ADMIN)
   @Post()
   async createUser(@Body() dto: CreateUserAdminDto) {
     return await this.usersService.createUserAdmin(dto);
   }
 
+  /**
+   * Quản trị viên cập nhật thông tin tài khoản người dùng theo ID.
+   */
   @Roles(RoleCode.ADMIN)
   @Put(':id')
   async updateUser(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateUserAdminDto) {
     return await this.usersService.updateUserAdmin(id, dto);
   }
 
+  /**
+   * Khóa hoặc mở khóa tài khoản người dùng theo ID.
+   */
   @Roles(RoleCode.ADMIN)
   @Put(':id/lock')
   async toggleLockUser(@Param('id', ParseIntPipe) id: number) {

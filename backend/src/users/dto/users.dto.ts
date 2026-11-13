@@ -2,6 +2,9 @@ import { IsEmail, IsNotEmpty, IsString, MinLength, MaxLength, IsOptional, IsInt,
 import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 
+/**
+ * DTO xác thực OTP và đổi mật khẩu mới cho người dùng đang đăng nhập.
+ */
 export class ChangePasswordVerifyDto {
   @ApiProperty({ example: '123456', description: 'Mã OTP' })
   @IsString()
@@ -15,6 +18,9 @@ export class ChangePasswordVerifyDto {
   new_password: string;
 }
 
+/**
+ * DTO thông tin hồ sơ người hiến máu lồng ghép khi quản trị viên tạo hoặc sửa tài khoản.
+ */
 export class DonorProfileInputDto {
   @IsOptional()
   @IsInt()
@@ -65,6 +71,9 @@ export class DonorProfileInputDto {
   is_active?: boolean;
 }
 
+/**
+ * DTO quản trị viên tạo mới tài khoản người dùng kèm vai trò và hồ sơ tùy chọn.
+ */
 export class CreateUserAdminDto {
   @ApiProperty({ example: 'admin@example.com', description: 'Email của tài khoản quản trị' })
   @IsEmail({}, { message: 'Email không hợp lệ' })
@@ -158,6 +167,9 @@ export class CreateUserAdminDto {
   donor_profile?: DonorProfileInputDto;
 }
 
+/**
+ * DTO quản trị viên cập nhật thông tin tài khoản người dùng.
+ */
 export class UpdateUserAdminDto {
   @IsOptional()
   @IsString()

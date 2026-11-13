@@ -3,6 +3,9 @@ import { Type, Transform } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { PaginationDto } from '../../common/pagination.dto';
 
+/**
+ * DTO lọc và phân trang danh sách người dùng theo vai trò và trạng thái hoạt động.
+ */
 export class UserFilterDto extends PaginationDto {
   @ApiPropertyOptional({ description: 'Filter by Role ID' })
   @IsOptional()

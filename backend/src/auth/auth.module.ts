@@ -8,6 +8,9 @@ import { PrismaModule } from '../prisma/prisma.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { NotificationsModule } from '../notifications/notifications.module';
 
+/**
+ * Module xác thực người dùng bằng JWT, quản lý phiên đăng nhập và OTP.
+ */
 @Module({
   imports: [
     PrismaModule,

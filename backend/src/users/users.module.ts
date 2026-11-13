@@ -6,6 +6,9 @@ import { MailModule } from '../mail/mail.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { SystemSettingsModule } from '../system-settings/system-settings.module';
 
+/**
+ * Module quản lý hồ sơ người dùng, ảnh đại diện, đổi mật khẩu và tài khoản quản trị.
+ */
 @Module({
   imports: [CloudinaryModule, MailModule, NotificationsModule, SystemSettingsModule],
   controllers: [UsersController],
