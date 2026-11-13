@@ -2,6 +2,9 @@ import { IsString, IsNotEmpty, IsOptional, IsBoolean, IsInt, IsNumber, Min } fro
 import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 
+/**
+ * DTO tạo mới một nhóm máu trong danh mục.
+ */
 export class CreateBloodTypeDto {
   @ApiProperty({ example: 'O', description: 'Nhóm máu (VD: A, B, AB, O)' })
   @IsString()
@@ -20,6 +23,9 @@ export class CreateBloodTypeDto {
   display_order?: number;
 }
 
+/**
+ * DTO cập nhật thông tin và trạng thái hoạt động của nhóm máu.
+ */
 export class UpdateBloodTypeDto extends CreateBloodTypeDto {
   @ApiProperty({ example: true, description: 'Trạng thái hoạt động', required: false })
   @IsOptional()
@@ -27,6 +33,9 @@ export class UpdateBloodTypeDto extends CreateBloodTypeDto {
   is_active?: boolean;
 }
 
+/**
+ * DTO tạo mới cơ sở y tế trong hệ thống.
+ */
 export class CreateFacilityDto {
   @ApiProperty({ example: 'FAC-001', description: 'Mã cơ sở y tế', required: false })
   @IsOptional()
@@ -100,6 +109,9 @@ export class CreateFacilityDto {
   is_primary?: boolean;
 }
 
+/**
+ * DTO cập nhật thông tin và trạng thái hoạt động của cơ sở y tế.
+ */
 export class UpdateFacilityDto extends CreateFacilityDto {
   @ApiProperty({ example: true, description: 'Trạng thái hoạt động', required: false })
   @IsOptional()
@@ -108,6 +120,9 @@ export class UpdateFacilityDto extends CreateFacilityDto {
 }
 
 // DTOs for Blood Components
+/**
+ * DTO tạo mới thành phần máu (toàn phần, hồng cầu, tiểu cầu, huyết tương).
+ */
 export class CreateBloodComponentDto {
   @ApiProperty({ example: 'WB', description: 'Mã thành phần máu' })
   @IsString()
@@ -125,6 +140,9 @@ export class CreateBloodComponentDto {
   description?: string;
 }
 
+/**
+ * DTO cập nhật thành phần máu.
+ */
 export class UpdateBloodComponentDto extends CreateBloodComponentDto {
   @ApiProperty({ example: true, description: 'Trạng thái', required: false })
   @IsOptional()
@@ -133,6 +151,9 @@ export class UpdateBloodComponentDto extends CreateBloodComponentDto {
 }
 
 // DTOs for Blood Compatibility
+/**
+ * DTO khai báo quy tắc tương thích truyền máu giữa nhóm máu cho và nhận theo thành phần máu.
+ */
 export class CreateBloodCompatibilityDto {
   @ApiProperty({ example: 1, description: 'ID thành phần máu' })
   @IsInt()
@@ -163,9 +184,15 @@ export class CreateBloodCompatibilityDto {
   notes?: string;
 }
 
+/**
+ * DTO cập nhật quy tắc tương thích truyền máu.
+ */
 export class UpdateBloodCompatibilityDto extends CreateBloodCompatibilityDto {}
 
 // DTOs for Donation Interval Rules
+/**
+ * DTO tạo mới quy tắc khoảng cách ngày hiến máu tối thiểu giữa các lần hiến.
+ */
 export class CreateDonationIntervalRuleDto {
   @ApiProperty({ example: 1, description: 'ID thành phần máu' })
   @IsInt()
@@ -192,6 +219,9 @@ export class CreateDonationIntervalRuleDto {
   description?: string;
 }
 
+/**
+ * DTO cập nhật quy tắc khoảng cách ngày hiến máu tối thiểu.
+ */
 export class UpdateDonationIntervalRuleDto extends CreateDonationIntervalRuleDto {
   @ApiProperty({ example: true, description: 'Trạng thái', required: false })
   @IsOptional()

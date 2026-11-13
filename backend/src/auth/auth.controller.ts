@@ -4,16 +4,25 @@ import { RegisterDto, LoginDto, OtpDto, ForgotPasswordDto, ResetPasswordDto, Res
 import { Public } from '../common/decorators';
 import type { Request } from 'express';
 
+/**
+ * Controller xử lý các API xác thực: đăng ký, đăng nhập, OTP, token và khôi phục mật khẩu.
+ */
 @Controller('api/v1/auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
+  /**
+   * Đăng ký tài khoản mới và gửi mã OTP xác thực qua email.
+   */
   @Public()
   @Post('register')
   async register(@Body() dto: RegisterDto) {
     return await this.authService.register(dto);
   }
 
+  /**
+   * Xác thực mã OTP để kích hoạt tài khoản người dùng.
+   */
   @Public()
   @Post('verify-otp')
   @HttpCode(HttpStatus.OK)
@@ -21,6 +30,9 @@ export class AuthController {
     return await this.authService.verifyOtp(dto);
   }
 
+  /**
+   * Gửi lại mã OTP xác thực tới email người dùng.
+   */
   @Public()
   @Post('resend-otp')
   @HttpCode(HttpStatus.OK)
@@ -28,6 +40,9 @@ export class AuthController {
     return await this.authService.resendOtp(dto);
   }
 
+  /**
+   * Đăng nhập hệ thống, ghi nhận IP/thiết bị và trả về cặp JWT token.
+   */
   @Public()
   @Post('login')
   @HttpCode(HttpStatus.OK)
@@ -37,6 +52,9 @@ export class AuthController {
     return await this.authService.login(dto, { ip_address, device_info });
   }
 
+  /**
+   * Cấp mới access token từ refresh token hợp lệ.
+   */
   @Public()
   @Post('refresh-token')
   @HttpCode(HttpStatus.OK)
@@ -44,6 +62,9 @@ export class AuthController {
     return await this.authService.refreshToken(dto.refresh_token);
   }
 
+  /**
+   * Đăng xuất và thu hồi refresh token của phiên hiện tại.
+   */
   @Public()
   @Post('logout')
   @HttpCode(HttpStatus.OK)
@@ -51,6 +72,9 @@ export class AuthController {
     return await this.authService.logout(dto?.refresh_token);
   }
 
+  /**
+   * Gửi mã OTP đặt lại mật khẩu tới email đã đăng ký.
+   */
   @Public()
   @Post('forgot-password')
   @HttpCode(HttpStatus.OK)
@@ -58,6 +82,9 @@ export class AuthController {
     return await this.authService.forgotPassword(dto);
   }
 
+  /**
+   * Xác thực OTP và cập nhật mật khẩu mới cho tài khoản.
+   */
   @Public()
   @Post('reset-password')
   @HttpCode(HttpStatus.OK)

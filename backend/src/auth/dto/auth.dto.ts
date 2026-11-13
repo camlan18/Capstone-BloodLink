@@ -1,6 +1,9 @@
 import { IsEmail, IsNotEmpty, IsString, MinLength, MaxLength, IsOptional } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
+/**
+ * DTO đăng nhập bằng email hoặc tên đăng nhập và mật khẩu.
+ */
 export class LoginDto {
   @ApiProperty({ example: 'user@example.com', description: 'Email hoặc tên đăng nhập' })
   @IsString()
@@ -14,6 +17,9 @@ export class LoginDto {
   password: string;
 }
 
+/**
+ * DTO đăng ký tài khoản người dùng mới.
+ */
 export class RegisterDto {
   @ApiProperty({ example: 'newuser@example.com', description: 'Email đăng ký' })
   @IsEmail({}, { message: 'Email không hợp lệ' })
@@ -38,6 +44,9 @@ export class RegisterDto {
   full_name: string;
 }
 
+/**
+ * DTO xác thực mã OTP gửi qua email.
+ */
 export class OtpDto {
   @ApiProperty({ example: 'user@example.com', description: 'Email để nhận OTP' })
   @IsEmail({}, { message: 'Email không hợp lệ' })
@@ -52,6 +61,9 @@ export class OtpDto {
   otp_code: string;
 }
 
+/**
+ * DTO yêu cầu gửi OTP khôi phục mật khẩu qua email.
+ */
 export class ForgotPasswordDto {
   @ApiProperty({ example: 'user@example.com', description: 'Email khôi phục mật khẩu' })
   @IsEmail({}, { message: 'Email không hợp lệ' })
@@ -59,6 +71,9 @@ export class ForgotPasswordDto {
   email: string;
 }
 
+/**
+ * DTO đặt lại mật khẩu mới sau khi xác thực OTP.
+ */
 export class ResetPasswordDto {
   @ApiProperty({ example: 'user@example.com', description: 'Email của tài khoản' })
   @IsEmail({}, { message: 'Email không hợp lệ' })
@@ -79,6 +94,9 @@ export class ResetPasswordDto {
   new_password: string;
 }
 
+/**
+ * DTO yêu cầu gửi lại mã OTP xác thực email.
+ */
 export class ResendOtpDto {
   @ApiProperty({ example: 'user@example.com', description: 'Email để nhận lại OTP' })
   @IsEmail({}, { message: 'Email không hợp lệ' })
@@ -86,6 +104,9 @@ export class ResendOtpDto {
   email: string;
 }
 
+/**
+ * DTO làm mới hoặc thu hồi access token bằng refresh token.
+ */
 export class RefreshTokenDto {
   @ApiProperty({ example: 'eb14d3153fabd5c926eb...', description: 'Mã Refresh Token' })
   @IsString()
