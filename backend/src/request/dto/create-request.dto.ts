@@ -2,6 +2,9 @@ import { IsInt, IsNotEmpty, IsString, IsPositive, IsBoolean, IsOptional, Max, Mi
 import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 
+/**
+ * DTO tạo mới yêu cầu tiếp nhận máu (dành cho cả cổng công khai lẫn nhân viên/admin tạo hộ).
+ */
 export class CreateRequestDto {
   @ApiProperty({ example: 1, description: 'ID cơ sở y tế yêu cầu' })
   @IsInt()
