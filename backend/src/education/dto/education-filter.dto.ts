@@ -3,8 +3,14 @@ import { Type } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { PaginationDto } from '../../common/pagination.dto';
 
+/**
+ * DTO lọc và phân trang danh mục tài liệu giáo dục.
+ */
 export class EducationCategoryFilterDto extends PaginationDto {}
 
+/**
+ * DTO lọc và phân trang danh sách tài liệu giáo dục theo danh mục, nhóm máu và trạng thái.
+ */
 export class EducationDocumentFilterDto extends PaginationDto {
   @ApiPropertyOptional({ description: 'Lọc theo ID danh mục' })
   @IsOptional()

@@ -1,6 +1,9 @@
 import { IsString, IsOptional, IsInt, MaxLength } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
+/**
+ * DTO tạo mới danh mục tài liệu giáo dục sức khỏe.
+ */
 export class CreateEducationCategoryDto {
   @ApiProperty({ example: 'Kiến thức cơ bản', description: 'Tên danh mục', maxLength: 150 })
   @IsString()
@@ -19,6 +22,9 @@ export class CreateEducationCategoryDto {
   sort_order?: number;
 }
 
+/**
+ * DTO cập nhật thông tin danh mục tài liệu giáo dục sức khỏe.
+ */
 export class UpdateEducationCategoryDto {
   @ApiPropertyOptional({ example: 'Kiến thức cơ bản', description: 'Tên danh mục', maxLength: 150 })
   @IsString()

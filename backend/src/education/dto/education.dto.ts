@@ -2,6 +2,9 @@ import { IsString, IsNotEmpty, IsOptional, IsInt, IsBoolean, MaxLength, Min } fr
 import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 
+/**
+ * DTO tạo mới danh mục tài liệu giáo dục sức khỏe.
+ */
 export class CreateEducationCategoryDto {
   @ApiProperty({ example: 'Hướng dẫn hiến máu', description: 'Tên danh mục' })
   @IsString()
@@ -21,8 +24,14 @@ export class CreateEducationCategoryDto {
   sort_order?: number;
 }
 
+/**
+ * DTO cập nhật danh mục tài liệu giáo dục sức khỏe.
+ */
 export class UpdateEducationCategoryDto extends CreateEducationCategoryDto {}
 
+/**
+ * DTO tạo mới tài liệu giáo dục hiến máu.
+ */
 export class CreateEducationDocumentDto {
   @ApiProperty({ example: 'Hiến máu cứu người', description: 'Tiêu đề' })
   @IsString()
@@ -67,8 +76,14 @@ export class CreateEducationDocumentDto {
   is_published?: boolean;
 }
 
+/**
+ * DTO cập nhật tài liệu giáo dục hiến máu.
+ */
 export class UpdateEducationDocumentDto extends CreateEducationDocumentDto {}
 
+/**
+ * DTO lọc, tìm kiếm và phân trang tài liệu giáo dục.
+ */
 export class EducationFilterDto {
   @IsOptional()
   @IsInt()
