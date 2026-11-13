@@ -2,6 +2,9 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsInt, IsString, IsOptional, IsNotEmpty, IsDateString, Matches, Min } from 'class-validator';
 import { PaginationDto } from '../../common/pagination.dto';
 
+/**
+ * DTO tạo mới lịch tổ chức hiến máu tại một cơ sở y tế.
+ */
 export class CreateScheduleDto {
   @ApiProperty()
   @IsInt()
@@ -40,6 +43,9 @@ export class CreateScheduleDto {
   terms_html?: string;
 }
 
+/**
+ * DTO cập nhật thông tin lịch tổ chức hiến máu.
+ */
 export class UpdateScheduleDto {
   @ApiPropertyOptional()
   @IsInt()
@@ -78,6 +84,9 @@ export class UpdateScheduleDto {
   terms_html?: string;
 }
 
+/**
+ * DTO lọc và phân trang danh sách lịch hiến máu theo cơ sở và ngày.
+ */
 export class ScheduleFilterDto extends PaginationDto {
   @ApiPropertyOptional()
   @IsOptional()
