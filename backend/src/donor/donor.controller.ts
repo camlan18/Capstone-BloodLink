@@ -8,82 +8,130 @@ import { RecordDonationDto, UpdateSlotStatusDto, UpdateDonorProfileDto } from '.
 import type { Response } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
 
+/**
+ * Controller cung cấp API cho người hiến máu và quản trị lượt hiến, chứng nhận tại cơ sở y tế.
+ */
 @Controller('api/v1/donor')
 export class DonorController {
   constructor(private readonly donorService: DonorService) {}
 
+  /**
+   * Đăng ký hồ sơ người hiến máu cho tài khoản hiện tại.
+   */
   @Post('register')
   async registerDonor(@Req() req: any, @Body() data: any) {
     return await this.donorService.registerDonorProfile(req.user.user_id, data);
   }
 
+  /**
+   * Lấy thông tin hồ sơ người hiến máu của tài khoản đang đăng nhập.
+   */
   @Get('profile')
   async getProfile(@Req() req: any) {
     return await this.donorService.getDonorProfile(req.user.user_id);
   }
 
+  /**
+   * Cập nhật thông tin hồ sơ người hiến máu hiện tại.
+   */
   @Put('profile')
   async updateProfile(@Req() req: any, @Body() dto: UpdateDonorProfileDto) {
     return await this.donorService.updateDonorProfile(req.user.user_id, dto);
   }
 
+  /**
+   * Bật hoặc tắt trạng thái sẵn sàng hiến máu của người hiến.
+   */
   @Put('availability')
   async updateAvailability(@Req() req: any, @Body() body: { is_available: boolean }) {
     return await this.donorService.updateAvailability(req.user.user_id, body.is_available);
   }
 
+  /**
+   * Đặt lịch hẹn hiến máu tại cơ sở y tế hoặc phản hồi lời kêu gọi khẩn cấp.
+   */
   @Post('book-slot')
   async bookSlot(@Req() req: any, @Body() dto: BookDonationSlotDto) {
     return await this.donorService.bookDonationSlot(req.user.user_id, dto);
   }
 
+  /**
+   * Hủy một lịch hẹn hiến máu đã đặt theo ID.
+   */
   @Post('cancel-slot/:id')
   async cancelSlot(@Req() req: any, @Param('id', ParseIntPipe) id: number) {
     return await this.donorService.cancelDonationSlot(req.user.user_id, id);
   }
 
+  /**
+   * Lấy danh sách các lịch hẹn hiến máu của người dùng hiện tại.
+   */
   @Get('my-slots')
   async getMySlots(@Req() req: any) {
     return await this.donorService.getMySlots(req.user.user_id);
   }
 
+  /**
+   * Lấy danh sách lịch tổ chức hiến máu công khai theo cơ sở y tế.
+   */
   @Public()
   @Get('schedules')
   async getSchedules(@Query('facilityId') facilityId?: string) {
     return await this.donorService.getSchedules(facilityId ? parseInt(facilityId) : undefined);
   }
 
+  /**
+   * Lấy lịch sử các lần đã hiến máu của người dùng hiện tại.
+   */
   @Get('history')
   async getHistory(@Req() req: any) {
     return await this.donorService.getDonationHistory(req.user.user_id);
   }
 
+  /**
+   * Lấy danh sách các lượt ghép nối hiến máu khẩn cấp liên quan tới người dùng.
+   */
   @Get('my-matches')
   async getMyMatches(@Req() req: any) {
     return await this.donorService.getMyMatches(req.user.user_id);
   }
 
+  /**
+   * Lấy thành tích và huy hiệu đạt được của người hiến máu hiện tại.
+   */
   @Get('achievements')
   async getAchievements(@Req() req: any) {
     return await this.donorService.getDonorAchievements(req.user.user_id);
   }
 
+  /**
+   * Lấy dữ liệu chứng nhận hiến máu theo ID lần hiến của người dùng.
+   */
   @Get('certificate/:donationId')
   async getCertificate(@Req() req: any, @Param('donationId', ParseIntPipe) donationId: number) {
     return await this.donorService.getCertificateData(req.user.user_id, donationId);
   }
 
+  /**
+   * Lấy danh sách chứng nhận hiến máu cá nhân có phân trang.
+   */
   @Get('my-certificates')
   async getMyCertificates(@Req() req: any, @Query() query: PaginationDto) {
     return await this.donorService.getMyCertificates(req.user.user_id, query);
   }
 
+  /**
+   * Tra cứu công khai thông tin chứng nhận hiến máu để xác thực theo ID.
+   */
   @Public()
   @Get('public/certificate/:donationId')
   async getPublicCertificate(@Param('donationId', ParseIntPipe) donationId: number) {
     return await this.donorService.getPublicCertificate(donationId);
   }
 
+  /**
+   * Lấy bảng xếp hạng công khai người hiến máu tiêu biểu theo tìm kiếm và sắp xếp.
+   */
   @Public()
   @Get('public/leaderboard')
   async getPublicLeaderboard(
@@ -103,6 +151,9 @@ export class DonorController {
   }
 
 
+  /**
+   * Lấy danh sách lượt đăng ký hiến máu thuộc phạm vi cơ sở quản lý.
+   */
   // --- FACILITY ADMIN ROUTES ---
   @Roles(RoleCode.ADMIN, RoleCode.STAFF, RoleCode.HOSPITAL_STAFF)
   @Get('slots')
@@ -110,6 +161,9 @@ export class DonorController {
     return await this.donorService.getSlots(query, req.user);
   }
 
+  /**
+   * Xuất danh sách lượt hiến máu ra tệp Excel.
+   */
   @Roles(RoleCode.ADMIN, RoleCode.STAFF, RoleCode.HOSPITAL_STAFF)
   @Get('slots/export')
   async exportExcel(@Query() query: any, @Res() res: Response, @Req() req: any) {
@@ -119,6 +173,9 @@ export class DonorController {
     res.send(buffer);
   }
 
+  /**
+   * Tải tệp Excel mẫu để nhập dữ liệu hiến máu hàng loạt.
+   */
   @Roles(RoleCode.ADMIN, RoleCode.STAFF, RoleCode.HOSPITAL_STAFF)
   @Get('slots/template')
   async downloadTemplate(@Res() res: Response) {
@@ -128,6 +185,9 @@ export class DonorController {
     res.send(buffer);
   }
 
+  /**
+   * Nhập dữ liệu lượt hiến máu hàng loạt từ tệp Excel tải lên.
+   */
   @Roles(RoleCode.ADMIN, RoleCode.STAFF, RoleCode.HOSPITAL_STAFF)
   @Post('slots/import')
   @UseInterceptors(FileInterceptor('file'))
@@ -136,24 +196,36 @@ export class DonorController {
     return await this.donorService.importExcel(file.buffer, req.user);
   }
 
+  /**
+   * Nhân viên y tế tạo trực tiếp lịch hẹn hiến máu cho người hiến.
+   */
   @Roles(RoleCode.ADMIN, RoleCode.STAFF, RoleCode.HOSPITAL_STAFF)
   @Post('slots')
   async createSlot(@Body() dto: any, @Req() req: any) {
     return await this.donorService.createAdminSlot(dto, req.user);
   }
 
+  /**
+   * Cập nhật trạng thái một lượt đặt lịch hiến máu theo ID.
+   */
   @Roles(RoleCode.ADMIN, RoleCode.STAFF, RoleCode.HOSPITAL_STAFF)
   @Put('slots/:id/status')
   async updateSlotStatus(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateSlotStatusDto, @Req() req: any) {
     return await this.donorService.updateSlotStatus(id, dto, req.user);
   }
 
+  /**
+   * Ghi nhận kết quả hiến máu hoàn thành và cập nhật lịch sử/túi máu.
+   */
   @Roles(RoleCode.ADMIN, RoleCode.STAFF, RoleCode.HOSPITAL_STAFF)
   @Post('donations')
   async recordDonation(@Req() req: any, @Body() dto: RecordDonationDto) {
     return await this.donorService.recordDonation(req.user, dto);
   }
 
+  /**
+   * Lấy danh sách chứng nhận hiến máu chờ duyệt hoặc đã xử lý.
+   */
   // --- CERTIFICATE MANAGEMENT ---
   @Roles(RoleCode.ADMIN, RoleCode.STAFF, RoleCode.HOSPITAL_STAFF)
   @Get('certificates')
@@ -161,12 +233,18 @@ export class DonorController {
     return await this.donorService.listCertificates(query, req.user);
   }
 
+  /**
+   * Phê duyệt cấp chứng nhận hiến máu cho một lần hiến theo ID.
+   */
   @Roles(RoleCode.ADMIN, RoleCode.STAFF, RoleCode.HOSPITAL_STAFF)
   @Put('certificates/:id/approve')
   async approveCertificate(@Param('id', ParseIntPipe) id: number, @Req() req: any) {
     return await this.donorService.approveCertificate(id, req.user);
   }
 
+  /**
+   * Từ chối cấp chứng nhận hiến máu kèm lý do.
+   */
   @Roles(RoleCode.ADMIN, RoleCode.STAFF, RoleCode.HOSPITAL_STAFF)
   @Put('certificates/:id/reject')
   async rejectCertificate(@Param('id', ParseIntPipe) id: number, @Body() body: { reason: string }, @Req() req: any) {

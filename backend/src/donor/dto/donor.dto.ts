@@ -2,6 +2,9 @@ import { IsString, IsNotEmpty, IsOptional, IsInt, IsBoolean, IsDateString, IsNum
 import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 
+/**
+ * DTO đặt lịch hiến máu theo lịch sẵn có, yêu cầu khẩn cấp hoặc đăng ký tự do tại cơ sở y tế.
+ */
 export class BookDonationSlotDto {
   @ApiProperty({ example: 1, description: 'ID của lịch hiến máu (Facility Schedule)', required: false })
   @IsInt()
@@ -39,6 +42,9 @@ export class BookDonationSlotDto {
   is_health_cleared?: boolean;
 }
 
+/**
+ * DTO cập nhật trạng thái một lượt đặt lịch hiến máu (COMPLETED, CANCELLED, NO_SHOW,...).
+ */
 export class UpdateSlotStatusDto {
   @ApiProperty({ example: 'COMPLETED', description: 'Trạng thái slot hiến máu (VD: COMPLETED, CANCELLED)' })
   @IsString()
@@ -52,6 +58,9 @@ export class UpdateSlotStatusDto {
   notes?: string;
 }
 
+/**
+ * DTO ghi nhận kết quả một lần hiến máu thực tế tại cơ sở y tế.
+ */
 export class RecordDonationDto {
   @ApiProperty({ example: 1, description: 'ID của cơ sở y tế' })
   @IsInt()
@@ -98,6 +107,9 @@ export class RecordDonationDto {
   request_code?: string;
 }
 
+/**
+ * DTO cập nhật hồ sơ cá nhân và thông số sức khỏe của người hiến máu.
+ */
 export class UpdateDonorProfileDto {
   @ApiProperty({ example: 'Nguyễn Văn A', description: 'Họ tên', required: false })
   @IsString()
