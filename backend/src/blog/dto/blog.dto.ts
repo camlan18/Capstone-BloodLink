@@ -2,6 +2,9 @@ import { IsString, IsNotEmpty, IsOptional, IsInt, IsBoolean, MaxLength } from 'c
 import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 
+/**
+ * DTO tạo mới bài viết blog kèm tiêu đề, slug, nội dung và danh mục.
+ */
 export class CreatePostDto {
   @ApiProperty({ example: 'Hiến máu cứu người', description: 'Tiêu đề bài viết' })
   @IsString()
@@ -40,8 +43,14 @@ export class CreatePostDto {
   is_published?: boolean;
 }
 
+/**
+ * DTO cập nhật bài viết blog (kế thừa toàn bộ trường kiểm tra từ CreatePostDto).
+ */
 export class UpdatePostDto extends CreatePostDto {}
 
+/**
+ * DTO thêm bình luận (có hỗ trợ trả lời bình luận cha và bình luận của khách).
+ */
 export class AddCommentDto {
   @ApiProperty({ example: 'Bài viết rất hay', description: 'Nội dung bình luận' })
   @IsString()
@@ -61,6 +70,9 @@ export class AddCommentDto {
   parent_comment_id?: number;
 }
 
+/**
+ * DTO tạo mới danh mục bài viết blog.
+ */
 export class CreateCategoryDto {
   @ApiProperty({ example: 'Tin tức', description: 'Tên danh mục' })
   @IsString()
@@ -74,4 +86,7 @@ export class CreateCategoryDto {
   slug: string;
 }
 
+/**
+ * DTO cập nhật thông tin danh mục bài viết blog.
+ */
 export class UpdateCategoryDto extends CreateCategoryDto {}

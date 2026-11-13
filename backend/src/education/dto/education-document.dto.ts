@@ -1,6 +1,9 @@
 import { IsString, IsOptional, IsInt, MaxLength, IsBoolean, IsNotEmpty } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
+/**
+ * DTO tạo mới tài liệu giáo dục hiến máu.
+ */
 export class CreateEducationDocumentDto {
   @ApiProperty({ example: 1, description: 'ID danh mục' })
   @IsInt()
@@ -47,6 +50,9 @@ export class CreateEducationDocumentDto {
   is_published?: boolean;
 }
 
+/**
+ * DTO cập nhật nội dung tài liệu giáo dục hiến máu.
+ */
 export class UpdateEducationDocumentDto {
   @ApiPropertyOptional({ example: 1, description: 'ID danh mục' })
   @IsInt()
