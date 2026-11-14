@@ -10,6 +10,9 @@ import { OtpTypeCode, DestinationType } from '../common/enums';
 import { ExcelUtil } from '../common/utils/excel.util';
 import { NotificationsService, NotificationType } from '../notifications/notifications.service';
 
+/**
+ * Service quản lý hồ sơ người dùng, ảnh đại diện, đổi mật khẩu OTP, quản trị tài khoản và nhập/xuất Excel.
+ */
 @Injectable()
 export class UsersService {
   constructor(
@@ -19,6 +22,9 @@ export class UsersService {
     private readonly notificationsService: NotificationsService,
   ) {}
 
+  /**
+   * Lấy thông tin hồ sơ chi tiết của người dùng kèm vai trò, nhóm máu và cơ sở y tế.
+   */
   async getProfile(userId: number) {
     const user = await this.prisma.users.findUnique({
       where: { user_id: userId },
@@ -35,6 +41,9 @@ export class UsersService {
     return user;
   }
 
+  /**
+   * Cập nhật thông tin hồ sơ cá nhân của người dùng đang đăng nhập.
+   */
   async updateProfile(userId: number, data: any) {
     this.validateUserPayload(data, true);
 
@@ -63,6 +72,9 @@ export class UsersService {
     return updated;
   }
 
+  /**
+   * Tải ảnh đại diện mới lên Cloudinary và cập nhật `avatar_url` cho người dùng.
+   */
   async uploadAvatar(userId: number, file: Express.Multer.File) {
     if (!file) throw new BadRequestException('Vui lòng chọn ảnh');
     const result = await this.cloudinary.uploadFile(file);
@@ -75,6 +87,9 @@ export class UsersService {
   }
 
   // Admin APIs
+  /**
+   * Lấy danh sách người dùng có lọc theo vai trò, trạng thái hoạt động, từ khóa tìm kiếm và phân trang.
+   */
   async getAllUsers(query: UserFilterDto) {
     const page = query.page || 1;
     const limit = query.limit || 20;
@@ -137,6 +152,9 @@ export class UsersService {
     };
   }
 
+  /**
+   * Tạo và gửi mã OTP qua email để xác nhận thao tác đổi mật khẩu của người dùng.
+   */
   async sendChangePasswordOtp(userId: number) {
     const user = await this.prisma.users.findUnique({ where: { user_id: userId } });
     if (!user) throw new NotFoundException('User không tồn tại');
@@ -179,6 +197,9 @@ export class UsersService {
     return { message: 'Đã gửi mã OTP đổi mật khẩu vào email của bạn.' };
   }
 
+  /**
+   * Kiểm tra OTP đổi mật khẩu và cập nhật mật khẩu mới đã băm.
+   */
   async changePassword(userId: number, dto: ChangePasswordVerifyDto) {
     const user = await this.prisma.users.findUnique({ where: { user_id: userId } });
     if (!user) throw new NotFoundException('User không tồn tại');
@@ -232,6 +253,9 @@ export class UsersService {
     return { message: 'Đổi mật khẩu thành công' };
   }
 
+  /**
+   * Kiểm tra ràng buộc dữ liệu đầu vào khi quản trị viên tạo mới hoặc cập nhật tài khoản người dùng.
+   */
   private validateUserPayload(dto: any, isUpdate = false) {
     // 1. Họ và tên
     if (dto.full_name !== undefined) {
@@ -343,6 +367,9 @@ export class UsersService {
     }
   }
 
+  /**
+   * Quản trị viên tạo mới tài khoản người dùng kèm hồ sơ hiến máu tùy chọn.
+   */
   async createUserAdmin(dto: CreateUserAdminDto) {
     this.validateUserPayload(dto, false);
 
@@ -410,6 +437,9 @@ export class UsersService {
     return user;
   }
 
+  /**
+   * Lấy thông tin chi tiết một người dùng theo ID phục vụ màn hình quản trị.
+   */
   async getUserById(userId: number) {
     const user = await this.prisma.users.findUnique({
       where: { user_id: userId },
@@ -432,6 +462,9 @@ export class UsersService {
     return user;
   }
 
+  /**
+   * Quản trị viên cập nhật thông tin tài khoản, vai trò, cơ sở và hồ sơ hiến máu của người dùng.
+   */
   async updateUserAdmin(userId: number, dto: UpdateUserAdminDto) {
     this.validateUserPayload(dto, true);
 
@@ -521,6 +554,9 @@ export class UsersService {
     return user;
   }
 
+  /**
+   * Đảo trạng thái khóa/mở khóa (`is_active`) của một tài khoản người dùng.
+   */
   async toggleLockUser(userId: number) {
     const user = await this.prisma.users.findUnique({ where: { user_id: userId }, include: { role: true } });
     if (!user) throw new NotFoundException('User không tồn tại');
@@ -537,6 +573,9 @@ export class UsersService {
 
   // --- EXCEL FEATURE ---
 
+  /**
+   * Xuất danh sách tài khoản người dùng ra tệp Excel.
+   */
   async exportExcel(query: any): Promise<Buffer> {
     const list = await this.getAllUsers({ ...query, limit: 10000 });
     const data = list.data.map((item: any) => ({
@@ -553,6 +592,9 @@ export class UsersService {
     return ExcelUtil.generateExcel(data, 'NguoiDung');
   }
 
+  /**
+   * Tạo tệp Excel mẫu để nhập danh sách người dùng hàng loạt.
+   */
   async getTemplate(): Promise<Buffer> {
     const headers = [
       'Email',
@@ -568,6 +610,9 @@ export class UsersService {
     return ExcelUtil.generateTemplate(headers, 'Template_NguoiDung');
   }
 
+  /**
+   * Đọc tệp Excel tải lên để nhập hàng loạt tài khoản người dùng mới.
+   */
   async importExcel(buffer: Buffer, staffId: number) {
     const data = ExcelUtil.parseExcel(buffer);
     let success = 0;

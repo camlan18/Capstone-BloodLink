@@ -10,10 +10,16 @@ import {
 import { MasterDataFilterDto } from './dto/master-data-filter.dto';
 import { ExcelUtil } from '../common/utils/excel.util';
 
+/**
+ * Service quản lý danh mục dữ liệu chuẩn: thành phần máu, nhóm máu, tương thích truyền máu, cơ sở y tế, địa giới hành chính và quy tắc hiến máu.
+ */
 @Injectable()
 export class MasterDataService {
   constructor(private readonly prisma: PrismaService) {}
 
+  /**
+   * Lấy danh sách thành phần máu có hỗ trợ tìm kiếm, lọc trạng thái và phân trang.
+   */
   async getBloodComponents(query?: MasterDataFilterDto) {
     if (!query || Object.keys(query).length === 0) {
       // Return all active components without pagination for dropdowns if no query provided
@@ -51,6 +57,9 @@ export class MasterDataService {
     return { data, meta: { total, page, limit, totalPages: Math.ceil(total / limit) } };
   }
 
+  /**
+   * Thêm mới thành phần máu vào danh mục.
+   */
   async createBloodComponent(dto: CreateBloodComponentDto) {
     const exists = await this.prisma.blood_components.findFirst({
       where: { component_code: dto.component_code }
@@ -66,6 +75,9 @@ export class MasterDataService {
     });
   }
 
+  /**
+   * Cập nhật thông tin thành phần máu theo ID.
+   */
   async updateBloodComponent(id: number, dto: UpdateBloodComponentDto) {
     return await this.prisma.blood_components.update({
       where: { component_id: id },
@@ -78,6 +90,9 @@ export class MasterDataService {
     });
   }
 
+  /**
+   * Xóa thành phần máu theo ID.
+   */
   async deleteBloodComponent(id: number) {
     return await this.prisma.blood_components.update({
       where: { component_id: id },
@@ -85,12 +100,18 @@ export class MasterDataService {
     });
   }
 
+  /**
+   * Lấy danh sách mức độ khẩn cấp sắp xếp theo thứ tự ưu tiên.
+   */
   async getUrgencyLevels() {
     return await this.prisma.urgency_levels.findMany({
       orderBy: { priority_level: 'asc' },
     });
   }
 
+  /**
+   * Lấy danh sách nhóm máu có lọc trạng thái và phân trang.
+   */
   async getBloodTypes(query: MasterDataFilterDto) {
     const page = query.page || 1;
     const limit = query.limit || 20;
@@ -119,6 +140,9 @@ export class MasterDataService {
     return { data, meta: { total, page, limit, totalPages: Math.ceil(total / limit) } };
   }
 
+  /**
+   * Lấy toàn bộ danh sách tỉnh/thành phố sắp xếp theo tên.
+   */
   async getProvinces() {
     return await this.prisma.provinces.findMany({
       orderBy: { province_name: 'asc' },
@@ -127,6 +151,9 @@ export class MasterDataService {
 
 
 
+  /**
+   * Lấy danh sách xã/phường thuộc một tỉnh/thành phố theo `provinceId`.
+   */
   async getWards(provinceId: number) {
     return await this.prisma.wards.findMany({
       where: { province_id: provinceId },
@@ -134,6 +161,9 @@ export class MasterDataService {
     });
   }
 
+  /**
+   * Lấy danh sách cơ sở y tế có tìm kiếm, lọc trạng thái và phân trang.
+   */
   async getFacilities(query: MasterDataFilterDto) {
     const page = query.page || 1;
     const limit = query.limit || 20;
@@ -165,6 +195,9 @@ export class MasterDataService {
     return { data, meta: { total, page, limit, totalPages: Math.ceil(total / limit) } };
   }
 
+  /**
+   * Lấy danh sách vai trò người dùng đang kích hoạt trong hệ thống.
+   */
   async getRoles() {
     return await this.prisma.roles.findMany({
       where: { is_active: true },
@@ -173,6 +206,9 @@ export class MasterDataService {
 
   // --- ADMIN ROUTES ---
 
+  /**
+   * Tạo mới một nhóm máu trong danh mục.
+   */
   async createBloodType(dto: CreateBloodTypeDto) {
     const exists = await this.prisma.blood_types.findFirst({
       where: { abo: dto.blood_group, rh_factor: dto.rh_factor }
@@ -189,6 +225,9 @@ export class MasterDataService {
     });
   }
 
+  /**
+   * Cập nhật thông tin và trạng thái nhóm máu theo ID.
+   */
   async updateBloodType(id: number, dto: UpdateBloodTypeDto) {
     return await this.prisma.blood_types.update({
       where: { blood_type_id: id },
@@ -201,6 +240,9 @@ export class MasterDataService {
     });
   }
 
+  /**
+   * Lấy chi tiết cơ sở y tế kèm tỉnh/thành phố và xã/phường theo ID.
+   */
   async getFacilityById(id: number) {
     const facility = await this.prisma.medical_facilities.findUnique({
       where: { facility_id: id },
@@ -210,6 +252,9 @@ export class MasterDataService {
     return facility;
   }
 
+  /**
+   * Tạo mới cơ sở y tế trong hệ thống.
+   */
   async createFacility(dto: CreateFacilityDto) {
     const facilityCode = dto.facility_code || `FAC-${Date.now()}`;
     const exists = await this.prisma.medical_facilities.findUnique({ where: { facility_code: facilityCode } });
@@ -230,6 +275,9 @@ export class MasterDataService {
     });
   }
 
+  /**
+   * Cập nhật thông tin và trạng thái cơ sở y tế theo ID.
+   */
   async updateFacility(id: number, dto: UpdateFacilityDto) {
     if (dto.is_primary) {
       await this.prisma.medical_facilities.updateMany({
@@ -247,6 +295,9 @@ export class MasterDataService {
     });
   }
 
+  /**
+   * Xóa cơ sở y tế theo ID.
+   */
   async deleteFacility(id: number) {
     return await this.prisma.medical_facilities.update({
       where: { facility_id: id },
@@ -254,6 +305,9 @@ export class MasterDataService {
     });
   }
 
+  /**
+   * Lấy thông tin cơ sở y tế gắn với tài khoản nhân viên đang đăng nhập.
+   */
   async getMyFacility(user: any) {
     let targetFacilityId = user.facility_id;
     if (!targetFacilityId) {
@@ -275,6 +329,9 @@ export class MasterDataService {
     return facility;
   }
 
+  /**
+   * Cập nhật ảnh con dấu và chữ ký xác nhận cho cơ sở y tế.
+   */
   async updateFacilitySealSignature(id: number, dto: any, user: any) {
     if (user.role_code === 'HOSPITAL_STAFF' && user.facility_id !== id) {
       throw new ForbiddenException('Bạn chỉ có quyền cập nhật con dấu và chữ ký của cơ sở y tế mình trực thuộc');
@@ -296,6 +353,9 @@ export class MasterDataService {
     });
   }
 
+  /**
+   * Xuất danh sách cơ sở y tế ra tệp Excel.
+   */
   // --- EXCEL FACILITIES ---
   async exportFacilitiesExcel(query: any): Promise<Buffer> {
     const list = await this.getFacilities({ ...query, limit: 10000 });
@@ -313,6 +373,9 @@ export class MasterDataService {
     return ExcelUtil.generateExcel(data, 'CoSoYTe');
   }
 
+  /**
+   * Tạo tệp Excel mẫu để nhập danh sách cơ sở y tế hàng loạt.
+   */
   async getFacilitiesTemplate(): Promise<Buffer> {
     const headers = [
       'Mã cơ sở',
@@ -327,6 +390,9 @@ export class MasterDataService {
     return ExcelUtil.generateTemplate(headers, 'Template_CoSoYTe');
   }
 
+  /**
+   * Đọc tệp Excel tải lên và nhập hàng loạt cơ sở y tế vào hệ thống.
+   */
   async importFacilitiesExcel(buffer: Buffer) {
     const data = ExcelUtil.parseExcel(buffer);
     let success = 0;
@@ -374,6 +440,9 @@ export class MasterDataService {
     return { message: `Import hoàn tất. Thành công: ${success}, Thất bại/Bỏ qua: ${failed}` };
   }
 
+  /**
+   * Xóa nhóm máu theo ID.
+   */
   async deleteBloodType(id: number) {
     return await this.prisma.blood_types.update({
       where: { blood_type_id: id },
@@ -381,6 +450,9 @@ export class MasterDataService {
     });
   }
 
+  /**
+   * Kiểm tra khả năng truyền máu tương thích giữa nhóm máu người hiến, người nhận và thành phần máu.
+   */
   // B17: Blood Compatibility Checker
   async checkCompatibility(donorBloodTypeId: number, recipientBloodTypeId: number, componentId: number) {
     const compatibility = await this.prisma.blood_compatibility.findFirst({
@@ -431,6 +503,9 @@ export class MasterDataService {
     return { is_compatible: isCompatible };
   }
 
+  /**
+   * Lấy danh sách quy tắc tương thích truyền máu có phân trang.
+   */
   // --- Blood Compatibility ---
   async getBloodCompatibilities(query: MasterDataFilterDto) {
     const page = query.page || 1;
@@ -455,6 +530,9 @@ export class MasterDataService {
     return { data, meta: { total, page, limit, totalPages: Math.ceil(total / limit) } };
   }
 
+  /**
+   * Tạo mới quy tắc tương thích truyền máu.
+   */
   async createBloodCompatibility(dto: CreateBloodCompatibilityDto) {
     const existing = await this.prisma.blood_compatibility.findFirst({
       where: {
@@ -479,6 +557,9 @@ export class MasterDataService {
     });
   }
 
+  /**
+   * Cập nhật quy tắc tương thích truyền máu theo ID.
+   */
   async updateBloodCompatibility(id: number, dto: UpdateBloodCompatibilityDto) {
     const existing = await this.prisma.blood_compatibility.findFirst({
       where: {
@@ -505,12 +586,18 @@ export class MasterDataService {
     });
   }
 
+  /**
+   * Xóa quy tắc tương thích truyền máu theo ID.
+   */
   async deleteBloodCompatibility(id: number) {
     return await this.prisma.blood_compatibility.delete({
       where: { compatibility_id: id }
     });
   }
 
+  /**
+   * Lấy danh sách quy tắc khoảng cách ngày giữa các lần hiến máu có phân trang.
+   */
   // --- Donation Interval Rules ---
   async getDonationIntervalRules(query: MasterDataFilterDto) {
     const page = query.page || 1;
@@ -535,6 +622,9 @@ export class MasterDataService {
     return { data, meta: { total, page, limit, totalPages: Math.ceil(total / limit) } };
   }
 
+  /**
+   * Tạo mới quy tắc khoảng cách ngày tối thiểu giữa các lần hiến máu.
+   */
   async createDonationIntervalRule(dto: CreateDonationIntervalRuleDto) {
     try {
       return await this.prisma.donation_interval_rules.create({
@@ -551,6 +641,9 @@ export class MasterDataService {
     }
   }
 
+  /**
+   * Cập nhật quy tắc khoảng cách ngày hiến máu tối thiểu theo ID.
+   */
   async updateDonationIntervalRule(id: number, dto: UpdateDonationIntervalRuleDto) {
     return await this.prisma.donation_interval_rules.update({
       where: { rule_id: id },
@@ -564,6 +657,9 @@ export class MasterDataService {
     });
   }
 
+  /**
+   * Xóa quy tắc khoảng cách ngày hiến máu tối thiểu theo ID.
+   */
   async deleteDonationIntervalRule(id: number) {
     return await this.prisma.donation_interval_rules.update({
       where: { rule_id: id },
