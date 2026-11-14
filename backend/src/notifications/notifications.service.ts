@@ -9,10 +9,16 @@ export enum NotificationType {
   SYSTEM = 'SYSTEM',
 }
 
+/**
+ * Service quản lý gửi thông báo đến người dùng, thông báo cho quản trị viên và cập nhật trạng thái đã đọc.
+ */
 @Injectable()
 export class NotificationsService {
   constructor(private prisma: PrismaService) {}
 
+  /**
+   * Tạo hàng loạt bản ghi thông báo chưa đọc cho danh sách `user_ids`.
+   */
   async createNotification(dto: CreateNotificationDto) {
     if (!dto.user_ids || dto.user_ids.length === 0) {
       throw new Error('Cần chọn ít nhất 1 người dùng để gửi thông báo');
@@ -35,6 +41,9 @@ export class NotificationsService {
     return { message: `Đã gửi thành công ${result.count} thông báo` };
   }
 
+  /**
+   * Gửi thông báo hệ thống tới tất cả tài khoản ADMIN đang hoạt động.
+   */
   async notifyAdmins(title: string, message: string, type: string = NotificationType.SYSTEM, reference_type?: string, reference_id?: number) {
     const admins = await this.prisma.users.findMany({
       where: {
@@ -58,6 +67,9 @@ export class NotificationsService {
     }
   }
 
+  /**
+   * Lấy danh sách thông báo có phân trang và lọc theo người dùng, loại thông báo hoặc từ khóa.
+   */
   async getNotifications(query: any) {
     const page = Number(query.page) || 1;
     const limit = Number(query.limit) || 20;
@@ -92,6 +104,9 @@ export class NotificationsService {
     };
   }
 
+  /**
+   * Xóa một thông báo theo ID.
+   */
   async deleteNotification(id: number) {
     const notif = await this.prisma.notifications.findUnique({ where: { notification_id: id } });
     if (!notif) throw new NotFoundException('Không tìm thấy thông báo');
@@ -99,6 +114,9 @@ export class NotificationsService {
     return await this.prisma.notifications.delete({ where: { notification_id: id } });
   }
 
+  /**
+   * Đánh dấu một thông báo là đã đọc và lưu thời điểm đọc.
+   */
   async markAsRead(id: number) {
     return await this.prisma.notifications.update({
       where: { notification_id: id },
@@ -106,6 +124,9 @@ export class NotificationsService {
     });
   }
 
+  /**
+   * Đếm số lượng thông báo chưa đọc của một người dùng.
+   */
   async getUnreadCount(userId: number) {
     const count = await this.prisma.notifications.count({
       where: {
@@ -116,6 +137,9 @@ export class NotificationsService {
     return { unread_count: count };
   }
 
+  /**
+   * Đánh dấu tất cả thông báo chưa đọc của người dùng là đã đọc.
+   */
   async markAllAsRead(userId: number) {
     const result = await this.prisma.notifications.updateMany({
       where: {

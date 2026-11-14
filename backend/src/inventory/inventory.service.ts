@@ -4,6 +4,9 @@ import { PrismaService } from '../prisma/prisma.service';
 import { ExcelUtil } from '../common/utils/excel.util';
 import { NotificationsService, NotificationType } from '../notifications/notifications.service';
 
+/**
+ * Service quản lý nghiệp vụ kho máu: nhập túi máu, cập nhật, hủy, điều chuyển nhanh, nhập/xuất Excel và cron đánh dấu hết hạn.
+ */
 @Injectable()
 export class InventoryService {
   private readonly logger = new Logger(InventoryService.name);
@@ -13,6 +16,9 @@ export class InventoryService {
     private readonly notificationsService: NotificationsService,
   ) { }
 
+  /**
+   * Tiếp nhận một túi máu mới vào kho, kiểm tra trùng `bag_code` và ghi nhận giao dịch kho.
+   */
   async receiveBlood(dto: any, user: any) {
     const facility_id = user.role_code === 'HOSPITAL_STAFF' ? user.facility_id : dto.facility_id;
     if (!facility_id) throw new BadRequestException('Cơ sở y tế không được để trống');
@@ -56,6 +62,9 @@ export class InventoryService {
     });
   }
 
+  /**
+   * Cập nhật thông tin chi tiết túi máu trong kho (kiểm tra quyền theo cơ sở của HOSPITAL_STAFF).
+   */
   async updateBlood(inventoryId: number, dto: any, user: any) {
     const inventory = await this.prisma.blood_inventory.findUnique({
       where: { inventory_id: inventoryId },
@@ -196,6 +205,9 @@ export class InventoryService {
     return stats;
   }
 
+  /**
+   * Lấy danh sách túi máu trong kho có lọc theo cơ sở, nhóm máu, thành phần, trạng thái và tìm kiếm.
+   */
   async getInventoryList(query: any, user: any) {
     const page = Number(query.page) || 1;
     const limit = Number(query.limit) || 20;
@@ -234,6 +246,9 @@ export class InventoryService {
 
   // --- EXCEL FEATURE ---
 
+  /**
+   * Xuất danh sách tồn kho máu hiện tại ra tệp Excel.
+   */
   async exportExcel(query: any, user: any): Promise<Buffer> {
     const list = await this.getInventoryList({ ...query, limit: 10000 }, user);
     const data = list.data.map((item: any) => ({
@@ -249,6 +264,9 @@ export class InventoryService {
     return ExcelUtil.generateExcel(data, 'KhoMau');
   }
 
+  /**
+   * Tạo tệp Excel mẫu để nhập kho máu hàng loạt.
+   */
   async getTemplate(): Promise<Buffer> {
     const headers = [
       'Mã cơ sở (ID)',
@@ -262,6 +280,9 @@ export class InventoryService {
     return ExcelUtil.generateTemplate(headers, 'Template_KhoMau');
   }
 
+  /**
+   * Đọc file Excel tải lên để nhập hàng loạt túi máu vào kho.
+   */
   async importExcel(buffer: Buffer, staffId: number) {
     const data = ExcelUtil.parseExcel(buffer);
     let success = 0;
@@ -328,6 +349,9 @@ export class InventoryService {
     return { message: `Import hoàn tất. Thành công: ${success}, Thất bại/Bỏ qua: ${failed}` };
   }
 
+  /**
+   * Cron job lúc 0h hằng ngày tự động chuyển các túi máu đã quá `expiry_date` sang trạng thái EXPIRED.
+   */
   // --- CRON JOB: Tự động đánh dấu túi máu hết hạn ---
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
   async handleCronExpireInventory() {
