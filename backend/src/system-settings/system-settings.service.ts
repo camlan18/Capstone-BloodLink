@@ -2,10 +2,16 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { UpsertSettingDto } from './dto/system-settings.dto';
 
+/**
+ * Service quản lý đọc, tạo/cập nhật và xóa các tham số cấu hình hệ thống.
+ */
 @Injectable()
 export class SystemSettingsService {
   constructor(private prisma: PrismaService) {}
 
+  /**
+   * Lấy danh sách cấu hình hệ thống có phân trang và tìm kiếm theo khóa hoặc mô tả.
+   */
   async getSettings(query: any) {
     const page = Number(query.page) || 1;
     const limit = Number(query.limit) || 50;
@@ -35,6 +41,9 @@ export class SystemSettingsService {
     };
   }
 
+  /**
+   * Tạo mới hoặc cập nhật giá trị cấu hình theo `setting_key`.
+   */
   async upsertSetting(dto: UpsertSettingDto) {
     const existing = await this.prisma.system_settings.findUnique({
       where: { setting_key: dto.setting_key }
@@ -61,6 +70,9 @@ export class SystemSettingsService {
     }
   }
 
+  /**
+   * Xóa một cấu hình hệ thống theo ID sau khi kiểm tra tồn tại.
+   */
   async deleteSetting(id: number) {
     const setting = await this.prisma.system_settings.findUnique({ where: { setting_id: id } });
     if (!setting) throw new NotFoundException('Không tìm thấy cấu hình này');
@@ -68,6 +80,9 @@ export class SystemSettingsService {
     return await this.prisma.system_settings.delete({ where: { setting_id: id } });
   }
 
+  /**
+   * Tra cứu giá trị chuỗi của một khóa cấu hình, trả về `defaultValue` nếu không tìm thấy.
+   */
   async getSettingValue(key: string, defaultValue: string): Promise<string> {
     const setting = await this.prisma.system_settings.findUnique({
       where: { setting_key: key }

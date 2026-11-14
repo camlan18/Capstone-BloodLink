@@ -2,10 +2,16 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ExcelUtil } from '../common/utils/excel.util';
 
+/**
+ * Service tổng hợp số liệu thống kê tổng quan và xuất báo cáo Excel cho trang Dashboard.
+ */
 @Injectable()
 export class DashboardService {
   constructor(private readonly prisma: PrismaService) { }
 
+  /**
+   * Tính toán và tổng hợp số liệu thống kê tồn kho, yêu cầu máu, lượt hiến và biểu đồ theo khoảng thời gian.
+   */
   async getStats(startDateStr?: string, endDateStr?: string, facilityIdStr?: string, user?: any) {
     if (user?.role_code === 'MODERATOR') {
       const postsCount = await this.prisma.blog_posts.count();
@@ -260,6 +266,9 @@ export class DashboardService {
     };
   }
 
+  /**
+   * Xuất báo cáo tổng hợp dashboard ra file Excel dựa trên bộ lọc ngày và cơ sở y tế.
+   */
   // B16: Automated Reports
   async exportReport(startDateStr?: string, endDateStr?: string, facilityIdStr?: string, user?: any) {
     const stats = await this.getStats(startDateStr, endDateStr, facilityIdStr, user);
