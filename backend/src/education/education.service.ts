@@ -8,10 +8,16 @@ import {
   EducationFilterDto
 } from './dto/education.dto';
 
+/**
+ * Service quản lý danh mục và tài liệu giáo dục kiến thức hiến máu.
+ */
 @Injectable()
 export class EducationService {
   constructor(private readonly prisma: PrismaService) {}
 
+  /**
+   * Lấy danh sách danh mục tài liệu giáo dục theo thứ tự hiển thị (`sort_order`).
+   */
   // --- CATEGORIES ---
   async getCategories() {
     return await this.prisma.education_document_categories.findMany({
@@ -19,6 +25,9 @@ export class EducationService {
     });
   }
 
+  /**
+   * Tạo mới danh mục tài liệu giáo dục.
+   */
   async createCategory(dto: CreateEducationCategoryDto) {
     return await this.prisma.education_document_categories.create({
       data: {
@@ -29,6 +38,9 @@ export class EducationService {
     });
   }
 
+  /**
+   * Cập nhật thông tin danh mục tài liệu giáo dục theo ID.
+   */
   async updateCategory(id: number, dto: UpdateEducationCategoryDto) {
     const category = await this.prisma.education_document_categories.findUnique({ where: { category_id: id } });
     if (!category) throw new NotFoundException('Danh mục không tồn tại');
@@ -43,6 +55,9 @@ export class EducationService {
     });
   }
 
+  /**
+   * Xóa danh mục tài liệu giáo dục theo ID nếu chưa chứa tài liệu nào.
+   */
   async deleteCategory(id: number) {
     const category = await this.prisma.education_document_categories.findUnique({ 
       where: { category_id: id },
@@ -59,6 +74,9 @@ export class EducationService {
     return { message: 'Đã xóa danh mục thành công' };
   }
 
+  /**
+   * Lấy danh sách tài liệu giáo dục có lọc theo danh mục, nhóm máu, từ khóa, trạng thái xuất bản và phân trang.
+   */
   // --- DOCUMENTS ---
   async getDocuments(query: EducationFilterDto, includeDrafts = false) {
     const page = query.page || 1;
@@ -97,6 +115,9 @@ export class EducationService {
     };
   }
 
+  /**
+   * Lấy thông tin chi tiết một tài liệu giáo dục theo ID.
+   */
   async getDocumentById(id: number) {
     const doc = await this.prisma.education_documents.findUnique({
       where: { document_id: id },
@@ -106,6 +127,9 @@ export class EducationService {
     return doc;
   }
 
+  /**
+   * Lấy chi tiết tài liệu giáo dục đã xuất bản theo slug và tăng lượt xem (`view_count`).
+   */
   async getDocumentBySlug(slug: string) {
     const doc = await this.prisma.education_documents.findUnique({
       where: { slug: slug },
@@ -123,6 +147,9 @@ export class EducationService {
     return doc;
   }
 
+  /**
+   * Lấy danh sách tài liệu giáo dục liên quan cùng danh mục dựa theo slug.
+   */
   async getRelatedDocuments(slug: string) {
     const doc = await this.prisma.education_documents.findUnique({ where: { slug } });
     if (!doc) return [];
@@ -139,6 +166,9 @@ export class EducationService {
     });
   }
 
+  /**
+   * Tạo mới tài liệu giáo dục gắn với tác giả và kiểm tra trùng slug.
+   */
   async createDocument(userId: number, dto: CreateEducationDocumentDto) {
     const existing = await this.prisma.education_documents.findUnique({ where: { slug: dto.slug } });
     if (existing) throw new BadRequestException('Slug đã tồn tại');
@@ -159,6 +189,9 @@ export class EducationService {
     });
   }
 
+  /**
+   * Cập nhật nội dung tài liệu giáo dục theo ID và kiểm tra trùng slug khi đổi đường dẫn.
+   */
   async updateDocument(id: number, dto: UpdateEducationDocumentDto) {
     const doc = await this.prisma.education_documents.findUnique({ where: { document_id: id } });
     if (!doc) throw new NotFoundException('Tài liệu không tồn tại');
@@ -185,6 +218,9 @@ export class EducationService {
     });
   }
 
+  /**
+   * Xóa tài liệu giáo dục theo ID.
+   */
   async deleteDocument(id: number) {
     const doc = await this.prisma.education_documents.findUnique({ where: { document_id: id } });
     if (!doc) throw new NotFoundException('Tài liệu không tồn tại');

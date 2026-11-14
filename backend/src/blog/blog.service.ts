@@ -4,16 +4,25 @@ import { PaginationDto } from '../common/pagination.dto';
 import { CreatePostDto, UpdatePostDto, AddCommentDto, CreateCategoryDto, UpdateCategoryDto } from './dto/blog.dto';
 import { BlogFilterDto } from './dto/blog-filter.dto';
 
+/**
+ * Service quản lý nghiệp vụ blog: danh mục, bài viết, bình luận người dùng và kiểm duyệt bình luận.
+ */
 @Injectable()
 export class BlogService {
   constructor(private readonly prisma: PrismaService) { }
 
+  /**
+   * Lấy toàn bộ danh sách danh mục bài viết blog.
+   */
   async getCategories() {
     return await this.prisma.blog_categories.findMany({
       orderBy: { category_name: 'asc' },
     });
   }
 
+  /**
+   * Tạo mới danh mục bài viết blog.
+   */
   async createCategory(dto: CreateCategoryDto) {
     const existing = await this.prisma.blog_categories.findUnique({ where: { slug: dto.slug } });
     if (existing) throw new BadRequestException('Đường dẫn danh mục (slug) đã tồn tại');
@@ -26,6 +35,9 @@ export class BlogService {
     });
   }
 
+  /**
+   * Cập nhật thông tin danh mục blog theo ID (kiểm tra trùng slug).
+   */
   async updateCategory(id: number, dto: UpdateCategoryDto) {
     const category = await this.prisma.blog_categories.findUnique({ where: { blog_category_id: id } });
     if (!category) throw new NotFoundException('Danh mục không tồn tại');
@@ -44,6 +56,9 @@ export class BlogService {
     });
   }
 
+  /**
+   * Xóa danh mục blog theo ID nếu không còn bài viết trực thuộc.
+   */
   async deleteCategory(id: number) {
     const category = await this.prisma.blog_categories.findUnique({ 
       where: { blog_category_id: id },
@@ -60,6 +75,9 @@ export class BlogService {
     return { message: 'Đã xóa danh mục thành công' };
   }
 
+  /**
+   * Lấy danh sách bài viết blog có lọc theo danh mục, tìm kiếm từ khóa và phân trang.
+   */
   async getAllPosts(query: BlogFilterDto) {
     const page = query.page || 1;
     const limit = query.limit || 20;
@@ -100,6 +118,9 @@ export class BlogService {
     };
   }
 
+  /**
+   * Lấy chi tiết bài viết blog theo slug và tăng lượt xem (`view_count`).
+   */
   async getPostBySlug(slug: string) {
     const post = await this.prisma.blog_posts.findUnique({
       where: { slug },
@@ -122,6 +143,9 @@ export class BlogService {
     return post;
   }
 
+  /**
+   * Lấy danh sách bài viết liên quan cùng danh mục dựa trên slug bài viết hiện tại.
+   */
   async getRelatedPosts(slug: string) {
     const post = await this.prisma.blog_posts.findUnique({ where: { slug } });
     if (!post) throw new NotFoundException('Bài viết không tồn tại');
@@ -138,6 +162,9 @@ export class BlogService {
     });
   }
 
+  /**
+   * Thêm bình luận mới (hoặc phản hồi bình luận cha) cho bài viết.
+   */
   async addComment(postId: number, userId: number | null, data: AddCommentDto) {
     const post = await this.prisma.blog_posts.findUnique({ where: { post_id: postId } });
     if (!post) throw new NotFoundException('Bài viết không tồn tại');
@@ -154,6 +181,9 @@ export class BlogService {
     });
   }
 
+  /**
+   * Chỉnh sửa nội dung bình luận sau khi kiểm tra đúng chủ sở hữu.
+   */
   async editComment(commentId: number, userId: number, content: string) {
     const comment = await this.prisma.blog_comments.findUnique({ where: { comment_id: commentId } });
     if (!comment) throw new NotFoundException('Bình luận không tồn tại');
@@ -165,6 +195,9 @@ export class BlogService {
     });
   }
 
+  /**
+   * Xóa bình luận cá nhân sau khi kiểm tra đúng người tạo bình luận.
+   */
   async deleteMyComment(commentId: number, userId: number) {
     const comment = await this.prisma.blog_comments.findUnique({ where: { comment_id: commentId } });
     if (!comment) throw new NotFoundException('Bình luận không tồn tại');
@@ -174,6 +207,9 @@ export class BlogService {
     return { message: 'Đã xóa bình luận' };
   }
 
+  /**
+   * Lấy danh sách bình luận đã duyệt theo bài viết kèm cây phản hồi và phân trang.
+   */
   async getComments(postId: number, query: any) {
     const page = query.page ? Number(query.page) : 1;
     const limit = query.limit ? Number(query.limit) : 5;
@@ -210,6 +246,9 @@ export class BlogService {
     };
   }
 
+  /**
+   * Tạo mới bài viết blog gắn với ID tác giả và kiểm tra trùng slug.
+   */
   // Admin / Content Creator functions
   async createPost(userId: number, dto: CreatePostDto) {
     const existing = await this.prisma.blog_posts.findUnique({ where: { slug: dto.slug } });
@@ -230,6 +269,9 @@ export class BlogService {
     });
   }
 
+  /**
+   * Cập nhật nội dung và trạng thái xuất bản của bài viết blog theo ID.
+   */
   async updatePost(postId: number, dto: UpdatePostDto) {
     const post = await this.prisma.blog_posts.findUnique({ where: { post_id: postId } });
     if (!post) throw new NotFoundException('Bài viết không tồn tại');
@@ -254,6 +296,9 @@ export class BlogService {
     }
   }
 
+  /**
+   * Xóa bài viết blog theo ID.
+   */
   async deletePost(postId: number) {
     const post = await this.prisma.blog_posts.findUnique({ where: { post_id: postId } });
     if (!post) throw new NotFoundException('Bài viết không tồn tại');
@@ -262,6 +307,9 @@ export class BlogService {
     return { message: 'Đã xóa bài viết' };
   }
 
+  /**
+   * Lấy danh sách bình luận phục vụ màn hình kiểm duyệt (lọc chờ duyệt / đã duyệt).
+   */
   // Moderator functions
   async getAdminComments(query: any) {
     const page = Number(query.page) || 1;
@@ -292,6 +340,9 @@ export class BlogService {
     };
   }
 
+  /**
+   * Cập nhật trạng thái phê duyệt (`is_approved`) của một bình luận theo ID.
+   */
   async approveComment(commentId: number, isApproved: boolean) {
     const comment = await this.prisma.blog_comments.findUnique({ where: { comment_id: commentId } });
     if (!comment) throw new NotFoundException('Bình luận không tồn tại');
@@ -302,6 +353,9 @@ export class BlogService {
     });
   }
 
+  /**
+   * Xóa một bình luận bất kỳ dưới quyền kiểm duyệt viên/quản trị viên.
+   */
   async deleteAdminComment(commentId: number) {
     const comment = await this.prisma.blog_comments.findUnique({ where: { comment_id: commentId } });
     if (!comment) throw new NotFoundException('Bình luận không tồn tại');
