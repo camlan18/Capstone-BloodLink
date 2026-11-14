@@ -4,6 +4,9 @@ import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService, NotificationType } from '../notifications/notifications.service';
 import { CreateTransferDto } from './dto/create-transfer.dto';
 
+/**
+ * Service xử lý nghiệp vụ phiếu điều chuyển máu giữa các cơ sở y tế (tạo, duyệt, xuất, nhận, hủy và hết hạn).
+ */
 @Injectable()
 export class TransferService {
   private readonly logger = new Logger(TransferService.name);

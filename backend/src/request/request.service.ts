@@ -8,6 +8,9 @@ import { NotificationsService, NotificationType } from '../notifications/notific
 import { MailService } from '../mail/mail.service';
 import { Logger } from '@nestjs/common';
 
+/**
+ * Service xử lý nghiệp vụ yêu cầu cần máu: tạo mới, phân bổ kho, tìm người hiến phù hợp, nhập/xuất Excel và cron đóng yêu cầu quá hạn.
+ */
 @Injectable()
 export class RequestService {
   private readonly logger = new Logger(RequestService.name);
@@ -19,6 +22,9 @@ export class RequestService {
     private readonly mailService: MailService,
   ) { }
 
+  /**
+   * Cron job chạy lúc 0h hằng ngày để đóng các yêu cầu cần máu đã quá hạn (`required_before`).
+   */
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
   async handleCronCloseExpiredRequests() {
     this.logger.log('Running daily cron job to close expired blood requests...');
@@ -55,6 +61,9 @@ export class RequestService {
     }
   }
 
+  /**
+   * Tạo yêu cầu cần máu nội bộ (gắn cơ sở của nhân viên y tế nếu là HOSPITAL_STAFF) và lưu lịch sử trạng thái.
+   */
   async createRequest(dto: CreateRequestDto, user: any) {
     const facility_id = user?.role_code === 'HOSPITAL_STAFF' ? user.facility_id : dto.facility_id;
     if (!facility_id) throw new BadRequestException('Vui lòng chọn cơ sở y tế');
@@ -120,6 +129,9 @@ export class RequestService {
     return result;
   }
 
+  /**
+   * Tạo yêu cầu cần máu từ cổng công khai (có thể ẩn danh hoặc gắn tài khoản đang đăng nhập).
+   */
   async createPublicRequest(dto: CreateRequestDto, userId: number | null = null) {
     const result = await this.prisma.$transaction(async (tx) => {
       const pendingStatus = await tx.blood_request_statuses.findFirst({
@@ -178,6 +190,9 @@ export class RequestService {
     return result;
   }
 
+  /**
+   * Xử lý yêu cầu ở trạng thái PENDING: tự động phân bổ túi máu nếu kho đủ, hoặc chuyển sang tìm người hiến nếu thiếu.
+   */
   async processRequest(requestId: number, user: any) {
     return await this.prisma.$transaction(async (tx) => {
       const request = await tx.blood_requests.findUnique({
@@ -280,6 +295,9 @@ export class RequestService {
     });
   }
 
+  /**
+   * Tra cứu công khai thông tin yêu cầu cần máu theo mã yêu cầu (`request_code`).
+   */
   async getRequestByCode(code: string) {
     const request = await this.prisma.blood_requests.findFirst({
       where: { request_code: code },
@@ -306,6 +324,9 @@ export class RequestService {
     return { ...request, registered_donors_count: registeredDonorsCount };
   }
 
+  /**
+   * Lấy danh sách yêu cầu cần máu có phân trang, tìm kiếm và lọc theo cơ sở/trạng thái/nhóm máu.
+   */
   async getRequests(query: any, user?: any) {
     try {
       await this.handleCronCloseExpiredRequests();
@@ -416,6 +437,9 @@ export class RequestService {
 
   // --- EXCEL FEATURE ---
 
+  /**
+   * Xuất danh sách yêu cầu cần máu ra file Excel theo bộ lọc hiện tại.
+   */
   async exportExcel(query: any, user?: any): Promise<Buffer> {
     const list = await this.getRequests({ ...query, limit: 10000 }, user);
     const data = list.data.map((item: any) => ({
@@ -432,6 +456,9 @@ export class RequestService {
     return ExcelUtil.generateExcel(data, 'YeuCauMau');
   }
 
+  /**
+   * Tạo file Excel mẫu phục vụ nhập danh sách yêu cầu cần máu hàng loạt.
+   */
   async getTemplate(): Promise<Buffer> {
     const headers = [
       'Cơ sở (ID)',
@@ -445,6 +472,9 @@ export class RequestService {
     return ExcelUtil.generateTemplate(headers, 'Template_YeuCauMau');
   }
 
+  /**
+   * Đọc file Excel tải lên và tạo hàng loạt yêu cầu cần máu vào cơ sở dữ liệu.
+   */
   async importExcel(buffer: Buffer, user: any) {
     const data = ExcelUtil.parseExcel(buffer);
     let success = 0;
@@ -510,6 +540,9 @@ export class RequestService {
     return { message: `Import hoàn tất. Thành công: ${success}, Thất bại/Bỏ qua: ${failed}` };
   }
 
+  /**
+   * Cập nhật thông tin yêu cầu cần máu khi vẫn còn ở trạng thái PENDING.
+   */
   async updateRequest(requestId: number, dto: Partial<CreateRequestDto>, user: any) {
     const req = await this.prisma.blood_requests.findUnique({ where: { request_id: requestId }, include: { status: true } });
     if (!req) throw new NotFoundException('Không tìm thấy yêu cầu');
@@ -543,6 +576,9 @@ export class RequestService {
     });
   }
 
+  /**
+   * Xóa cứng yêu cầu cần máu cùng các bản ghi ghép nối, phân bổ và lịch sử trạng thái liên quan.
+   */
   async deleteRequest(requestId: number, user: any) {
     const req = await this.prisma.blood_requests.findUnique({ where: { request_id: requestId }, include: { status: true } });
     if (!req) throw new NotFoundException('Không tìm thấy yêu cầu');
@@ -558,6 +594,9 @@ export class RequestService {
     return await this.prisma.blood_requests.delete({ where: { request_id: requestId } });
   }
 
+  /**
+   * Hủy yêu cầu cần máu đang chờ xử lý hoặc đang tìm người hiến và ghi lịch sử thay đổi.
+   */
   async cancelRequest(requestId: number, user: any) {
     const req = await this.prisma.blood_requests.findUnique({ where: { request_id: requestId }, include: { status: true } });
     if (!req) throw new NotFoundException('Không tìm thấy yêu cầu');
@@ -582,6 +621,9 @@ export class RequestService {
     return updated;
   }
 
+  /**
+   * Lấy chi tiết một yêu cầu cần máu theo ID sau khi kiểm tra quyền sở hữu của người tạo.
+   */
   async getRequestById(requestId: number, userId: number) {
     const request = await this.prisma.blood_requests.findUnique({
       where: { request_id: requestId },
@@ -616,6 +658,9 @@ export class RequestService {
 
   // --- MATCHING & ALLOCATION (ADMIN) ---
 
+  /**
+   * Lấy danh sách ứng viên hiến máu đã được ghép nối cho một yêu cầu (sắp xếp theo điểm phù hợp giảm dần).
+   */
   async getMatches(requestId: number, user?: any) {
     if (user?.role_code === 'HOSPITAL_STAFF') {
       const req = await this.prisma.blood_requests.findUnique({ where: { request_id: requestId } });
@@ -630,6 +675,9 @@ export class RequestService {
     });
   }
 
+  /**
+   * Tìm và chấm điểm người hiến máu phù hợp theo quy tắc tương thích nhóm máu, khoảng cách hiến tối thiểu và bán kính địa lý.
+   */
   async findDonorMatches(requestId: number, user?: any) {
     const request = await this.prisma.blood_requests.findUnique({
       where: { request_id: requestId },
@@ -774,6 +822,9 @@ export class RequestService {
     return { message: `Đã tìm thấy và tạo ${matchesData.length} ghép nối tiềm năng`, count: matchesData.length };
   }
 
+  /**
+   * Tính khoảng cách đường chim bay giữa hai tọa độ địa lý theo công thức Haversine (đơn vị km).
+   */
   // B3: Haversine formula để tính khoảng cách (km)
   private calculateHaversineDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
     const R = 6371; // Bán kính trái đất (km)
@@ -786,6 +837,9 @@ export class RequestService {
     return Math.round(R * c * 100) / 100;
   }
 
+  /**
+   * Cập nhật trạng thái phản hồi của một lượt ghép nối người hiến máu.
+   */
   async updateMatchStatus(matchId: number, status: string, user?: any) {
     const match = await this.prisma.blood_request_donor_matches.findUnique({
       where: { match_id: matchId },
@@ -802,6 +856,9 @@ export class RequestService {
     });
   }
 
+  /**
+   * Lấy danh sách các túi máu đang được phân bổ cho một yêu cầu cần máu.
+   */
   async getAllocations(requestId: number, user?: any) {
     if (user?.role_code === 'HOSPITAL_STAFF') {
       const req = await this.prisma.blood_requests.findUnique({ where: { request_id: requestId } });
@@ -816,6 +873,9 @@ export class RequestService {
     });
   }
 
+  /**
+   * Phân bổ thủ công danh sách túi máu trong kho vào yêu cầu và cập nhật trạng thái đáp ứng.
+   */
   async allocateInventory(requestId: number, inventoryIds: number[], user: any) {
     return await this.prisma.$transaction(async (tx) => {
       const request = await tx.blood_requests.findUnique({ where: { request_id: requestId }, include: { status: true } });
@@ -915,6 +975,9 @@ export class RequestService {
     });
   }
 
+  /**
+   * Giải phóng một túi máu đã phân bổ trả về trạng thái AVAILABLE trong kho và hoàn tác số lượng đáp ứng.
+   */
   async releaseAllocation(allocationId: number, user: any) {
     return await this.prisma.$transaction(async (tx) => {
       const allocation = await tx.blood_request_inventory_allocations.findUnique({
@@ -999,6 +1062,9 @@ export class RequestService {
     });
   }
 
+  /**
+   * Lắng nghe sự kiện `request.match_donors` để tự động chạy thuật toán tìm người hiến phù hợp.
+   */
   @OnEvent('request.match_donors')
   async handleMatchDonorsEvent(payload: { requestId: number, facilityId: number, bloodTypeId: number }) {
     try {
@@ -1008,6 +1074,9 @@ export class RequestService {
     }
   }
 
+  /**
+   * Cron job lúc 0h hằng ngày chuyển các yêu cầu quá hạn (`required_before`) sang trạng thái `expired`.
+   */
   // --- CRON JOB: Tự động đánh dấu yêu cầu máu hết hạn ---
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
   async handleCronExpireRequests() {
