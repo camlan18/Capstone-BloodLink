@@ -10,6 +10,9 @@ const toMinutes = (t: string) => {
   return h * 60 + (m || 0);
 };
 
+/**
+ * Service quản lý lịch tổ chức hiến máu theo cơ sở y tế, tự động đóng lịch đã qua và quản lý danh sách người đăng ký theo lịch.
+ */
 @Injectable()
 export class SchedulesService implements OnModuleInit {
   private readonly logger = new Logger(SchedulesService.name);
@@ -19,11 +22,17 @@ export class SchedulesService implements OnModuleInit {
     private readonly notificationsService: NotificationsService,
   ) {}
 
+  /**
+   * Hook khởi động module: chạy đồng bộ đóng các lịch hiến máu đã qua hạn ngay khi ứng dụng khởi chạy.
+   */
   async onModuleInit() {
     // Chạy dọn dẹp các lịch cũ ngay khi hệ thống khởi động
     await this.handleCronClosePastSchedules();
   }
 
+  /**
+   * Cron job lúc 0h hằng ngày tự động đóng các lịch hiến máu có ngày tổ chức nhỏ hơn ngày hiện tại.
+   */
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
   async handleCronClosePastSchedules() {
     this.logger.log('Running daily cron job to close past donation schedules...');
@@ -50,6 +59,9 @@ export class SchedulesService implements OnModuleInit {
     }
   }
 
+  /**
+   * Lấy danh sách lịch tổ chức hiến máu có lọc theo cơ sở y tế, ngày và phân trang.
+   */
   async getAllSchedules(query: ScheduleFilterDto, user: any) {
     const page = query.page || 1;
     const limit = query.limit || 20;
@@ -93,6 +105,9 @@ export class SchedulesService implements OnModuleInit {
     };
   }
 
+  /**
+   * Lấy thông tin chi tiết một lịch hiến máu theo ID và kiểm tra phạm vi cơ sở của nhân viên.
+   */
   async getScheduleById(id: number, user: any) {
     const where: any = { schedule_id: id };
     if (user.role_code === 'HOSPITAL_STAFF') {
@@ -108,6 +123,9 @@ export class SchedulesService implements OnModuleInit {
     return schedule;
   }
 
+  /**
+   * Tạo mới lịch tổ chức hiến máu cho cơ sở y tế.
+   */
   async createSchedule(dto: CreateScheduleDto, user: any) {
     // Parse time strings (e.g. "08:00") into Date objects (using a dummy date since it's @db.Time)
     const baseDate = new Date();
@@ -140,6 +158,9 @@ export class SchedulesService implements OnModuleInit {
     });
   }
 
+  /**
+   * Cập nhật thông tin lịch tổ chức hiến máu theo ID.
+   */
   async updateSchedule(id: number, dto: UpdateScheduleDto, user: any) {
     const where: any = { schedule_id: id };
     if (user.role_code === 'HOSPITAL_STAFF') {
@@ -201,6 +222,9 @@ export class SchedulesService implements OnModuleInit {
     });
   }
 
+  /**
+   * Xóa lịch tổ chức hiến máu theo ID (nếu chưa phát sinh người đăng ký).
+   */
   async deleteSchedule(id: number, user: any) {
     const where: any = { schedule_id: id };
     if (user.role_code === 'HOSPITAL_STAFF') {
@@ -222,6 +246,9 @@ export class SchedulesService implements OnModuleInit {
     return { message: 'Xóa lịch hiến máu thành công' };
   }
 
+  /**
+   * Lấy danh sách người hiến máu đã đăng ký tham gia theo từng lịch tổ chức.
+   */
   async getScheduleDonors(scheduleId: number, query: any, user: any) {
     await this.getScheduleById(scheduleId, user); // Check permission
 
@@ -267,6 +294,9 @@ export class SchedulesService implements OnModuleInit {
     };
   }
 
+  /**
+   * Cập nhật trạng thái lượt tham gia hiến máu của người hiến trong một lịch cụ thể.
+   */
   async updateDonorStatus(scheduleId: number, slotId: number, status: string, user: any) {
     await this.getScheduleById(scheduleId, user); // Check permission
     const slot = await this.prisma.donor_availability_slots.findUnique({
@@ -303,6 +333,9 @@ export class SchedulesService implements OnModuleInit {
     return updatedSlot;
   }
 
+  /**
+   * Xuất danh sách người hiến máu đã đăng ký theo lịch ra tệp Excel.
+   */
   async exportScheduleDonors(scheduleId: number, user: any) {
     const schedule = await this.getScheduleById(scheduleId, user);
     

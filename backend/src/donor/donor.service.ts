@@ -10,6 +10,9 @@ import { NotificationsService, NotificationType } from '../notifications/notific
 import { SystemSettingsService } from '../system-settings/system-settings.service';
 import { SystemSettingKey } from '../common/enums';
 
+/**
+ * Service quản lý nghiệp vụ người hiến máu: đăng ký hồ sơ, kiểm tra điều kiện đủ chuẩn, đặt/hủy lịch, chứng nhận, bảng xếp hạng, ghi nhận lần hiến và cron nhắc lịch.
+ */
 @Injectable()
 export class DonorService {
   private readonly logger = new Logger(DonorService.name);
@@ -20,6 +23,9 @@ export class DonorService {
     private readonly systemSettingsService: SystemSettingsService,
   ) { }
 
+  /**
+   * Đăng ký hồ sơ người hiến máu cho tài khoản và kích hoạt cờ `is_donor_registered`.
+   */
   async registerDonorProfile(userId: number, data: any) {
     const existing = await this.prisma.donor_profiles.findUnique({
       where: { user_id: userId },
@@ -53,6 +59,9 @@ export class DonorService {
     }
   }
 
+  /**
+   * Tính toán khả năng đủ điều kiện hiến máu tiếp theo dựa trên ngày hiến gần nhất và quy tắc khoảng cách ngày.
+   */
   async calculateDonorEligibility(userId: number) {
     const profile = await this.prisma.donor_profiles.findUnique({
       where: { user_id: userId },
@@ -114,6 +123,9 @@ export class DonorService {
     };
   }
 
+  /**
+   * Lấy hồ sơ người hiến máu kèm trạng thái đủ điều kiện hiến máu hiện tại.
+   */
   async getDonorProfile(userId: number) {
     const profile = await this.prisma.donor_profiles.findUnique({
       where: { user_id: userId },
@@ -131,6 +143,9 @@ export class DonorService {
     };
   }
 
+  /**
+   * Cập nhật thông tin cá nhân, nhóm máu và chỉ số sức khỏe của người hiến máu.
+   */
   async updateDonorProfile(userId: number, dto: UpdateDonorProfileDto) {
     return await this.prisma.$transaction(async (tx) => {
       // Cập nhật users table
@@ -184,6 +199,9 @@ export class DonorService {
     });
   }
 
+  /**
+   * Bật/tắt trạng thái sẵn sàng hiến máu (`is_available_for_donation`) của người dùng.
+   */
   async updateAvailability(userId: number, isAvailable: boolean) {
     return await this.prisma.users.update({
       where: { user_id: userId },
@@ -191,6 +209,9 @@ export class DonorService {
     });
   }
 
+  /**
+   * Đặt lịch hẹn hiến máu theo lịch sẵn có, yêu cầu khẩn cấp hoặc tự động tạo lịch tại cơ sở y tế.
+   */
   async bookDonationSlot(userId: number, data: BookDonationSlotDto) {
     if (data.is_health_cleared === false) {
       throw new BadRequestException('Xin lỗi bạn, với dữ liệu sàng lọc hiện tại thì bạn không thể hiến máu được rồi. Hãy khám bệnh kỹ và chăm sóc sức khỏe nhé!');
@@ -377,6 +398,9 @@ export class DonorService {
     return slot;
   }
 
+  /**
+   * Hủy một lịch hẹn hiến máu đã đặt và giải phóng lượt đặt chỗ tương ứng.
+   */
   async cancelDonationSlot(userId: number, slotId: number) {
     const slot = await this.prisma.donor_availability_slots.findFirst({
       where: { slot_id: slotId, user_id: userId, is_active: true },
@@ -420,6 +444,9 @@ export class DonorService {
     return { message: 'Đã hủy lịch thành công' };
   }
 
+  /**
+   * Lấy lịch sử các lần đã hiến máu kèm thống kê tổng thể tích và cơ sở tiếp nhận.
+   */
   async getDonationHistory(userId: number) {
     const slots = await this.prisma.donor_availability_slots.findMany({
       where: { user_id: userId },
@@ -480,6 +507,9 @@ export class DonorService {
     return [...history, ...walkInDonations].sort((a, b) => new Date(b.donation_date || 0).getTime() - new Date(a.donation_date || 0).getTime());
   }
 
+  /**
+   * Lấy danh sách yêu cầu hiến máu khẩn cấp đã ghép nối tới người hiến hiện tại.
+   */
   async getMyMatches(userId: number) {
     return await this.prisma.blood_request_donor_matches.findMany({
       where: {
@@ -498,6 +528,9 @@ export class DonorService {
     });
   }
 
+  /**
+   * Tổng hợp các cột mốc thành tích và huy hiệu đạt được của người hiến máu.
+   */
   async getDonorAchievements(userId: number) {
     const user = await this.prisma.users.findUnique({
       where: { user_id: userId },
@@ -541,6 +574,9 @@ export class DonorService {
     };
   }
 
+  /**
+   * Lấy dữ liệu chứng nhận hiến máu điện tử của chính người hiến theo ID lần hiến.
+   */
   async getCertificateData(userId: number, donationId: number) {
     const donation = await this.prisma.donations.findUnique({
       where: { donation_id: donationId },
@@ -583,6 +619,9 @@ export class DonorService {
     };
   }
 
+  /**
+   * Tra cứu công khai thông tin chứng nhận hiến máu đã duyệt để xác thực theo ID lần hiến.
+   */
   async getPublicCertificate(donationId: number) {
     const donation = await this.prisma.donations.findUnique({
       where: { donation_id: donationId },
@@ -626,6 +665,9 @@ export class DonorService {
     };
   }
 
+  /**
+   * Lấy danh sách chứng nhận hiến máu của người dùng đang đăng nhập có phân trang.
+   */
   async getMyCertificates(userId: number, query: PaginationDto) {
     const page = query.page || 1;
     const limit = query.limit || 10;
@@ -672,6 +714,9 @@ export class DonorService {
 
   // --- Certificate Management (Admin/Staff) ---
 
+  /**
+   * Lấy danh sách chứng nhận hiến máu phục vụ quản trị duyệt cấp chứng nhận.
+   */
   async listCertificates(query: PaginationDto, user?: any) {
     const page = query.page || 1;
     const limit = query.limit || 20;
@@ -734,6 +779,9 @@ export class DonorService {
     };
   }
 
+  /**
+   * Phê duyệt phát hành chứng nhận hiến máu cho lượt hiến theo ID.
+   */
   async approveCertificate(certId: number, user: any) {
     const cert = await this.prisma.donation_certificates.findUnique({
       where: { certificate_id: certId },
@@ -774,6 +822,9 @@ export class DonorService {
     return updated;
   }
 
+  /**
+   * Từ chối cấp chứng nhận hiến máu kèm lý do từ chối.
+   */
   async rejectCertificate(certId: number, user: any, reason: string) {
     const cert = await this.prisma.donation_certificates.findUnique({
       where: { certificate_id: certId },
@@ -810,6 +861,9 @@ export class DonorService {
     return updated;
   }
 
+  /**
+   * Tổng hợp bảng xếp hạng người hiến máu tiêu biểu công khai có tìm kiếm, sắp xếp và phân trang.
+   */
   async getPublicLeaderboard(query: any) {
     const page = query.page || 1;
     const limit = query.limit || 10;
@@ -905,6 +959,9 @@ export class DonorService {
     };
   }
 
+  /**
+   * Lấy danh sách lịch hẹn hiến máu cá nhân của người dùng hiện tại.
+   */
   async getMySlots(userId: number) {
     return await this.prisma.donor_availability_slots.findMany({
       where: { user_id: userId, is_active: true, status: { not: 'CANCELLED' } },
@@ -917,6 +974,9 @@ export class DonorService {
     });
   }
 
+  /**
+   * Lấy danh sách lịch tổ chức hiến máu công khai theo cơ sở y tế (tùy chọn).
+   */
   async getSchedules(facilityId?: number) {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -943,6 +1003,9 @@ export class DonorService {
     'CANCELLED': 7,
   };
 
+  /**
+   * Lấy danh sách tất cả lượt đăng ký hiến máu thuộc cơ sở quản lý có lọc và phân trang.
+   */
   async getSlots(query: PaginationDto, user: any) {
     const page = query.page || 1;
     const limit = query.limit || 20;
@@ -1030,6 +1093,9 @@ export class DonorService {
     };
   }
 
+  /**
+   * Nhân viên y tế tạo trực tiếp lịch hẹn hiến máu cho người hiến tại cơ sở.
+   */
   async createAdminSlot(dto: any, user: any) {
     if (user.role_code === 'HOSPITAL_STAFF') {
       if (dto.schedule_id) {
@@ -1073,6 +1139,9 @@ export class DonorService {
     return createdSlot;
   }
 
+  /**
+   * Cập nhật trạng thái lượt đặt lịch hiến máu và kiểm tra phạm vi cơ sở của nhân viên.
+   */
   async updateSlotStatus(slotId: number, dto: UpdateSlotStatusDto, user: any) {
     const slot = await this.prisma.donor_availability_slots.findUnique({
       where: { slot_id: slotId },
@@ -1117,6 +1186,9 @@ export class DonorService {
     return updatedSlot;
   }
 
+  /**
+   * Ghi nhận kết quả một lần hiến máu hoàn thành: lưu lịch sử hiến, tạo chứng nhận chờ duyệt, cập nhật túi máu và cộng dồn tổng lượt hiến.
+   */
   async recordDonation(user: any, dto: RecordDonationDto) {
     const facilityId = user.role_code === 'HOSPITAL_STAFF' ? user.facility_id : dto.facility_id;
     if (!facilityId) throw new BadRequestException('Cơ sở y tế không hợp lệ');
@@ -1299,6 +1371,9 @@ export class DonorService {
     });
   }
 
+  /**
+   * Cron job lúc 8h sáng hằng ngày gửi thông báo nhắc lịch cho người hiến có hẹn trong ngày hôm sau.
+   */
   // --- CRON JOBS ---
   @Cron(CronExpression.EVERY_DAY_AT_8AM)
   async handleCronDonationReminders() {
@@ -1343,6 +1418,9 @@ export class DonorService {
 
   // --- EXCEL FEATURE ---
 
+  /**
+   * Xuất danh sách lượt hiến máu ra tệp Excel.
+   */
   async exportExcel(query: any, user: any): Promise<Buffer> {
     const list = await this.getSlots({ ...query, limit: 10000 }, user);
     const data = list.data.map((item: any) => ({
@@ -1354,6 +1432,9 @@ export class DonorService {
     return ExcelUtil.generateExcel(data, 'LichHen');
   }
 
+  /**
+   * Tạo tệp Excel mẫu để nhập dữ liệu hiến máu hàng loạt.
+   */
   async getTemplate(): Promise<Buffer> {
     const headers = [
       'User (ID)',
@@ -1363,6 +1444,9 @@ export class DonorService {
     return ExcelUtil.generateTemplate(headers, 'Template_LichHen');
   }
 
+  /**
+   * Đọc tệp Excel tải lên để nhập hàng loạt lịch hẹn hoặc lượt hiến máu.
+   */
   async importExcel(buffer: Buffer, user: any) {
     const data = ExcelUtil.parseExcel(buffer);
     let success = 0;
