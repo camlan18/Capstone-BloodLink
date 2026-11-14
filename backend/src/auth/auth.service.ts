@@ -8,6 +8,9 @@ import { RoleCode, OtpTypeCode, DestinationType } from '../common/enums';
 import { MailService } from '../mail/mail.service';
 import { NotificationsService, NotificationType } from '../notifications/notifications.service';
 
+/**
+ * Service xử lý xác thực tài khoản: đăng ký, OTP email, đăng nhập, cấp mới/thu hồi token và đặt lại mật khẩu.
+ */
 @Injectable()
 export class AuthService {
   constructor(
@@ -17,6 +20,9 @@ export class AuthService {
     private readonly notificationsService: NotificationsService,
   ) { }
 
+  /**
+   * Đăng ký tài khoản người dùng mới, băm mật khẩu và gửi mã OTP xác thực qua email.
+   */
   async register(dto: RegisterDto) {
     const existingUser = await this.prisma.users.findUnique({
       where: { email: dto.email },
@@ -90,6 +96,9 @@ export class AuthService {
     };
   }
 
+  /**
+   * Xác thực mã OTP đăng ký và kích hoạt tài khoản người dùng.
+   */
   async verifyOtp(dto: OtpDto) {
     const user = await this.prisma.users.findUnique({ where: { email: dto.email } });
     if (!user) throw new BadRequestException('User không tồn tại');
@@ -158,6 +167,9 @@ export class AuthService {
     return { message: 'Xác thực tài khoản thành công. Bạn có thể đăng nhập.' };
   }
 
+  /**
+   * Tạo và gửi lại mã OTP mới qua email cho tài khoản chưa kích hoạt.
+   */
   async resendOtp(dto: ResendOtpDto) {
     const user = await this.prisma.users.findUnique({ where: { email: dto.email } });
     if (!user) throw new BadRequestException('User không tồn tại');
@@ -191,6 +203,9 @@ export class AuthService {
     return { message: 'Đã gửi lại mã OTP vào email của bạn.' };
   }
 
+  /**
+   * Xác thực thông tin đăng nhập, kiểm tra trạng thái kích hoạt và cấp phát access token + refresh token.
+   */
   async login(dto: LoginDto, metadata?: { ip_address?: string; device_info?: string }) {
     const user = await this.prisma.users.findFirst({
       where: {
@@ -263,6 +278,9 @@ export class AuthService {
     };
   }
 
+  /**
+   * Kiểm tra refresh token còn hiệu lực trong DB và xoay vòng cấp cặp token mới.
+   */
   async refreshToken(rawRefreshToken: string) {
     if (!rawRefreshToken) {
       throw new UnauthorizedException('Refresh token không hợp lệ');
@@ -320,6 +338,9 @@ export class AuthService {
     };
   }
 
+  /**
+   * Đăng xuất bằng cách thu hồi bản ghi refresh token tương ứng.
+   */
   async logout(rawRefreshToken?: string) {
     if (rawRefreshToken) {
       const tokenHash = crypto.createHash('sha256').update(rawRefreshToken).digest('hex');
@@ -331,6 +352,9 @@ export class AuthService {
     return { message: 'Đăng xuất thành công' };
   }
 
+  /**
+   * Tạo và gửi mã OTP khôi phục mật khẩu tới email tài khoản đã đăng ký.
+   */
   async forgotPassword(dto: ForgotPasswordDto) {
     const user = await this.prisma.users.findUnique({ where: { email: dto.email } });
     if (!user) throw new BadRequestException('User không tồn tại');
@@ -372,6 +396,9 @@ export class AuthService {
     return { message: 'Đã gửi mã OTP khôi phục mật khẩu vào email của bạn.' };
   }
 
+  /**
+   * Xác thực OTP khôi phục và cập nhật mật khẩu mới cho tài khoản.
+   */
   async resetPassword(dto: ResetPasswordDto) {
     const user = await this.prisma.users.findUnique({ where: { email: dto.email } });
     if (!user) throw new BadRequestException('User không tồn tại');

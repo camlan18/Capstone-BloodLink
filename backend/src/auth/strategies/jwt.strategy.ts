@@ -3,6 +3,9 @@ import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { PrismaService } from '../../prisma/prisma.service';
 
+/**
+ * Chiến lược Passport JWT dùng để trích xuất và xác thực Bearer token trong mỗi request.
+ */
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(private readonly prisma: PrismaService) {
@@ -13,6 +16,9 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
+  /**
+   * Kiểm tra tài khoản từ payload JWT còn tồn tại và đang hoạt động hay không, trả về thông tin user gắn vào `req.user`.
+   */
   async validate(payload: any) {
     const user = await this.prisma.users.findUnique({
       where: { user_id: payload.sub },
