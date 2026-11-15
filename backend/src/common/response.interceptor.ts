@@ -2,6 +2,9 @@ import { Injectable, NestInterceptor, ExecutionContext, CallHandler } from '@nes
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 
+/**
+ * Cấu trúc JSON phản hồi chuẩn hóa cho toàn bộ API Backend.
+ */
 export interface Response<T> {
   statusCode: number;
   message: string;
@@ -9,8 +12,12 @@ export interface Response<T> {
   meta?: any;
 }
 
+/**
+ * Interceptor toàn cục tự động đóng gói dữ liệu trả về từ controller theo định dạng `{ statusCode, message, data, meta? }`.
+ */
 @Injectable()
 export class ResponseInterceptor<T> implements NestInterceptor<T, Response<T>> {
+  /** Chặn và chuẩn hóa luồng dữ liệu trả về trước khi gửi response về client. */
   intercept(context: ExecutionContext, next: CallHandler): Observable<Response<T>> {
     return next.handle().pipe(
       map(data => {
