@@ -23,6 +23,9 @@ import { SchedulesModule } from './schedules/schedules.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { TransferModule } from './transfer/transfer.module';
 
+/**
+ * Module gốc của ứng dụng NestJS: nạp toàn bộ module nghiệp vụ, cấu hình lịch Cron, EventEmitter và Global Guards.
+ */
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),

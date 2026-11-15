@@ -2,6 +2,9 @@ import axios from 'axios';
 import { toast } from 'sonner';
 import { useAuthStore } from '../stores';
 
+/**
+ * Axios instance dùng chung cho toàn bộ Frontend, tự động gắn Bearer token và xử lý làm mới token khi gặp lỗi 401.
+ */
 const apiClient = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1',
   headers: {
@@ -27,6 +30,9 @@ apiClient.interceptors.request.use(
 let isRefreshing = false;
 let failedQueue: any[] = [];
 
+/**
+ * Đẩy các request đang chờ trong hàng đợi thực thi tiếp sau khi quá trình refresh token hoàn tất hoặc thất bại.
+ */
 const processQueue = (error: any, token: string | null = null) => {
   failedQueue.forEach(prom => {
     if (error) {
@@ -124,6 +130,9 @@ apiClient.interceptors.response.use(
   }
 );
 
+/**
+ * Tải một tệp hình ảnh lên server thông qua API `/upload/image` và trả về URL ảnh sau khi upload.
+ */
 export const uploadImage = async (file: File): Promise<string> => {
   const formData = new FormData();
   formData.append('file', file);
