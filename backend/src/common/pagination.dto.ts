@@ -2,11 +2,15 @@ import { IsOptional, IsInt, Min, IsString, IsEnum } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
+/** Thứ tự sắp xếp dữ liệu phân trang (tăng dần / giảm dần). */
 export enum SortOrder {
   ASC = 'asc',
   DESC = 'desc',
 }
 
+/**
+ * DTO dùng chung cho các API danh sách hỗ trợ phân trang, tìm kiếm, lọc trạng thái và sắp xếp.
+ */
 export class PaginationDto {
   @ApiPropertyOptional({ description: 'Page number, starts from 1', default: 1 })
   @IsOptional()
