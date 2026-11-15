@@ -4,6 +4,9 @@ import { ValidationPipe } from '@nestjs/common';
 import { ResponseInterceptor } from './common/response.interceptor';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
+/**
+ * Hàm khởi chạy ứng dụng NestJS: bật CORS, ValidationPipe toàn cục, ResponseInterceptor, Swagger và lắng nghe cổng HTTP.
+ */
 async function bootstrap() {
   // Polyfill for BigInt serialization
   (BigInt.prototype as any).toJSON = function () {
