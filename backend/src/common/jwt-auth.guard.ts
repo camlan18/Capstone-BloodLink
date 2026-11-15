@@ -4,16 +4,25 @@ import { Reflector } from '@nestjs/core';
 import { ExecutionContext } from '@nestjs/common';
 import { IS_PUBLIC_KEY } from './decorators';
 
+/**
+ * Guard xác thực JWT cho các route được bảo vệ, cho phép bỏ qua với route gắn decorator @Public().
+ */
 @Injectable()
 export class JwtAuthGuard extends AuthGuard('jwt') {
   constructor(private reflector: Reflector) {
     super();
   }
 
+  /**
+   * Kích hoạt quy trình kiểm tra JWT từ Passport AuthGuard.
+   */
   canActivate(context: ExecutionContext) {
     return super.canActivate(context);
   }
 
+  /**
+   * Xử lý kết quả xác thực token; cho phép đi qua nếu route là @Public() và báo UnauthorizedException nếu thiếu token hợp lệ.
+   */
   handleRequest(err: any, user: any, info: any, context: ExecutionContext) {
     const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
       context.getHandler(),

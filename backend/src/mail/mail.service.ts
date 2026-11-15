@@ -1,12 +1,18 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { MailerService } from '@nestjs-modules/mailer';
 
+/**
+ * Service dựng template HTML và gửi email nghiệp vụ (OTP xác thực, mật khẩu, kêu gọi hiến máu, liên hệ).
+ */
 @Injectable()
 export class MailService {
   private readonly logger = new Logger(MailService.name);
 
   constructor(private readonly mailerService: MailerService) {}
 
+  /**
+   * Tạo khung giao diện HTML chuẩn BloodLink bao bọc nội dung và tiêu đề email.
+   */
   private getBaseTemplate(title: string, content: string): string {
     return `
       <!DOCTYPE html>
@@ -93,6 +99,9 @@ export class MailService {
     `;
   }
 
+  /**
+   * Gửi email chứa mã OTP xác thực tài khoản sau khi người dùng đăng ký.
+   */
   async sendVerificationEmail(email: string, otpCode: string, name: string) {
     const content = `
       <p>Xin chào <strong>${name}</strong>,</p>
@@ -118,6 +127,9 @@ export class MailService {
     }
   }
 
+  /**
+   * Gửi email chứa mã OTP hỗ trợ người dùng đặt lại mật khẩu khi quên mật khẩu.
+   */
   async sendForgotPasswordEmail(email: string, otpCode: string) {
     const content = `
       <p>Xin chào,</p>
@@ -143,6 +155,9 @@ export class MailService {
     }
   }
 
+  /**
+   * Gửi email chứa mã OTP xác nhận khi người dùng yêu cầu đổi mật khẩu trong tài khoản.
+   */
   async sendChangePasswordEmail(email: string, otpCode: string, name: string) {
     const content = `
       <p>Xin chào <strong>${name}</strong>,</p>
@@ -167,6 +182,9 @@ export class MailService {
       this.logger.error(`Failed to send change password email to ${email}`, error);
     }
   }
+  /**
+   * Gửi email kêu gọi người hiến máu phù hợp tham gia hiến máu cho yêu cầu khẩn cấp.
+   */
   async sendDonorMatchEmail(email: string, name: string, patientName: string, bloodType: string, facilityName: string, facilityAddress: string) {
     const content = `
       <p>Xin chào <strong>${name}</strong>,</p>
@@ -195,6 +213,9 @@ export class MailService {
     }
   }
 
+  /**
+   * Gửi email xác nhận đã tiếp nhận thông tin liên hệ từ người dùng.
+   */
   async sendContactEmail(userEmail: string, name: string, subject: string, message: string) {
     const userContent = `
       <p>Xin chào <strong>${name}</strong>,</p>

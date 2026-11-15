@@ -2,6 +2,9 @@ import { Module, Global } from '@nestjs/common';
 import { MailerModule } from '@nestjs-modules/mailer';
 import { MailService } from './mail.service';
 
+/**
+ * Module toàn cục cấu hình SMTP thông qua MailerModule và cung cấp MailService cho toàn hệ thống.
+ */
 @Global()
 @Module({
   imports: [
