@@ -1,5 +1,8 @@
 import * as xlsx from 'xlsx';
 
+/**
+ * Tiện ích hỗ trợ tạo file Excel xuất dữ liệu, file mẫu import và đọc nội dung Excel từ buffer.
+ */
 export class ExcelUtil {
   /**
    * Tạo buffer Excel từ mảng các object
