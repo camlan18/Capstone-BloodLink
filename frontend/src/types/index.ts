@@ -1,3 +1,4 @@
+/** Cấu trúc phản hồi API chuẩn kèm thông tin phân trang (nếu có). */
 export interface ApiResponse<T> {
   data: T;
   meta?: {
@@ -8,6 +9,7 @@ export interface ApiResponse<T> {
   };
 }
 
+/** Thông tin tài khoản người dùng trên giao diện frontend. */
 export interface User {
   user_id: number;
   username: string;
@@ -29,6 +31,7 @@ export interface User {
   };
 }
 
+/** Hồ sơ chi tiết của người hiến máu và trạng thái đủ điều kiện hiến tiếp. */
 export interface DonorProfile {
   donor_id: number;
   user_id: number;
@@ -55,6 +58,7 @@ export interface DonorProfile {
   };
 }
 
+/** Tài liệu giáo dục và truyền thông về hiến máu. */
 export interface EducationDocument {
   document_id: number;
   category_id: number;
@@ -73,6 +77,7 @@ export interface EducationDocument {
   };
 }
 
+/** Yêu cầu cần máu từ cơ sở y tế. */
 export interface BloodRequest {
   request_id: number;
   facility_id: number;
@@ -93,6 +98,7 @@ export interface BloodRequest {
   };
 }
 
+/** Khung giờ / slot tiếp nhận hiến máu tại cơ sở y tế. */
 export interface DonationSlot {
   slot_id: number;
   facility_id: number;
@@ -109,6 +115,7 @@ export interface DonationSlot {
   };
 }
 
+/** Bản ghi lịch sử một lần hiến máu đã thực hiện. */
 export interface DonationHistory {
   donation_id: number;
   donor_id: number;
@@ -121,12 +128,14 @@ export interface DonationHistory {
   };
 }
 
+/** Danh mục phân loại bài viết blog. */
 export interface BlogCategory {
   blog_category_id: number;
   category_name: string;
   slug: string;
 }
 
+/** Thông tin bài viết blog cộng đồng. */
 export interface BlogPost {
   post_id: number;
   blog_category_id: number;
@@ -147,6 +156,7 @@ export interface BlogPost {
   };
 }
 
+/** Bình luận trên bài viết blog, hỗ trợ lồng trả lời nhiều cấp. */
 export interface BlogComment {
   comment_id: number;
   post_id: number;
