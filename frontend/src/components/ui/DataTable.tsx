@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useTranslations } from 'next-intl';
 import { Search, ChevronLeft, ChevronRight, SlidersHorizontal, MoreVertical, ArrowUpDown, ArrowUp, ArrowDown, MoreHorizontal } from 'lucide-react';
 
+/** Định nghĩa cấu hình một cột hiển thị trong bảng DataTable. */
 export interface Column<T> {
   key: string;
   title?: string;
@@ -12,6 +13,7 @@ export interface Column<T> {
   render?: (item: T) => React.ReactNode;
 }
 
+/** Định nghĩa một hành động trong menu thao tác của từng dòng dữ liệu. */
 export interface ActionItem {
   label: string;
   icon?: React.ReactNode;
@@ -20,6 +22,7 @@ export interface ActionItem {
   hidden?: boolean;
 }
 
+/** Props truyền vào component bảng dữ liệu tổng quát DataTable. */
 interface DataTableProps<T> {
   data: T[];
   columns: Column<T>[];
@@ -45,6 +48,9 @@ interface DataTableProps<T> {
   onSelectionChange?: (ids: string[]) => void;
 }
 
+/**
+ * Component bảng dữ liệu đa năng hỗ trợ tìm kiếm, lọc, sắp xếp, ẩn/hiện cột, chọn dòng và phân trang.
+ */
 export function DataTable<T extends Record<string, any>>({
   data,
   columns,
@@ -106,6 +112,7 @@ export function DataTable<T extends Record<string, any>>({
   const startRecord = totalRecords === 0 ? 0 : (page - 1) * pageSize + 1;
   const endRecord = Math.min(page * pageSize, totalRecords);
 
+  /** Xử lý chuyển đổi chu kỳ sắp xếp cột (tăng dần -> giảm dần -> bỏ sắp xếp). */
   const handleSort = (key: string) => {
     if (!onSort) return;
     if (sortBy === key) {
@@ -117,12 +124,14 @@ export function DataTable<T extends Record<string, any>>({
     }
   };
 
+  /** Bật hoặc ẩn một cột hiển thị trong bảng theo key. */
   const toggleColumn = (key: string) => {
     setVisibleColumns(prev => 
       prev.includes(key) ? prev.filter(c => c !== key) : [...prev, key]
     );
   };
 
+  /** Trả về biểu tượng mũi tên phản ánh trạng thái sắp xếp hiện tại của cột. */
   const renderSortIcon = (key: string) => {
     if (sortBy !== key) return <ArrowUpDown className="h-4 w-4 text-gray-400 opacity-50" />;
     if (sortDirection === 'asc') return <ArrowUp className="h-4 w-4 text-[#0f4c3a]" />;
@@ -131,6 +140,7 @@ export function DataTable<T extends Record<string, any>>({
 
   const activeColumns = columns.filter(col => visibleColumns.includes(col.key) && col.key !== 'actions');
 
+  /** Tạo mảng số trang và dấu '...' phục vụ thanh phân trang thu gọn. */
   const generatePagination = () => {
     const pages = [];
     if (totalPages <= 5) {
@@ -147,6 +157,7 @@ export function DataTable<T extends Record<string, any>>({
     return pages;
   };
 
+  /** Chọn hoặc bỏ chọn toàn bộ các dòng dữ liệu đang hiển thị ở trang hiện tại. */
   const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!onSelectionChange) return;
     if (e.target.checked) {
@@ -158,6 +169,7 @@ export function DataTable<T extends Record<string, any>>({
     }
   };
 
+  /** Cập nhật danh sách ID đã chọn khi người dùng tích hoặc bỏ tích một dòng cụ thể. */
   const handleSelectItem = (id: string, checked: boolean) => {
     if (!onSelectionChange) return;
     if (checked) {
