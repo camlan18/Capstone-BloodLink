@@ -6,8 +6,10 @@ import { Select as SelectPrimitive } from "@base-ui/react/select"
 import { cn } from "@/lib/utils"
 import { ChevronDownIcon, CheckIcon, ChevronUpIcon } from "lucide-react"
 
+/** Component gốc quản lý trạng thái danh sách chọn Select. */
 const Select = SelectPrimitive.Root
 
+/** Nhóm các tùy chọn có liên quan bên trong danh sách Select. */
 function SelectGroup({ className, ...props }: SelectPrimitive.Group.Props) {
   return (
     <SelectPrimitive.Group
@@ -18,6 +20,7 @@ function SelectGroup({ className, ...props }: SelectPrimitive.Group.Props) {
   )
 }
 
+/** Hiển thị nhãn giá trị đang được chọn trong nút SelectTrigger. */
 function SelectValue({ className, ...props }: SelectPrimitive.Value.Props) {
   return (
     <SelectPrimitive.Value
@@ -28,6 +31,7 @@ function SelectValue({ className, ...props }: SelectPrimitive.Value.Props) {
   )
 }
 
+/** Nút bấm kích hoạt mở danh sách tùy chọn Select. */
 function SelectTrigger({
   className,
   size = "default",
@@ -56,6 +60,7 @@ function SelectTrigger({
   )
 }
 
+/** Khung popup thả xuống chứa danh sách các tùy chọn SelectItem. */
 function SelectContent({
   className,
   children,
@@ -95,6 +100,7 @@ function SelectContent({
   )
 }
 
+/** Nhãn tiêu đề cho một nhóm tùy chọn SelectGroup. */
 function SelectLabel({
   className,
   ...props
@@ -108,6 +114,7 @@ function SelectLabel({
   )
 }
 
+/** Một mục tùy chọn đơn lẻ có thể chọn trong danh sách Select. */
 function SelectItem({
   className,
   children,
@@ -136,6 +143,7 @@ function SelectItem({
   )
 }
 
+/** Đường phân cách giữa các nhóm tùy chọn Select. */
 function SelectSeparator({
   className,
   ...props
@@ -149,6 +157,7 @@ function SelectSeparator({
   )
 }
 
+/** Nút cuộn lên phía trên danh sách tùy chọn khi danh sách dài. */
 function SelectScrollUpButton({
   className,
   ...props
@@ -168,6 +177,7 @@ function SelectScrollUpButton({
   )
 }
 
+/** Nút cuộn xuống phía dưới danh sách tùy chọn khi danh sách dài. */
 function SelectScrollDownButton({
   className,
   ...props

@@ -19,6 +19,7 @@ import { useEffect, useState } from 'react';
 import { notificationService } from '@/lib/services/notification';
 import { useTranslations } from 'next-intl';
 
+/** Tạo danh sách liên kết điều hướng chính và menu con đa ngôn ngữ cho thanh Header. */
 const getNavLinks = (t: any) => [
   { name: t('navHome'), href: '/' },
   { name: t('navSearch'), href: '/blood-requests' },
@@ -47,6 +48,9 @@ const getNavLinks = (t: any) => [
   { name: t('navContact'), href: '/contact' },
 ];
 
+/**
+ * Component thanh điều hướng đầu trang công khai (logo, menu động theo danh mục, chuyển ngôn ngữ, thông báo và tài khoản).
+ */
 export const Header = () => {
   const t = useTranslations('Header');
   const pathname = usePathname();
@@ -58,6 +62,7 @@ export const Header = () => {
   useEffect(() => {
     setMounted(true);
     
+    /** Tải danh mục kiến thức hiến máu từ API để cập nhật động menu con mục Giáo dục. */
     const fetchCategories = async () => {
       try {
         const res = await educationService.getCategories();
@@ -100,6 +105,7 @@ export const Header = () => {
 
   useEffect(() => {
     if (isAuthenticated) {
+      /** Truy vấn số lượng thông báo chưa đọc của người dùng hiện tại. */
       const fetchUnreadCount = async () => {
         try {
           const res = await notificationService.getUnreadCount();
