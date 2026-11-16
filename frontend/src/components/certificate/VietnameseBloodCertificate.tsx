@@ -3,6 +3,7 @@ import React from 'react';
 import QRCode from 'react-qr-code';
 import { format } from 'date-fns';
 
+/** Dữ liệu đầu vào dùng để kết xuất mẫu Giấy chứng nhận hiến máu tình nguyện Việt Nam. */
 export interface CertificateData {
   certificate_no: string;
   donation_id?: number;
@@ -28,12 +29,14 @@ export interface CertificateData {
   reject_reason?: string | null;
 }
 
+/** Props truyền vào component hiển thị Giấy chứng nhận hiến máu tình nguyện. */
 interface Props {
   data: CertificateData;
   className?: string;
 }
 
 // Isolated Print Engine for A4 Landscape Certificate
+/** Tạo iframe ẩn cô lập CSS để in giấy chứng nhận hiến máu theo khổ A4 ngang chuẩn. */
 export const printCertificate = (targetElementId: string = 'vietnamese-blood-certificate') => {
   if (typeof window === 'undefined') return;
   const target = document.getElementById(targetElementId);
@@ -132,6 +135,9 @@ export const printCertificate = (targetElementId: string = 'vietnamese-blood-cer
   }, 400);
 };
 
+/**
+ * Component hiển thị song bản Giấy chứng nhận hiến máu tình nguyện Việt Nam kèm mã QR tra cứu và dấu mộc đỏ.
+ */
 export const VietnameseBloodCertificate: React.FC<Props> = ({ data, className = '' }) => {
   const isApproved = data.cert_status === 'APPROVED';
 

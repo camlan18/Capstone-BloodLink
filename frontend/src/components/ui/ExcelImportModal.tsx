@@ -3,6 +3,7 @@ import { BaseModal } from './BaseModal';
 import { Button } from './button';
 import { Upload, Download, FileSpreadsheet } from 'lucide-react';
 
+/** Props điều khiển modal nhập dữ liệu hàng loạt từ file Excel. */
 interface ExcelImportModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -11,6 +12,9 @@ interface ExcelImportModalProps {
   onDownloadTemplate: () => void;
 }
 
+/**
+ * Modal cho phép tải file Excel mẫu, kéo thả hoặc chọn tệp để import dữ liệu vào hệ thống.
+ */
 export function ExcelImportModal({
   isOpen,
   onClose,
@@ -22,12 +26,14 @@ export function ExcelImportModal({
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  /** Cập nhật tệp Excel được chọn từ hộp thoại chọn file. */
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       setFile(e.target.files[0]);
     }
   };
 
+  /** Nhận file Excel khi người dùng kéo thả vào vùng tải lên. */
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
@@ -35,10 +41,12 @@ export function ExcelImportModal({
     }
   };
 
+  /** Ngăn hành vi mặc định của trình duyệt khi kéo file qua vùng thả. */
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
   };
 
+  /** Gửi file Excel đã chọn lên callback onImport và làm sạch trạng thái input sau khi xong. */
   const handleSubmit = async () => {
     if (!file) return;
     try {

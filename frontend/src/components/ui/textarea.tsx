@@ -2,9 +2,13 @@ import * as React from "react"
 
 import { cn } from "@/lib/utils"
 
+/** Thuộc tính đầu vào mở rộng từ thẻ textarea HTML chuẩn. */
 export interface TextareaProps
   extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {}
 
+/**
+ * Component ô nhập văn bản nhiều dòng chuẩn giao diện BloodLink.
+ */
 const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
   ({ className, ...props }, ref) => {
     return (

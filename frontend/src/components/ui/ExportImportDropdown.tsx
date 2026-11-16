@@ -9,12 +9,16 @@ import {
   DropdownMenuSeparator
 } from './dropdown-menu';
 
+/** Props chứa các hàm xử lý nhập, xuất và tải file Excel mẫu. */
 interface ExportImportDropdownProps {
   onImportClick: () => void;
   onExportClick: () => void;
   onDownloadTemplateClick?: () => void;
 }
 
+/**
+ * Menu thả xuống gom nhóm các thao tác nhập Excel, xuất Excel và tải file mẫu.
+ */
 export function ExportImportDropdown({
   onImportClick,
   onExportClick,
