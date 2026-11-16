@@ -5,11 +5,15 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Button } from '@/components/ui/button';
 import { Globe } from 'lucide-react';
 
+/**
+ * Component chuyển đổi ngôn ngữ giao diện giữa tiếng Việt (vi) và tiếng Anh (en) qua next-intl.
+ */
 export function LocaleSwitcher() {
   const locale = useLocale();
   const router = useRouter();
   const pathname = usePathname();
 
+  /** Thay đổi locale cho đường dẫn hiện tại trên trình duyệt. */
   const switchLocale = (newLocale: string) => {
     router.replace(pathname, { locale: newLocale });
   };

@@ -1,6 +1,7 @@
 import React from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
+/** Props truyền vào thanh phân trang dùng chung Pagination. */
 export interface PaginationProps {
   currentPage: number;
   totalPages: number;
@@ -10,6 +11,9 @@ export interface PaginationProps {
   pageSizeOptions?: number[];
 }
 
+/**
+ * Component thanh phân trang hỗ trợ rút gọn dấu '...' và thay đổi số bản ghi mỗi trang.
+ */
 export function Pagination({
   currentPage,
   totalPages,
@@ -20,6 +24,7 @@ export function Pagination({
 }: PaginationProps) {
   if (totalPages <= 1 && !onPageSizeChange) return null;
 
+  /** Tính toán danh sách số trang hiển thị kèm dấu '...' dựa theo trang hiện tại. */
   const getPageNumbers = () => {
     const pages: (number | string)[] = [];
     const maxVisible = 5; // number of pages around current page

@@ -13,10 +13,14 @@ import { MessageSquare, Send, User, CornerDownRight, MoreVertical, Edit2, Trash2
 import { toast } from 'sonner';
 import { useTranslations } from 'next-intl';
 
+/** Props truyền ID bài viết blog cần hiển thị khu vực bình luận. */
 interface BlogCommentsProps {
   postId: number;
 }
 
+/**
+ * Component quản lý khu vực bình luận bài viết blog (tải phân trang, sắp xếp, gửi, phản hồi lồng nhau, sửa và xóa bình luận).
+ */
 export function BlogComments({ postId }: BlogCommentsProps) {
   const t = useTranslations('Blog');
   const { user, isAuthenticated } = useAuthStore();
@@ -47,6 +51,7 @@ export function BlogComments({ postId }: BlogCommentsProps) {
   // Delete confirm state
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
+  /** Tải danh sách bình luận phân trang theo postId và thứ tự sắp xếp hiện tại. */
   const fetchComments = async () => {
     try {
       setLoading(true);
@@ -67,6 +72,7 @@ export function BlogComments({ postId }: BlogCommentsProps) {
     fetchComments();
   }, [postId, page, limit, sortOrder]);
 
+  /** Gửi bình luận gốc hoặc bình luận phản hồi lên API và làm mới danh sách. */
   const handleSubmit = async (e: React.FormEvent, parentId?: number) => {
     e.preventDefault();
     const commentContent = parentId ? replyContent : content;
@@ -106,6 +112,7 @@ export function BlogComments({ postId }: BlogCommentsProps) {
     }
   };
 
+  /** Xóa bình luận đã chọn xác nhận theo deletingId và tải lại danh sách bình luận. */
   const handleDelete = async () => {
     if (!deletingId) return;
     try {
@@ -121,6 +128,7 @@ export function BlogComments({ postId }: BlogCommentsProps) {
     }
   };
 
+  /** Lưu nội dung bình luận vừa chỉnh sửa lên server theo commentId. */
   const handleEditSubmit = async (e: React.FormEvent, commentId: number) => {
     e.preventDefault();
     if (!editContent.trim()) {
@@ -140,6 +148,7 @@ export function BlogComments({ postId }: BlogCommentsProps) {
     }
   };
 
+  /** Render đệ quy một bình luận cùng form sửa, form trả lời và các phản hồi con. */
   const renderComment = (comment: BlogComment, isReply = false) => {
     return (
       <div key={comment.comment_id} className={`flex gap-4 ${isReply ? 'mt-4 ml-12' : 'mt-6'}`}>

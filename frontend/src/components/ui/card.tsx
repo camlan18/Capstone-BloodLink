@@ -2,6 +2,7 @@ import * as React from "react"
 
 import { cn } from "@/lib/utils"
 
+/** Khung thẻ Card chứa nội dung nhóm theo khối giao diện. */
 function Card({
   className,
   size = "default",
@@ -20,6 +21,7 @@ function Card({
   )
 }
 
+/** Phần đầu Card chứa tiêu đề, mô tả và vùng nút thao tác. */
 function CardHeader({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
@@ -33,6 +35,7 @@ function CardHeader({ className, ...props }: React.ComponentProps<"div">) {
   )
 }
 
+/** Tiêu đề chính hiển thị trong phần đầu của Card. */
 function CardTitle({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
@@ -46,6 +49,7 @@ function CardTitle({ className, ...props }: React.ComponentProps<"div">) {
   )
 }
 
+/** Văn bản mô tả bổ sung đặt dưới tiêu đề CardTitle. */
 function CardDescription({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
@@ -56,6 +60,7 @@ function CardDescription({ className, ...props }: React.ComponentProps<"div">) {
   )
 }
 
+/** Vùng đặt nút hoặc thao tác phụ ở góc phải phần đầu CardHeader. */
 function CardAction({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
@@ -69,6 +74,7 @@ function CardAction({ className, ...props }: React.ComponentProps<"div">) {
   )
 }
 
+/** Phần thân chứa nội dung chính của thẻ Card. */
 function CardContent({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
@@ -79,6 +85,7 @@ function CardContent({ className, ...props }: React.ComponentProps<"div">) {
   )
 }
 
+/** Phần chân chứa thông tin tổng kết hoặc các nút hành động cuối Card. */
 function CardFooter({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
