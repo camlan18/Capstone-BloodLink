@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { RotateCcw, Check, Sparkles, PenTool, Eraser, Palette } from 'lucide-react';
 import { toast } from 'sonner';
 
+/** Props cấu hình bảng ký điện tử DigitalSignaturePad. */
 interface Props {
   initialSignature?: string | null;
   signerName?: string;
@@ -11,6 +12,9 @@ interface Props {
   onCancel?: () => void;
 }
 
+/**
+ * Component bảng ký tay điện tử trên canvas, hỗ trợ vẽ tự do bằng chuột/cảm ứng, tách nền và chọn mẫu chữ ký nghệ thuật.
+ */
 export const DigitalSignaturePad: React.FC<Props> = ({
   initialSignature,
   signerName = 'Bác sĩ',
@@ -31,6 +35,7 @@ export const DigitalSignaturePad: React.FC<Props> = ({
     initCanvas();
   }, []);
 
+  /** Khởi tạo canvas độ phân giải cao (1000x440) với nét bút bo tròn và nền trong suốt. */
   const initCanvas = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -53,6 +58,7 @@ export const DigitalSignaturePad: React.FC<Props> = ({
     lastPointRef.current = null;
   };
 
+  /** Quy đổi tọa độ chuột/chạm trên màn hình sang tọa độ pixel thực tế của buffer canvas. */
   const getCanvasCoords = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement> | React.PointerEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
     if (!canvas) return { x: 0, y: 0 };
@@ -84,6 +90,7 @@ export const DigitalSignaturePad: React.FC<Props> = ({
     };
   };
 
+  /** Bắt đầu nét ký khi người dùng nhấn chuột hoặc chạm màn hình. */
   const startDrawing = (e: any) => {
     if (e.cancelable && e.type.startsWith('touch')) {
       e.preventDefault();
@@ -116,6 +123,7 @@ export const DigitalSignaturePad: React.FC<Props> = ({
     ctx.moveTo(coords.x, coords.y);
   };
 
+  /** Vẽ liên tục đoạn nét ký theo chuyển động con trỏ hiện tại. */
   const draw = (e: any) => {
     if (!isDrawing) return;
     if (e.cancelable && e.type.startsWith('touch')) {
@@ -146,11 +154,13 @@ export const DigitalSignaturePad: React.FC<Props> = ({
     lastPointRef.current = currentCoords;
   };
 
+  /** Kết thúc nét vẽ khi nhả chuột hoặc nhấc bút/tay khỏi khung ký. */
   const stopDrawing = () => {
     setIsDrawing(false);
     lastPointRef.current = null;
   };
 
+  /** Xóa toàn bộ nét ký hiện tại trên canvas để người dùng ký lại. */
   const handleClear = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -162,6 +172,7 @@ export const DigitalSignaturePad: React.FC<Props> = ({
   };
 
   // Crop empty transparent edges for tight bounding box
+  /** Cắt bỏ viền trong suốt thừa quanh chữ ký và xuất thành chuỗi base64 PNG gọn nhẹ. */
   const cropCanvas = (sourceCanvas: HTMLCanvasElement): string => {
     const ctx = sourceCanvas.getContext('2d');
     if (!ctx) return sourceCanvas.toDataURL('image/png');
@@ -214,6 +225,7 @@ export const DigitalSignaturePad: React.FC<Props> = ({
     return trimmedCanvas.toDataURL('image/png');
   };
 
+  /** Xác thực đã có nét ký, cắt gọn ảnh chữ ký và truyền dữ liệu về callback onSave. */
   const handleSaveSignature = () => {
     const canvas = canvasRef.current;
     if (!canvas || !hasDrawn) {
@@ -227,6 +239,7 @@ export const DigitalSignaturePad: React.FC<Props> = ({
   };
 
   // Generate calligraphic preset SVG to PNG
+  /** Render nhanh một trong ba mẫu chữ ký nghệ thuật định sẵn thành ảnh PNG và lưu ngay. */
   const applyCalligraphicPreset = (presetType: 1 | 2 | 3) => {
     const canvas = document.createElement('canvas');
     canvas.width = 400;
