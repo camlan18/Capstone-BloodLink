@@ -2,6 +2,7 @@ import React from 'react';
 import { BaseModal } from '@/components/ui/BaseModal';
 import { AlertCircle, Trash2, Info } from 'lucide-react';
 
+/** Props cấu hình hộp thoại xác nhận hành động (nguy hiểm, cảnh báo hoặc thông tin). */
 interface ConfirmModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -14,6 +15,9 @@ interface ConfirmModalProps {
   isLoading?: boolean;
 }
 
+/**
+ * Hộp thoại xác nhận thao tác người dùng với biểu tượng và màu nút tương ứng theo mức độ.
+ */
 export function ConfirmModal({
   isOpen,
   onClose,
@@ -26,6 +30,7 @@ export function ConfirmModal({
   isLoading = false,
 }: ConfirmModalProps) {
   
+  /** Trả về biểu tượng minh họa phù hợp với loại cảnh báo của hộp thoại. */
   const getIcon = () => {
     switch (type) {
       case 'danger':
@@ -37,6 +42,7 @@ export function ConfirmModal({
     }
   };
 
+  /** Trả về class CSS màu nút xác nhận tương ứng với thuộc tính type. */
   const getButtonClass = () => {
     switch (type) {
       case 'danger':
