@@ -9,6 +9,9 @@ import { format } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import { GlobalTransferConfirmModal } from '@/components/layout/GlobalTransferConfirmModal';
 
+/**
+ * Layout khung giao diện quản trị (sidebar phân quyền theo vai trò, topbar đồng hồ thực tế và menu tài khoản).
+ */
 export function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -165,6 +168,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
   );
 }
 
+/** Biểu tượng đồng hồ SVG hiển thị cạnh giờ hệ thống trên thanh topbar quản trị. */
 function Clock({ className }: { className?: string }) {
   return (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">

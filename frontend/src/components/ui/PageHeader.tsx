@@ -1,11 +1,15 @@
 import React from 'react';
 
+/** Props cấu hình phần tiêu đề đầu trang trong giao diện quản trị. */
 export interface PageHeaderProps {
   title: string;
   description?: string;
   action?: React.ReactNode;
 }
 
+/**
+ * Component hiển thị tiêu đề trang, mô tả ngắn và vùng chứa các nút thao tác bên phải.
+ */
 export const PageHeader = ({
   title,
   description,

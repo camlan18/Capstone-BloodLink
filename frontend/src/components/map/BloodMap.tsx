@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useMemo } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
+/** Thông tin cơ sở y tế hiển thị trên bản đồ kèm danh sách yêu cầu máu đang chờ. */
 interface FacilityOnMap {
   facility_id: number;
   facility_name: string;
@@ -18,6 +19,7 @@ interface FacilityOnMap {
   distance_km?: number;
 }
 
+/** Props cấu hình bản đồ BloodMap (cơ sở, vị trí người dùng và tọa độ điều hướng). */
 interface BloodMapProps {
   facilities: FacilityOnMap[];
   onFacilitySelect: (facility: FacilityOnMap) => void;
@@ -29,6 +31,7 @@ interface BloodMapProps {
 }
 
 // Custom marker SVG for hospitals with accurate tip anchor
+/** Tạo biểu tượng pin SVG tùy chỉnh cho cơ sở y tế theo số yêu cầu khẩn, trạng thái chọn và khoảng cách gần nhất. */
 const createHospitalIcon = (count: number, isSelected: boolean, isPrimary: boolean, isNearest: boolean) => {
   const pinW = isSelected ? 44 : 36;
   const pinH = isSelected ? 56 : 46;
@@ -78,6 +81,7 @@ const createHospitalIcon = (count: number, isSelected: boolean, isPrimary: boole
 };
 
 // User location icon
+/** Tạo marker chấm xanh phát sáng biểu diễn vị trí GPS hiện tại của người dùng. */
 const createUserLocationIcon = () => {
   return L.divIcon({
     html: `<div class="user-location-marker"><div class="user-location-dot"></div><div class="user-location-ring"></div></div>`,
@@ -87,6 +91,9 @@ const createUserLocationIcon = () => {
   });
 };
 
+/**
+ * Bản đồ Leaflet tương tác hiển thị các cơ sở y tế, số lượng yêu cầu máu khẩn cấp và khoảng cách tới người dùng.
+ */
 export default function BloodMap({ facilities, onFacilitySelect, selectedFacilityId, userLocation, nearestFacilityId, flyToCoords, flyToZoom }: BloodMapProps) {
   const mapRef = useRef<L.Map | null>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
