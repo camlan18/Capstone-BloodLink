@@ -4,11 +4,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 
+/** Cặp giá trị - nhãn hiển thị cho mỗi tùy chọn trong SearchableSelect. */
 interface Option {
   value: string;
   label: string;
 }
 
+/** Props truyền vào component chọn danh sách có ô tìm kiếm nhanh. */
 interface SearchableSelectProps {
   options: Option[];
   value: string;
@@ -21,6 +23,9 @@ interface SearchableSelectProps {
   disabled?: boolean;
 }
 
+/**
+ * Component Select nâng cao tích hợp ô tìm kiếm không phân biệt dấu tiếng Việt.
+ */
 export function SearchableSelect({
   options,
   value,

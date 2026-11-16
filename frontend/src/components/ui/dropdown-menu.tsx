@@ -6,18 +6,22 @@ import { Menu as MenuPrimitive } from "@base-ui/react/menu"
 import { cn } from "@/lib/utils"
 import { ChevronRightIcon, CheckIcon } from "lucide-react"
 
+/** Component gốc quản lý trạng thái đóng mở của menu thả xuống DropdownMenu. */
 function DropdownMenu({ ...props }: MenuPrimitive.Root.Props) {
   return <MenuPrimitive.Root data-slot="dropdown-menu" {...props} />
 }
 
+/** Portal đưa nội dung DropdownMenu ra ngoài DOM gốc. */
 function DropdownMenuPortal({ ...props }: MenuPrimitive.Portal.Props) {
   return <MenuPrimitive.Portal data-slot="dropdown-menu-portal" {...props} />
 }
 
+/** Phần tử kích hoạt mở menu thả xuống DropdownMenu. */
 function DropdownMenuTrigger({ ...props }: MenuPrimitive.Trigger.Props) {
   return <MenuPrimitive.Trigger data-slot="dropdown-menu-trigger" {...props} />
 }
 
+/** Khung nội dung popup chứa các mục menu thả xuống. */
 function DropdownMenuContent({
   align = "start",
   alignOffset = 0,
@@ -49,10 +53,12 @@ function DropdownMenuContent({
   )
 }
 
+/** Nhóm các mục chức năng cùng loại trong DropdownMenu. */
 function DropdownMenuGroup({ ...props }: MenuPrimitive.Group.Props) {
   return <MenuPrimitive.Group data-slot="dropdown-menu-group" {...props} />
 }
 
+/** Nhãn tiêu đề cho một nhóm mục trong DropdownMenu. */
 function DropdownMenuLabel({
   className,
   inset,
@@ -73,6 +79,7 @@ function DropdownMenuLabel({
   )
 }
 
+/** Một mục hành động có thể nhấn chọn trong DropdownMenu. */
 function DropdownMenuItem({
   className,
   inset,
@@ -96,10 +103,12 @@ function DropdownMenuItem({
   )
 }
 
+/** Container bọc một menu con lồng bên trong DropdownMenu. */
 function DropdownMenuSub({ ...props }: MenuPrimitive.SubmenuRoot.Props) {
   return <MenuPrimitive.SubmenuRoot data-slot="dropdown-menu-sub" {...props} />
 }
 
+/** Mục kích hoạt mở menu con DropdownMenuSubContent. */
 function DropdownMenuSubTrigger({
   className,
   inset,
@@ -124,6 +133,7 @@ function DropdownMenuSubTrigger({
   )
 }
 
+/** Khung popup hiển thị các tùy chọn của menu con. */
 function DropdownMenuSubContent({
   align = "start",
   alignOffset = -3,
@@ -145,6 +155,7 @@ function DropdownMenuSubContent({
   )
 }
 
+/** Mục tùy chọn dạng hộp kiểm (checkbox) bên trong DropdownMenu. */
 function DropdownMenuCheckboxItem({
   className,
   children,
@@ -179,6 +190,7 @@ function DropdownMenuCheckboxItem({
   )
 }
 
+/** Nhóm các mục tùy chọn đơn (radio) bên trong DropdownMenu. */
 function DropdownMenuRadioGroup({ ...props }: MenuPrimitive.RadioGroup.Props) {
   return (
     <MenuPrimitive.RadioGroup
@@ -188,6 +200,7 @@ function DropdownMenuRadioGroup({ ...props }: MenuPrimitive.RadioGroup.Props) {
   )
 }
 
+/** Mục tùy chọn radio đơn lẻ nằm trong DropdownMenuRadioGroup. */
 function DropdownMenuRadioItem({
   className,
   children,
@@ -220,6 +233,7 @@ function DropdownMenuRadioItem({
   )
 }
 
+/** Đường kẻ phân tách các nhóm mục trong DropdownMenu. */
 function DropdownMenuSeparator({
   className,
   ...props
@@ -233,6 +247,7 @@ function DropdownMenuSeparator({
   )
 }
 
+/** Nhãn hiển thị phím tắt gợi ý nằm bên phải mục menu. */
 function DropdownMenuShortcut({
   className,
   ...props

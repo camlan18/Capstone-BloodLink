@@ -4,6 +4,9 @@ import * as React from "react"
 
 import { cn } from "@/lib/utils"
 
+/**
+ * Component nhãn tiêu đề cho các trường nhập liệu trong biểu mẫu.
+ */
 function Label({ className, ...props }: React.ComponentProps<"label">) {
   return (
     <label
