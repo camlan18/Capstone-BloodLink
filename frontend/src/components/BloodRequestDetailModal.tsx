@@ -2,6 +2,7 @@ import React from 'react';
 import { BaseModal } from '@/components/ui/BaseModal';
 import { BloodRequestDetailContent } from './BloodRequestDetailContent';
 
+/** Props điều khiển modal xem chi tiết yêu cầu máu khẩn cấp. */
 interface BloodRequestDetailModalProps {
   requestCode: string | null;
   isOpen: boolean;
@@ -9,6 +10,9 @@ interface BloodRequestDetailModalProps {
   zIndexClass?: string;
 }
 
+/**
+ * Modal bọc BloodRequestDetailContent để hiển thị thông tin yêu cầu máu dạng hộp thoại.
+ */
 export const BloodRequestDetailModal: React.FC<BloodRequestDetailModalProps> = ({
   requestCode,
   isOpen,

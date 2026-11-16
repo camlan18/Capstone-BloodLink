@@ -8,6 +8,9 @@ import { toast } from 'sonner';
 import { PackageCheck, AlertCircle, ArrowRightLeft, CheckSquare, Square, CheckCheck } from 'lucide-react';
 import { format } from 'date-fns';
 
+/**
+ * Modal toàn cục tự động kiểm tra định kỳ các phiếu chuyển máu đã giao đến cơ sở hiện tại để xác nhận nhập kho.
+ */
 export function GlobalTransferConfirmModal() {
   const { user } = useAuthStore();
   const [pendingTransfers, setPendingTransfers] = useState<any[]>([]);
@@ -16,6 +19,7 @@ export function GlobalTransferConfirmModal() {
   const [actionLoadingId, setActionLoadingId] = useState<number | null>(null);
   const [batchLoading, setBatchLoading] = useState<'selected' | 'all' | null>(null);
 
+  /** Tải danh sách phiếu chuyển máu có trạng thái DELIVERED gửi tới cơ sở của người dùng. */
   const fetchPendingTransfers = async () => {
     if (!user || !user.facility_id) return;
     try {
@@ -51,6 +55,7 @@ export function GlobalTransferConfirmModal() {
   const isProcessing = actionLoadingId !== null || batchLoading !== null;
   const allSelected = pendingTransfers.length > 0 && selectedIds.length === pendingTransfers.length;
 
+  /** Bật hoặc bỏ chọn toàn bộ danh sách phiếu chuyển máu đang chờ xác nhận. */
   const toggleSelectAll = () => {
     if (isProcessing) return;
     if (allSelected) {
@@ -60,6 +65,7 @@ export function GlobalTransferConfirmModal() {
     }
   };
 
+  /** Bật hoặc tắt trạng thái chọn của một phiếu chuyển máu theo ID. */
   const toggleSelectItem = (id: number) => {
     if (isProcessing) return;
     setSelectedIds((prev) =>
@@ -67,6 +73,7 @@ export function GlobalTransferConfirmModal() {
     );
   };
 
+  /** Gửi xác nhận nhập kho hàng loạt nhiều phiếu, tự fallback sang gọi tuần tự nếu route batch chưa sẵn sàng. */
   const confirmMultipleIds = async (ids: number[]) => {
     try {
       const res = await adminTransferService.receiveBatchTransfers(ids);
@@ -83,6 +90,7 @@ export function GlobalTransferConfirmModal() {
     }
   };
 
+  /** Xác nhận nhập kho cho một phiếu chuyển máu đơn lẻ và phát sự kiện cập nhật giao diện. */
   const handleConfirmReceive = async (id: number, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
     try {
@@ -98,6 +106,7 @@ export function GlobalTransferConfirmModal() {
     }
   };
 
+  /** Xác nhận nhập kho các phiếu chuyển máu đã được người dùng tích chọn. */
   const handleConfirmSelected = async () => {
     if (selectedIds.length === 0) {
       toast.error('Vui lòng chọn ít nhất 1 phiếu để duyệt xác nhận kho');
@@ -117,6 +126,7 @@ export function GlobalTransferConfirmModal() {
     }
   };
 
+  /** Duyệt xác nhận nhập kho toàn bộ danh sách phiếu chuyển máu đang chờ. */
   const handleConfirmAll = async () => {
     const allIds = pendingTransfers.map((item) => item.transfer_id);
     if (allIds.length === 0) return;
@@ -134,6 +144,7 @@ export function GlobalTransferConfirmModal() {
     }
   };
 
+  /** Tạo chuỗi tóm tắt số lượng túi máu và tổng thể tích (ml) từ dữ liệu phiếu chuyển. */
   const getBagSummary = (item: any) => {
     if (item.inventory_ids) {
       try {

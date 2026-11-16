@@ -7,22 +7,27 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { XIcon } from "lucide-react"
 
+/** Component gốc bọc trạng thái đóng/mở của Dialog. */
 function Dialog({ ...props }: DialogPrimitive.Root.Props) {
   return <DialogPrimitive.Root data-slot="dialog" {...props} />
 }
 
+/** Nút hoặc phần tử kích hoạt mở hộp thoại Dialog. */
 function DialogTrigger({ ...props }: DialogPrimitive.Trigger.Props) {
   return <DialogPrimitive.Trigger data-slot="dialog-trigger" {...props} />
 }
 
+/** Portal đưa nội dung Dialog ra ngoài cây DOM hiện tại để tránh tràn overflow. */
 function DialogPortal({ ...props }: DialogPrimitive.Portal.Props) {
   return <DialogPrimitive.Portal data-slot="dialog-portal" {...props} />
 }
 
+/** Phần tử kích hoạt đóng Dialog hiện tại. */
 function DialogClose({ ...props }: DialogPrimitive.Close.Props) {
   return <DialogPrimitive.Close data-slot="dialog-close" {...props} />
 }
 
+/** Lớp nền mờ phía sau hộp thoại Dialog. */
 function DialogOverlay({
   className,
   ...props
@@ -39,6 +44,7 @@ function DialogOverlay({
   )
 }
 
+/** Khung nội dung chính căn giữa màn hình của Dialog, tùy chọn hiển thị nút đóng góc phải. */
 function DialogContent({
   className,
   children,
@@ -80,6 +86,7 @@ function DialogContent({
   )
 }
 
+/** Phần đầu chứa tiêu đề và mô tả của hộp thoại Dialog. */
 function DialogHeader({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
@@ -90,6 +97,7 @@ function DialogHeader({ className, ...props }: React.ComponentProps<"div">) {
   )
 }
 
+/** Phần chân hộp thoại Dialog chứa các nút hành động và tùy chọn nút đóng mặc định. */
 function DialogFooter({
   className,
   showCloseButton = false,
@@ -117,6 +125,7 @@ function DialogFooter({
   )
 }
 
+/** Tiêu đề chính của hộp thoại Dialog. */
 function DialogTitle({ className, ...props }: DialogPrimitive.Title.Props) {
   return (
     <DialogPrimitive.Title
@@ -130,6 +139,7 @@ function DialogTitle({ className, ...props }: DialogPrimitive.Title.Props) {
   )
 }
 
+/** Đoạn văn bản mô tả phụ bên dưới tiêu đề Dialog. */
 function DialogDescription({
   className,
   ...props

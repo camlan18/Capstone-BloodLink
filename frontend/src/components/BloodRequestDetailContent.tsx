@@ -4,10 +4,14 @@ import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { bloodRequestService } from '@/lib/services/bloodRequest';
 
+/** Props truyền vào component hiển thị chi tiết một yêu cầu cần máu. */
 interface BloodRequestDetailContentProps {
   requestCode: string | null;
 }
 
+/**
+ * Component tải và hiển thị thông tin chi tiết yêu cầu máu khẩn cấp (bệnh nhân, lượng máu, cơ sở điều trị).
+ */
 export const BloodRequestDetailContent: React.FC<BloodRequestDetailContentProps> = ({
   requestCode
 }) => {
@@ -16,6 +20,7 @@ export const BloodRequestDetailContent: React.FC<BloodRequestDetailContentProps>
 
   useEffect(() => {
     if (requestCode) {
+      /** Gọi API lấy thông tin chi tiết yêu cầu máu theo mã requestCode. */
       const fetchRequestDetails = async () => {
         try {
           setLoading(true);

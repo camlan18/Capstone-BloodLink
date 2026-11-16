@@ -1,6 +1,7 @@
 import React from 'react';
 import { X } from 'lucide-react';
 
+/** Props cấu hình hộp thoại BaseModal dùng chung trong toàn bộ giao diện quản trị. */
 export interface BaseModalProps {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
@@ -33,6 +34,9 @@ export interface BaseModalProps {
   zIndexClass?: string;
 }
 
+/**
+ * Component modal chuẩn hóa phần đầu, thân cuộn và chân trang (hỗ trợ form submit và nhiều kích thước).
+ */
 export const BaseModal = ({
   open,
   onOpenChange,
