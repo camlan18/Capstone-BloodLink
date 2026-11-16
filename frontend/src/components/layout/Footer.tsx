@@ -3,6 +3,9 @@ import { Link } from '@/i18n/routing';
 import { Droplet, Heart, Phone, Mail, MapPin, Globe, MessageCircle } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
+/**
+ * Component chân trang công khai hiển thị thông tin BloodLink, liên kết nhanh, liên hệ và điều khoản.
+ */
 export const Footer = () => {
   const t = useTranslations('Footer');
   return (
