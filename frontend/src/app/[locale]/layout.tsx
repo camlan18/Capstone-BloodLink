@@ -13,11 +13,15 @@ const roboto = Roboto({
   weight: ["300", "400", "500", "700"],
 });
 
+/** Metadata SEO mặc định cho toàn bộ ứng dụng web BloodLink. */
 export const metadata: Metadata = {
   title: "BloodLink - Hệ thống hiến máu nhân đạo",
   description: "Kết nối người hiến máu với những người cần máu. Tìm kiếm ngân hàng máu, đăng ký hiến máu, và tham gia các chiến dịch hiến máu trên toàn quốc.",
 };
 
+/**
+ * RootLayout bọc toàn bộ cây trang theo locale: kiểm tra ngôn ngữ hợp lệ, nạp messages i18n và Toaster.
+ */
 export default async function RootLayout({
   children,
   params

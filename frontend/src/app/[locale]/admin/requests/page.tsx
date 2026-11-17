@@ -19,6 +19,7 @@ import { useAuthStore } from '@/lib/stores';
 import { PageHeader } from '@/components/ui/PageHeader';
 
 
+/** Trả về class màu badge hiển thị trạng thái xử lý yêu cầu máu trong trang quản trị. */
 const getStatusColor = (code?: string) => {
   if (!code) return 'bg-slate-100 text-slate-600 border-slate-200';
   const c = code.toLowerCase();
@@ -30,6 +31,9 @@ const getStatusColor = (code?: string) => {
   return 'bg-slate-50 text-slate-600 border-slate-200';
 };
 
+/**
+ * Trang quản trị yêu cầu máu: tiếp nhận, chỉnh sửa, ghép nối người hiến, cấp phát túi máu và nhập/xuất Excel.
+ */
 export default function AdminRequestsPage() {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<any[]>([]);
@@ -116,6 +120,7 @@ export default function AdminRequestsPage() {
     }
   }, [isDetailOpen, selectedItem, detailTab]);
 
+  /** Tải dữ liệu danh mục phục vụ bộ lọc và form tạo/sửa yêu cầu máu. */
   const fetchMasterData = async () => {
     try {
       const [btRes, compRes, facRes, urgRes] = await Promise.all([
@@ -133,11 +138,13 @@ export default function AdminRequestsPage() {
     }
   };
 
+  /** Cập nhật từ khóa tìm kiếm và đưa trang về 1. */
   const handleSearch = (val: string) => {
     setKeyword(val);
     setPage(1);
   };
 
+  /** Tải danh sách yêu cầu máu phân trang theo bộ lọc trạng thái, độ khẩn và sắp xếp. */
   const fetchData = async () => {
     try {
       setLoading(true);
@@ -161,6 +168,7 @@ export default function AdminRequestsPage() {
     }
   };
 
+  /** Cập nhật trạng thái sắp xếp cột dữ liệu trên bảng. */
   const handleSort = (key: string, direction: 'asc' | 'desc' | undefined) => {
     if (!direction) {
       setSortBy('default');
@@ -172,6 +180,7 @@ export default function AdminRequestsPage() {
     setPage(1);
   };
 
+  /** Chuyển yêu cầu máu sang bước tiếp nhận xử lý. */
   const handleProcess = async (id: number) => {
     try {
       const res = await adminRequestService.processRequest(id);
@@ -182,6 +191,7 @@ export default function AdminRequestsPage() {
     }
   };
 
+  /** Xác nhận và xóa yêu cầu máu theo ID. */
   const handleDelete = async (id: number) => {
     if (!window.confirm('Bạn có chắc chắn muốn xóa yêu cầu này?')) return;
     try {
@@ -193,6 +203,7 @@ export default function AdminRequestsPage() {
     }
   };
 
+  /** Xác nhận và hủy yêu cầu máu theo ID. */
   const handleCancel = async (id: number) => {
     if (!window.confirm('Bạn có chắc chắn muốn hủy yêu cầu này?')) return;
     try {
@@ -204,6 +215,7 @@ export default function AdminRequestsPage() {
     }
   };
 
+  /** Nạp thông tin yêu cầu máu hiện tại vào form để mở modal chỉnh sửa. */
   const handleEdit = (req: any) => {
     setEditId(req.request_id);
     setCreateData({
@@ -227,6 +239,7 @@ export default function AdminRequestsPage() {
     setIsCreateOpen(true);
   };
 
+  /** Tự động điền địa chỉ và tọa độ cơ sở y tế khi đổi cơ sở trong form. */
   const handleFacilityChange = (facId: string) => {
     const facility = facilities.find(f => f.facility_id.toString() === facId);
     if (facility) {
@@ -245,6 +258,7 @@ export default function AdminRequestsPage() {
     }
   };
 
+  /** Lưu yêu cầu máu mới hoặc cập nhật thông tin yêu cầu đang chỉnh sửa. */
   const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -297,6 +311,7 @@ export default function AdminRequestsPage() {
 
   // --- MATCHING & ALLOCATION METHODS ---
 
+  /** Tải danh sách người hiến máu đã ghép nối cho yêu cầu máu. */
   const fetchMatches = async (requestId: number) => {
     try {
       setIsMatchingLoading(true);
@@ -309,6 +324,7 @@ export default function AdminRequestsPage() {
     }
   };
 
+  /** Kích hoạt quét và tìm kiếm người hiến máu phù hợp cho yêu cầu đang mở. */
   const handleFindMatches = async () => {
     if (!selectedItem) return;
     try {
@@ -323,6 +339,7 @@ export default function AdminRequestsPage() {
     }
   };
 
+  /** Cập nhật trạng thái phản hồi của một ghép nối người hiến máu. */
   const handleUpdateMatchStatus = async (matchId: number, status: string) => {
     try {
       await adminRequestService.updateMatchStatus(matchId, status);
@@ -333,6 +350,7 @@ export default function AdminRequestsPage() {
     }
   };
 
+  /** Tải danh sách túi máu đã cấp phát cho yêu cầu máu. */
   const fetchAllocations = async (requestId: number) => {
     try {
       setIsAllocationLoading(true);
@@ -345,6 +363,7 @@ export default function AdminRequestsPage() {
     }
   };
 
+  /** Tải các túi máu khả dụng trong kho phù hợp nhóm máu và thành phần máu yêu cầu. */
   const fetchAvailableInventory = async (bloodTypeId: number, componentId: number) => {
     try {
       setIsAllocationLoading(true);
@@ -362,6 +381,7 @@ export default function AdminRequestsPage() {
     }
   };
 
+  /** Thực hiện cấp phát các túi máu đã chọn từ kho cho yêu cầu máu hiện tại. */
   const handleAllocate = async () => {
     if (!selectedItem || selectedInventoryIds.length === 0) return;
     try {
@@ -387,6 +407,7 @@ export default function AdminRequestsPage() {
     }
   };
 
+  /** Thu hồi túi máu đã cấp phát trở lại kho AVAILABLE. */
   const handleReleaseAllocation = async (allocationId: number) => {
     if (!window.confirm('Bạn có chắc chắn muốn thu hồi túi máu này về ngân hàng?')) return;
     try {
@@ -412,6 +433,7 @@ export default function AdminRequestsPage() {
     }
   };
 
+  /** Xuất danh sách yêu cầu máu hiện tại ra file Excel. */
   const handleExport = async () => {
     try {
       await adminRequestService.exportExcel({
@@ -424,6 +446,7 @@ export default function AdminRequestsPage() {
     }
   };
 
+  /** Import danh sách yêu cầu máu hàng loạt từ file Excel. */
   const handleImport = async (file: File) => {
     try {
       const res = await adminRequestService.importExcel(file);
@@ -435,6 +458,7 @@ export default function AdminRequestsPage() {
     }
   };
 
+  /** Tải file Excel mẫu nhập yêu cầu máu. */
   const handleDownloadTemplate = async () => {
     try {
       await adminRequestService.downloadTemplate();
@@ -515,6 +539,7 @@ export default function AdminRequestsPage() {
     }
   ];
 
+  /** Xác định danh sách thao tác khả dụng theo trạng thái hiện tại của từng dòng yêu cầu máu. */
   const getRowActions = (req: any): ActionItem[] => {
     const status = req.status?.status_code?.toLowerCase();
     const isPending = status === 'pending';
