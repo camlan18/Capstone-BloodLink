@@ -19,6 +19,9 @@ import { FileText } from 'lucide-react';
 
 const ReactQuill = dynamic(() => import('react-quill-new'), { ssr: false });
 
+/**
+ * Trang quản trị đợt tổ chức hiến máu (tạo/sửa/xóa lịch, quản lý điều khoản, duyệt người đăng ký và xuất Excel).
+ */
 export default function AdminSchedulesPage() {
   const [data, setData] = useState<FacilityDonationSchedule[]>([]);
   const [facilities, setFacilities] = useState<any[]>([]);
@@ -58,6 +61,7 @@ export default function AdminSchedulesPage() {
   const [donorsLoading, setDonorsLoading] = useState(false);
   const [donorStatusFilter, setDonorStatusFilter] = useState<string>('all');
 
+  /** Tải danh sách đợt tổ chức hiến máu theo bộ lọc cơ sở và trạng thái. */
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
@@ -82,6 +86,7 @@ export default function AdminSchedulesPage() {
   }, [fetchData]);
 
   useEffect(() => {
+    /** Tải danh sách cơ sở y tế phục vụ bộ lọc và chọn cơ sở khi tạo lịch. */
     const fetchFacilities = async () => {
       try {
         const res = await adminMasterDataService.getFacilities({ limit: 1000 });
@@ -93,6 +98,7 @@ export default function AdminSchedulesPage() {
     fetchFacilities();
   }, []);
 
+  /** Đặt lại form mặc định và mở modal tạo mới lịch hiến máu. */
   const openCreateModal = () => {
     setFormData({
       facility_id: isStaff && currentUser?.facility_id ? currentUser.facility_id.toString() : '',
@@ -107,8 +113,10 @@ export default function AdminSchedulesPage() {
     setIsModalOpen(true);
   };
 
+  /** Nạp thông tin đợt hiến máu cần sửa vào form và mở modal chỉnh sửa. */
   const openEditModal = (item: FacilityDonationSchedule) => {
     // start_time / end_time might be returned as ISO strings from Prisma
+    /** Chuẩn hóa chuỗi thời gian ISO từ DB thành định dạng HH:mm để hiển thị trên input time. */
     const formatTime = (timeStr: string) => {
       try {
         if (!timeStr) return '00:00';
@@ -135,6 +143,7 @@ export default function AdminSchedulesPage() {
     setIsModalOpen(true);
   };
 
+  /** Mở modal xem chi tiết đợt hiến máu và tải danh sách người đã đăng ký. */
   const openViewModal = (item: FacilityDonationSchedule) => {
     setCurrentView(item);
     setIsViewModalOpen(true);
@@ -143,6 +152,7 @@ export default function AdminSchedulesPage() {
     fetchDonors(item.schedule_id, 'all');
   };
 
+  /** Tải danh sách người đăng ký thuộc đợt hiến máu theo trạng thái lọc. */
   const fetchDonors = async (scheduleId: number, status?: string) => {
     try {
       setDonorsLoading(true);
@@ -160,6 +170,7 @@ export default function AdminSchedulesPage() {
     }
   };
 
+  /** Cập nhật trạng thái tham gia của người hiến máu ngay trong tab danh sách đợt hiến. */
   const handleUpdateDonorStatus = async (slotId: number, status: string) => {
     if (!currentView) return;
     try {
@@ -171,6 +182,7 @@ export default function AdminSchedulesPage() {
     }
   };
 
+  /** Xuất danh sách người đăng ký tham gia của đợt hiến máu đang xem ra file Excel. */
   const handleExportDonors = async () => {
     if (!currentView) return;
     try {
@@ -181,6 +193,7 @@ export default function AdminSchedulesPage() {
     }
   };
 
+  /** Xác nhận và xóa một đợt hiến máu theo ID. */
   const handleDelete = async (id: number) => {
     if (!confirm('Bạn có chắc chắn muốn xóa lịch này không?')) return;
     try {
@@ -192,6 +205,7 @@ export default function AdminSchedulesPage() {
     }
   };
 
+  /** Kiểm tra dữ liệu hợp lệ và lưu đợt hiến máu mới hoặc cập nhật đợt hiện có. */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.facility_id) {

@@ -11,6 +11,9 @@ import { DigitalSignaturePad } from '@/components/ui/DigitalSignaturePad';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { PageHeader } from '@/components/ui/PageHeader';
 
+/**
+ * Trang cấu hình con dấu tròn, chữ ký số điện tử và thông tin người ký chứng nhận cho cơ sở y tế.
+ */
 export default function FacilitySealPage() {
   const currentUser = useAuthStore(state => state.user);
   const isAdmin = currentUser?.role?.role_code === 'ADMIN' || (typeof currentUser?.role === 'string' && currentUser.role === 'ADMIN');
@@ -39,6 +42,7 @@ export default function FacilitySealPage() {
     loadInitialData();
   }, [currentUser]);
 
+  /** Tải danh sách cơ sở y tế và nạp cấu hình dấu mộc/chữ ký của cơ sở đang chọn. */
   const loadInitialData = async () => {
     try {
       setLoading(true);
@@ -85,6 +89,7 @@ export default function FacilitySealPage() {
     }
   };
 
+  /** Điền dữ liệu dấu mộc và chữ ký từ bản ghi cơ sở y tế vào state formData. */
   const fillFormData = (fac: any) => {
     setFormData({
       facility_name: fac.facility_name || '',
@@ -96,6 +101,7 @@ export default function FacilitySealPage() {
     });
   };
 
+  /** Chuyển đổi cơ sở y tế đang cấu hình và cập nhật form tương ứng. */
   const handleFacilityChange = (facIdStr: string | null) => {
     if (!facIdStr) return;
     const id = parseInt(facIdStr);
@@ -106,6 +112,7 @@ export default function FacilitySealPage() {
     }
   };
 
+  /** Tải ảnh con dấu hoặc ảnh chữ ký lên Cloudinary thông qua endpoint /upload/image. */
   const handleUploadFile = async (file: File, type: 'seal' | 'signature') => {
     try {
       if (type === 'seal') setUploadingSeal(true);
@@ -140,6 +147,7 @@ export default function FacilitySealPage() {
     }
   };
 
+  /** Lưu cấu hình con dấu, chữ ký số (tự upload nếu dạng base64) và người ký cho cơ sở y tế. */
   const handleSave = async () => {
     if (!selectedFacilityId) return;
     try {

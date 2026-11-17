@@ -13,6 +13,9 @@ import { VietnameseBloodCertificate, CertificateData } from '@/components/certif
 import { PageHeader } from '@/components/ui/PageHeader';
 
 
+/**
+ * Trang quản trị duyệt cấp hoặc từ chối giấy chứng nhận hiến máu tình nguyện kèm bản xem trước.
+ */
 export default function AdminCertificatesPage() {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<any[]>([]);
@@ -36,6 +39,7 @@ export default function AdminCertificatesPage() {
     fetchData();
   }, [page, pageSize, keyword, statusFilter]);
 
+  /** Tải danh sách yêu cầu cấp chứng nhận hiến máu theo trang, từ khóa và trạng thái duyệt. */
   const fetchData = async () => {
     try {
       setLoading(true);
@@ -56,6 +60,7 @@ export default function AdminCertificatesPage() {
     }
   };
 
+  /** Phê duyệt cấp giấy chứng nhận hiến máu theo ID. */
   const handleApprove = async (certId: number) => {
     try {
       setSubmitting(true);
@@ -69,6 +74,7 @@ export default function AdminCertificatesPage() {
     }
   };
 
+  /** Từ chối cấp giấy chứng nhận hiến máu kèm lý do bắt buộc. */
   const handleRejectSubmit = async () => {
     if (!rejectingId || !rejectReason.trim()) {
       toast.error('Vui lòng nhập lý do từ chối');
@@ -88,6 +94,7 @@ export default function AdminCertificatesPage() {
     }
   };
 
+  /** Trả về badge trạng thái duyệt chứng nhận (chờ duyệt, đã duyệt, từ chối). */
   const getStatusBadge = (status: string) => {
     const map: Record<string, { cls: string; label: string; icon: any }> = {
       PENDING: { cls: 'bg-amber-50 text-amber-600 border border-amber-200', label: 'Chờ duyệt', icon: <Clock className="w-3 h-3" /> },
@@ -142,6 +149,7 @@ export default function AdminCertificatesPage() {
     }
   ];
 
+  /** Trả về danh sách thao tác duyệt, từ chối và xem bản xem trước chứng nhận. */
   const getRowActions = (cert: any): ActionItem[] => {
     const actions: ActionItem[] = [];
 

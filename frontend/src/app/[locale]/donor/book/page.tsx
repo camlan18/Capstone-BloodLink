@@ -29,9 +29,13 @@ import { BaseModal } from '@/components/ui/BaseModal';
 import { BloodRequestDetailModal } from '@/components/BloodRequestDetailModal';
 import { useTranslations } from 'next-intl';
 
+/**
+ * Trang đặt lịch hiến máu theo lịch (chọn ngày trên lịch tháng, khai báo sàng lọc sức khỏe, xem và hủy lịch đã đặt).
+ */
 export default function BookDonationPage() {
   const t = useTranslations('DonorBook');
 
+  /** Trả về nhãn tiếng Việt, màu sắc và icon theo trạng thái slot đặt lịch hiến máu. */
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'PENDING':
@@ -106,6 +110,7 @@ export default function BookDonationPage() {
     fetchData();
   }, [currentMonth]);
 
+  /** Tải đồng thời lịch hẹn của bản thân, các đợt tổ chức hiến máu, hồ sơ sức khỏe và lịch sử hiến máu. */
   const fetchData = async () => {
     try {
       setLoading(true);
@@ -142,6 +147,7 @@ export default function BookDonationPage() {
     }
   };
 
+  /** Xử lý khi chọn một ngày trên lịch: kiểm tra điều kiện ngày hiến kế tiếp và mở modal xem hoặc đặt lịch. */
   const handleDayClick = (day: Date) => {
     if (isBefore(day, startOfDay(new Date()))) return;
     
@@ -191,6 +197,7 @@ export default function BookDonationPage() {
     setIsModalOpen(true);
   };
 
+  /** Tổng hợp ghi chú sàng lọc sức khỏe và gửi đăng ký đặt lịch hiến máu lên API. */
   const handleSubmitBooking = async (scheduleId?: number) => {
     try {
       setIsSubmitting(scheduleId || -1);
@@ -230,6 +237,7 @@ export default function BookDonationPage() {
     }
   };
 
+  /** Hủy lịch hẹn hiến máu đã đặt trước đó theo slotId và tải lại dữ liệu lịch. */
   const handleCancelBooking = async (slotId: number) => {
     try {
       setIsCanceling(true);

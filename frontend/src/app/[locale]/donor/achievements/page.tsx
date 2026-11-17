@@ -4,6 +4,9 @@ import { donorService } from '@/lib/services/donor';
 import { Award, Heart, Star, Shield, Droplet, Calendar, Info } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
+/**
+ * Trang tổng hợp thành tích, huy hiệu và mốc ngày đủ điều kiện hiến máu kế tiếp của cá nhân.
+ */
 export default function AchievementsPage() {
   const t = useTranslations('DonorAchievements');
   const [data, setData] = useState<any>(null);
@@ -13,6 +16,7 @@ export default function AchievementsPage() {
     fetchData();
   }, []);
 
+  /** Tải dữ liệu thống kê tổng số lần hiến, thể tích và danh hiệu huy hiệu từ API. */
   const fetchData = async () => {
     try {
       setLoading(true);
@@ -27,6 +31,7 @@ export default function AchievementsPage() {
     }
   };
 
+  /** Ánh xạ tên biểu tượng sang component icon Lucide tương ứng cho từng huy hiệu. */
   const getIcon = (iconName: string) => {
     switch (iconName) {
       case 'droplet': return <Droplet className="w-8 h-8" />;
@@ -157,6 +162,7 @@ export default function AchievementsPage() {
   );
 }
 
+/** Biểu tượng người dùng SVG hiển thị trong khung thông tin ngày đủ điều kiện hiến tiếp. */
 function UserIcon(props: any) {
   return (
     <svg
