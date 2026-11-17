@@ -6,6 +6,9 @@ import { BaseModal } from '@/components/ui/BaseModal';
 import { DataTable, Column } from '@/components/ui/DataTable';
 import { useTranslations } from 'next-intl';
 
+/**
+ * Trang danh sách các yêu cầu máu khẩn cấp đã được ghép nối phù hợp với nhóm máu của người dùng.
+ */
 export default function MyMatchesPage() {
   const t = useTranslations('DonorMatches');
   const [matches, setMatches] = useState<any[]>([]);
@@ -18,6 +21,7 @@ export default function MyMatchesPage() {
 
   useEffect(() => { fetchMatches(); }, []);
 
+  /** Tải danh sách lời kêu gọi hiến máu phù hợp được gửi tới tài khoản hiện tại. */
   const fetchMatches = async () => {
     try {
       setLoading(true);
@@ -27,6 +31,7 @@ export default function MyMatchesPage() {
     finally { setLoading(false); }
   };
 
+  /** Trả về badge hiển thị trạng thái phản hồi của lượt ghép nối hiến máu. */
   const getStatusBadge = (status: string) => {
     const map: Record<string, { cls: string; label: string }> = {
       PENDING: { cls: 'bg-amber-100 text-amber-700', label: t('statusPending') },

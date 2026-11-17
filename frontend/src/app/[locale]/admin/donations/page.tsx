@@ -20,6 +20,9 @@ import { useAuthStore } from '@/lib/stores';
 import { PageHeader } from '@/components/ui/PageHeader';
 
 
+/**
+ * Trang quản trị đăng ký và ghi nhận ca hiến máu (xác nhận lịch, khám sàng lọc, nhập lượng máu thu được và Excel).
+ */
 export default function AdminDonationsPage() {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<any[]>([]);
@@ -94,6 +97,7 @@ export default function AdminDonationsPage() {
     fetchUsers();
   }, [page, pageSize, keyword, statusCode, sortBy, sortOrder]);
 
+  /** Tải danh mục nhóm máu, thành phần máu, cơ sở y tế và các lịch hiến máu đang mở. */
   const fetchMasterData = async () => {
     try {
       const [btRes, compRes, facRes, schedRes] = await Promise.all([
@@ -114,6 +118,7 @@ export default function AdminDonationsPage() {
     }
   };
 
+  /** Tải danh sách người dùng phục vụ tạo nhanh lượt hẹn hiến máu mới. */
   const fetchUsers = async () => {
     try {
       const res = await adminUserService.getUsers({ limit: 100 });
@@ -125,16 +130,19 @@ export default function AdminDonationsPage() {
     }
   };
 
+  /** Cập nhật từ khóa tìm kiếm và đặt lại trang về 1. */
   const handleSearch = (val: string) => {
     setKeyword(val);
     setPage(1);
   };
 
+  /** Cập nhật bộ lọc trạng thái lịch hẹn và đặt lại trang về 1. */
   const handleStatusChange = (val: string | null) => {
     setStatusCode(val || 'ALL');
     setPage(1);
   };
 
+  /** Tải danh sách các slot đăng ký hiến máu phân trang theo từ khóa, trạng thái và sắp xếp. */
   const fetchData = async () => {
     try {
       setLoading(true);
@@ -157,6 +165,7 @@ export default function AdminDonationsPage() {
     }
   };
 
+  /** Cập nhật cột và chiều sắp xếp dữ liệu trên bảng đăng ký hiến máu. */
   const handleSort = (key: string, direction: 'asc' | 'desc' | undefined) => {
     if (!direction) {
       // Reset về sort mặc định
@@ -169,6 +178,7 @@ export default function AdminDonationsPage() {
     setPage(1);
   };
 
+  /** Xuất danh sách lịch đăng ký hiến máu hiện tại ra file Excel. */
   const handleExport = async () => {
     try {
       await adminDonationService.exportExcel({
@@ -180,6 +190,7 @@ export default function AdminDonationsPage() {
     }
   };
 
+  /** Import dữ liệu lịch đăng ký hiến máu từ file Excel tải lên. */
   const handleImport = async (file: File) => {
     try {
       const res = await adminDonationService.importExcel(file);
@@ -191,6 +202,7 @@ export default function AdminDonationsPage() {
     }
   };
 
+  /** Tải file Excel mẫu nhập lịch đăng ký hiến máu. */
   const handleDownloadTemplate = async () => {
     try {
       await adminDonationService.downloadTemplate();
@@ -199,6 +211,7 @@ export default function AdminDonationsPage() {
     }
   };
 
+  /** Mở modal ghi nhận kết quả khám sàng lọc và lấy máu cho lịch hẹn đã chọn. */
   const handleOpenRecord = (slot: any) => {
     setSelectedSlot(slot);
     setRecordData({ 
@@ -214,6 +227,7 @@ export default function AdminDonationsPage() {
     setIsModalOpen(true);
   };
 
+  /** Ghi nhận kết quả hiến máu (đạt hay không đạt sức khỏe) và đồng bộ trạng thái slot. */
   const handleRecordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (recordData.health_check_passed) {
@@ -269,6 +283,7 @@ export default function AdminDonationsPage() {
     }
   };
 
+  /** Tạo mới lượt hẹn hiến máu thủ công từ trang quản trị. */
   const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -289,6 +304,7 @@ export default function AdminDonationsPage() {
     }
   };
 
+  /** Chuyển mã trạng thái slot sang nhãn tiếng Việt hiển thị trên giao diện. */
   const getStatusLabel = (status: string, notes?: string) => {
     if (status === 'COMPLETED' || notes === 'COMPLETED') return 'Đã hiến';
     if (status === 'EXAMINED_PASSED') return 'Khám đạt';
@@ -300,6 +316,7 @@ export default function AdminDonationsPage() {
     return status;
   };
 
+  /** Trả về class CSS màu badge theo trạng thái slot đăng ký hiến máu. */
   const getStatusBadgeClass = (status: string, notes?: string) => {
     if (status === 'COMPLETED' || notes === 'COMPLETED') return 'bg-emerald-50 text-emerald-600 border border-emerald-200';
     if (status === 'EXAMINED_PASSED') return 'bg-blue-50 text-blue-600 border border-blue-200';
@@ -350,6 +367,7 @@ export default function AdminDonationsPage() {
     }
   ];
 
+  /** Cập nhật nhanh trạng thái slot hẹn hiến máu (xác nhận, đã đến, khám đạt, hủy). */
   const handleQuickStatusChange = async (slotId: number, status: string) => {
     try {
       await adminDonationService.updateSlotStatus(slotId, status);
@@ -360,6 +378,7 @@ export default function AdminDonationsPage() {
     }
   };
 
+  /** Trả về danh sách nút thao tác phù hợp theo tiến trình trạng thái của từng slot hẹn. */
   const getRowActions = (slot: any): ActionItem[] => {
     const actions: ActionItem[] = [];
 

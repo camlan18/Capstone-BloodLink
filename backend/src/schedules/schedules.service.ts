@@ -5,6 +5,7 @@ import { CreateScheduleDto, UpdateScheduleDto, ScheduleFilterDto } from './dto/s
 import { NotificationsService, NotificationType } from '../notifications/notifications.service';
 import { ExcelUtil } from '../common/utils/excel.util';
 
+/** Quy đổi chuỗi giờ HH:mm thành tổng số phút tính từ 00:00 để so sánh hợp lệ. */
 const toMinutes = (t: string) => {
   const [h, m] = t.split(':').map(Number);
   return h * 60 + (m || 0);
@@ -131,6 +132,7 @@ export class SchedulesService implements OnModuleInit {
     const baseDate = new Date();
     baseDate.setHours(0, 0, 0, 0);
 
+    /** Chuyển chuỗi giờ HH:mm(:ss) thành đối tượng Date mốc 1970-01-01 cho cột db.Time. */
     const parseTime = (timeStr: string) => {
       const [h, m, s] = timeStr.split(':').map(Number);
       const dt = new Date('1970-01-01T00:00:00.000Z');
@@ -174,6 +176,7 @@ export class SchedulesService implements OnModuleInit {
     const baseDate = new Date();
     baseDate.setHours(0, 0, 0, 0);
 
+    /** Chuyển chuỗi giờ tùy chọn thành đối tượng Date cho cột db.Time khi cập nhật lịch. */
     const parseTime = (timeStr?: string) => {
       if (!timeStr) return undefined;
       const [h, m, s] = timeStr.split(':').map(Number);

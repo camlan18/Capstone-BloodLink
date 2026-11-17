@@ -6,6 +6,9 @@ import { useParams, useRouter } from 'next/navigation';
 import { Link } from '@/i18n/routing';
 import { VietnameseBloodCertificate, printCertificate } from '@/components/certificate/VietnameseBloodCertificate';
 
+/**
+ * Trang tra cứu công khai Giấy chứng nhận hiến máu tình nguyện qua mã QR (in A4 hoặc sao chép liên kết).
+ */
 export default function PublicCertificatePage() {
   const params = useParams();
   const router = useRouter();
@@ -20,6 +23,7 @@ export default function PublicCertificatePage() {
     }
   }, [params.id]);
 
+  /** Tải thông tin giấy chứng nhận công khai theo donationId không cần đăng nhập. */
   const fetchCertificate = async (id: number) => {
     try {
       setLoading(true);
@@ -36,10 +40,12 @@ export default function PublicCertificatePage() {
     }
   };
 
+  /** Mở hộp thoại in giấy chứng nhận hiến máu khổ A4 ngang. */
   const handlePrint = () => {
     printCertificate('vietnamese-blood-certificate');
   };
 
+  /** Sao chép đường dẫn tra cứu chứng nhận hiện tại vào bộ nhớ tạm. */
   const handleCopyLink = () => {
     navigator.clipboard.writeText(window.location.href);
     setCopied(true);

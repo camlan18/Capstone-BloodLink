@@ -9,6 +9,9 @@ import { BaseModal } from '@/components/ui/BaseModal';
 import { VietnameseBloodCertificate, CertificateData, printCertificate } from '@/components/certificate/VietnameseBloodCertificate';
 import { useTranslations } from 'next-intl';
 
+/**
+ * Trang quản lý chứng nhận hiến máu tình nguyện của cá nhân (lọc trạng thái, xem song bản và in A4).
+ */
 export default function DonorCertificatesPage() {
   const t = useTranslations('DonorCertificates');
   const [loading, setLoading] = useState(true);
@@ -23,6 +26,7 @@ export default function DonorCertificatesPage() {
     fetchCertificates();
   }, [statusFilter]);
 
+  /** Tải danh sách giấy chứng nhận hiến máu của bản thân theo bộ lọc trạng thái duyệt. */
   const fetchCertificates = async () => {
     try {
       setLoading(true);
@@ -41,6 +45,7 @@ export default function DonorCertificatesPage() {
     }
   };
 
+  /** Chuyển đổi dữ liệu bản ghi chứng nhận sang chuẩn CertificateData và mở modal xem chi tiết. */
   const handleOpenCertificate = (item: any) => {
     const donation = item.donation || {};
     const facility = donation.facility || {};
@@ -74,6 +79,7 @@ export default function DonorCertificatesPage() {
     setIsModalOpen(true);
   };
 
+  /** Kích hoạt in giấy chứng nhận hiến máu khổ A4 ngang. */
   const handlePrint = () => {
     printCertificate('vietnamese-blood-certificate');
   };

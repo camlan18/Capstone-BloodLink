@@ -6,6 +6,9 @@ import apiClient from '@/lib/services/apiClient';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { useTranslations } from 'next-intl';
 
+/**
+ * Trang lịch hiến máu công khai hiển thị các đợt hiến máu còn chỗ tại các cơ sở y tế.
+ */
 export default function PublicSchedulesPage() {
   const t = useTranslations('PublicSchedules');
   const [schedules, setSchedules] = useState<any[]>([]);
@@ -15,6 +18,7 @@ export default function PublicSchedulesPage() {
     fetchSchedules();
   }, []);
 
+  /** Tải danh sách lịch tổ chức hiến máu khả dụng và lọc các đợt còn slot trống. */
   const fetchSchedules = async () => {
     try {
       setLoading(true);

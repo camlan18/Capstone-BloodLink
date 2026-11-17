@@ -8,6 +8,9 @@ import { BaseModal } from '@/components/ui/BaseModal';
 import { DataTable, Column, ActionItem } from '@/components/ui/DataTable';
 import { useTranslations } from 'next-intl';
 
+/**
+ * Trang lịch sử các lần hiến máu của người dùng hỗ trợ tìm kiếm, sắp xếp và xem chi tiết.
+ */
 export default function DonorHistoryPage() {
   const t = useTranslations('DonorHistory');
   const [history, setHistory] = useState<DonationHistory[]>([]);
@@ -22,6 +25,7 @@ export default function DonorHistoryPage() {
 
   useEffect(() => { fetchHistory(); }, []);
 
+  /** Tải toàn bộ lịch sử các lần hiến máu của tài khoản đang đăng nhập. */
   const fetchHistory = async () => {
     try {
       setLoading(true);
@@ -31,6 +35,7 @@ export default function DonorHistoryPage() {
     finally { setLoading(false); }
   };
 
+  /** Trả về badge màu sắc và nhãn trạng thái của từng lượt hiến máu. */
   const getStatusBadge = (status: string) => {
     const map: Record<string, { cls: string; label: string }> = {
       COMPLETED: { cls: 'bg-emerald-100 text-emerald-700', label: t('statusCompleted') },
