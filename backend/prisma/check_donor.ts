@@ -2,6 +2,7 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
+/** Truy vấn nhanh thông tin người hiến máu mẫu (`duongthuhuong@gmail.com`) kèm hồ sơ và lịch sử hiến để kiểm tra dữ liệu DB. */
 async function main() {
   const user = await prisma.users.findUnique({
     where: { email: 'duongthuhuong@gmail.com' },

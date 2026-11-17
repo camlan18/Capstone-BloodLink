@@ -3,6 +3,9 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as https from 'https';
 
+/**
+ * Nạp dữ liệu danh mục tỉnh/thành phố và phường/xã từ file cục bộ `provinces-data-v2.json` hoặc API hành chính Việt Nam vào DB.
+ */
 export async function seedLocations(prisma: PrismaClient) {
   const dataPath = path.join(__dirname, 'provinces-data-v2.json');
   let data: any = null;

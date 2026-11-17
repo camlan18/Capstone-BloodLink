@@ -268,6 +268,7 @@ export default function AdminSchedulesPage() {
           if (!isNaN(parsed.getTime())) d = parsed;
         }
         
+        /** Rút trích chuỗi giờ HH:mm từ định dạng ISO hoặc chuỗi thời gian thô để hiển thị. */
         const formatTime = (timeStr: string) => {
           try {
             if (!timeStr) return '--:--';
