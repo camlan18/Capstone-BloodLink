@@ -23,11 +23,15 @@ import { Link } from '@/i18n/routing';
 
 import { useTranslations } from 'next-intl';
 
+/** Tạo schema Zod kiểm tra đầu vào đăng nhập (tên đăng nhập/email và mật khẩu) theo ngôn ngữ. */
 const getFormSchema = (t: any) => z.object({
   identifier: z.string().min(1, { message: t('errIdReq') }),
   password: z.string().min(6, { message: t('errPassMin') }),
 });
 
+/**
+ * Trang đăng nhập hệ thống BloodLink hỗ trợ xác thực JWT và lưu phiên đăng nhập vào Zustand store.
+ */
 export default function LoginPage() {
   const t = useTranslations('Login');
   const router = useRouter();
@@ -41,6 +45,7 @@ export default function LoginPage() {
     defaultValues: { identifier: '', password: '' },
   });
 
+  /** Gửi thông tin đăng nhập lên API, lưu token/user vào store và chuyển hướng về trang chủ. */
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
       setLoading(true);

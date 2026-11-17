@@ -13,6 +13,9 @@ import { uploadImage } from '@/lib/services/apiClient';
 import { PageHeader } from '@/components/ui/PageHeader';
 
 
+/**
+ * Trang quản trị cơ sở y tế và ngân hàng máu (xem chi tiết, tạo/sửa, bật tắt hoạt động và nhập/xuất Excel).
+ */
 export default function AdminFacilitiesPage() {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<any[]>([]);
@@ -54,11 +57,13 @@ export default function AdminFacilitiesPage() {
     fetchData();
   }, [page, pageSize, keyword]);
 
+  /** Cập nhật từ khóa tìm kiếm cơ sở y tế và quay về trang 1. */
   const handleSearch = (val: string) => {
     setKeyword(val);
     setPage(1);
   };
 
+  /** Tải danh sách cơ sở y tế phân trang từ API quản trị danh mục. */
   const fetchData = async () => {
     try {
       setLoading(true);
@@ -74,6 +79,7 @@ export default function AdminFacilitiesPage() {
     }
   };
 
+  /** Mở modal và tải thông tin chi tiết một cơ sở y tế theo facility_id. */
   const handleOpenDetail = async (item: any) => {
     setIsDetailOpen(true);
     setDetailLoading(true);
@@ -88,6 +94,7 @@ export default function AdminFacilitiesPage() {
     }
   };
 
+  /** Đặt lại dữ liệu form và mở modal tạo mới cơ sở y tế. */
   const handleOpenCreate = () => {
     setEditingItem(null);
     setFormData({
@@ -97,6 +104,7 @@ export default function AdminFacilitiesPage() {
     setIsModalOpen(true);
   };
 
+  /** Nạp dữ liệu cơ sở y tế hiện tại vào form và mở modal chỉnh sửa. */
   const handleOpenEdit = (item: any) => {
     setEditingItem(item);
     setFormData({
@@ -118,6 +126,7 @@ export default function AdminFacilitiesPage() {
     setIsModalOpen(true);
   };
 
+  /** Chuyển đổi trạng thái hoạt động của cơ sở y tế sau khi xác nhận. */
   const handleToggleStatus = async (item: any) => {
     const newStatus = !item.is_active;
     const actionText = newStatus ? 'mở lại hoạt động' : 'ngừng hoạt động';
@@ -135,6 +144,7 @@ export default function AdminFacilitiesPage() {
     }
   };
 
+  /** Chuẩn hóa trường số/rỗng và gửi tạo mới hoặc cập nhật cơ sở y tế. */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -165,6 +175,7 @@ export default function AdminFacilitiesPage() {
     }
   };
 
+  /** Xuất danh sách cơ sở y tế ra file Excel. */
   const handleExport = async () => {
     try {
       await adminMasterDataService.exportFacilitiesExcel({ search: keyword || undefined });
@@ -173,6 +184,7 @@ export default function AdminFacilitiesPage() {
     }
   };
 
+  /** Import hàng loạt cơ sở y tế từ file Excel tải lên. */
   const handleImport = async (file: File) => {
     try {
       const res = await adminMasterDataService.importFacilitiesExcel(file);
@@ -184,6 +196,7 @@ export default function AdminFacilitiesPage() {
     }
   };
 
+  /** Tải xuống file Excel mẫu dùng để import cơ sở y tế. */
   const handleDownloadTemplate = async () => {
     try {
       await adminMasterDataService.downloadFacilitiesTemplate();
@@ -237,6 +250,7 @@ export default function AdminFacilitiesPage() {
     }
   ];
 
+  /** Trả về danh sách thao tác xem chi tiết, sửa và ngừng/mở hoạt động cơ sở y tế. */
   const getRowActions = (item: any): ActionItem[] => [
     {
       label: 'Xem chi tiết',

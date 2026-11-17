@@ -24,6 +24,9 @@ const formSchema = z.object({
   email: z.string().email({ message: 'Vui lòng nhập đúng định dạng email' }),
 });
 
+/**
+ * Trang khôi phục mật khẩu theo quy trình 2 bước: gửi yêu cầu OTP qua email và đặt lại mật khẩu mới.
+ */
 export default function ForgotPasswordPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -42,6 +45,7 @@ export default function ForgotPasswordPage() {
     defaultValues: { email: '' },
   });
 
+  /** Gửi yêu cầu nhận mã OTP khôi phục mật khẩu tới email đã nhập. */
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
       setLoading(true);
@@ -56,6 +60,7 @@ export default function ForgotPasswordPage() {
     }
   }
 
+  /** Kiểm tra mật khẩu khớp và gửi mã OTP cùng mật khẩu mới để đặt lại mật khẩu. */
   async function handleReset(e: React.FormEvent) {
     e.preventDefault();
     if (resetData.new_password !== resetData.confirm_password) {

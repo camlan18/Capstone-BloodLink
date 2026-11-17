@@ -9,6 +9,9 @@ import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { toast } from 'sonner';
 import { Loader2, Plus, Edit, Trash2, Eye } from 'lucide-react';
 
+/**
+ * Tab cấu hình ma trận quy tắc tương thích truyền máu giữa người hiến và người nhận theo từng thành phần máu.
+ */
 export default function BloodCompatibilityTab() {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<any[]>([]);
@@ -27,6 +30,7 @@ export default function BloodCompatibilityTab() {
   const [formData, setFormData] = useState<any>({ component_id: '', donor_blood_type_id: '', recipient_blood_type_id: '', recipient_blood_type_ids: [], is_compatible: true, notes: '' });
   const [submitting, setSubmitting] = useState(false);
 
+  /** Tải danh mục nhóm máu và thành phần máu phục vụ chọn lựa trong modal tạo/sửa quy tắc. */
   const fetchOptions = async () => {
     try {
       const [btRes, compRes] = await Promise.all([
@@ -38,6 +42,7 @@ export default function BloodCompatibilityTab() {
     } catch (e) {}
   };
 
+  /** Tải danh sách quy tắc tương thích máu phân trang theo từ khóa. */
   const fetchData = async () => {
     setLoading(true);
     try {
@@ -64,6 +69,7 @@ export default function BloodCompatibilityTab() {
     return () => clearTimeout(delay);
   }, [page, pageSize, keyword]);
 
+  /** Tạo hàng loạt quy tắc mới theo các nhóm người nhận hoặc cập nhật quy tắc hiện tại. */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.component_id || !formData.donor_blood_type_id) {
@@ -104,6 +110,7 @@ export default function BloodCompatibilityTab() {
     }
   };
 
+  /** Xác nhận và xóa một quy tắc tương thích nhóm máu theo ID. */
   const handleDelete = async (id: number) => {
     if (!confirm('Bạn có chắc chắn muốn xóa quy tắc này? Hành động này không thể hoàn tác.')) return;
     try {
@@ -139,6 +146,7 @@ export default function BloodCompatibilityTab() {
     }
   ];
 
+  /** Trả về danh sách thao tác xem chi tiết, sửa hoặc xóa quy tắc tương thích. */
   const getRowActions = (item: any): ActionItem[] => [
     {
       label: 'Xem chi tiết',

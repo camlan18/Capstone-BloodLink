@@ -9,6 +9,9 @@ import { BaseModal } from '@/components/ui/BaseModal';
 import { Input } from '@/components/ui/input';
 import { PageHeader } from '@/components/ui/PageHeader';
 
+/**
+ * Trang quản trị danh mục nhóm máu cơ bản (hiển thị, thêm mới và chỉnh sửa mô tả nhóm máu).
+ */
 export default function AdminBloodTypesPage() {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<any[]>([]);
@@ -31,11 +34,13 @@ export default function AdminBloodTypesPage() {
     fetchData();
   }, [page, pageSize, keyword]);
 
+  /** Cập nhật từ khóa tìm kiếm nhóm máu và đặt lại trang về 1. */
   const handleSearch = (val: string) => {
     setKeyword(val);
     setPage(1);
   };
 
+  /** Tải danh sách nhóm máu phân trang từ API danh mục hệ thống. */
   const fetchData = async () => {
     try {
       setLoading(true);
@@ -51,12 +56,14 @@ export default function AdminBloodTypesPage() {
     }
   };
 
+  /** Mở modal ở chế độ tạo mới nhóm máu với form trống. */
   const handleOpenCreate = () => {
     setEditingItem(null);
     setFormData({ blood_type_code: '', description: '' });
     setIsModalOpen(true);
   };
 
+  /** Nạp dữ liệu nhóm máu được chọn vào form và mở modal chỉnh sửa. */
   const handleOpenEdit = (item: any) => {
     setEditingItem(item);
     setFormData({
@@ -66,6 +73,7 @@ export default function AdminBloodTypesPage() {
     setIsModalOpen(true);
   };
 
+  /** Lưu thông tin tạo mới hoặc cập nhật nhóm máu qua API. */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -96,6 +104,7 @@ export default function AdminBloodTypesPage() {
     }
   ];
 
+  /** Trả về danh sách thao tác chỉnh sửa cho từng dòng nhóm máu. */
   const getRowActions = (item: any): ActionItem[] => [
     {
       label: 'Chỉnh sửa',

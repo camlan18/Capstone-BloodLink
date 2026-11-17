@@ -9,6 +9,9 @@ import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { toast } from 'sonner';
 import { Loader2, Plus, Edit, Trash2, Eye } from 'lucide-react';
 
+/**
+ * Tab cấu hình quy định khoảng cách ngày tối thiểu và số lần hiến tối đa/năm cho mỗi thành phần máu.
+ */
 export default function IntervalRulesTab() {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<any[]>([]);
@@ -28,6 +31,7 @@ export default function IntervalRulesTab() {
   const [formData, setFormData] = useState<any>({ component_id: '', min_interval_days: 84, max_donations_per_year: 4, description: '', is_active: true });
   const [submitting, setSubmitting] = useState(false);
 
+  /** Tải danh sách thành phần máu phục vụ chọn lựa khi cấu hình quy tắc khoảng cách hiến. */
   const fetchOptions = async () => {
     try {
       const compRes = await adminMasterDataService.getBloodComponentsPaginated({ limit: 100 });
@@ -35,6 +39,7 @@ export default function IntervalRulesTab() {
     } catch (e) {}
   };
 
+  /** Tải danh sách quy tắc khoảng cách ngày hiến máu phân trang theo từ khóa. */
   const fetchData = async () => {
     setLoading(true);
     try {
@@ -61,6 +66,7 @@ export default function IntervalRulesTab() {
     return () => clearTimeout(delay);
   }, [page, pageSize, keyword]);
 
+  /** Kiểm tra ràng buộc số ngày nghỉ tối đa 365 và lưu quy tắc hiến máu mới hoặc chỉnh sửa. */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.component_id || !formData.min_interval_days) {
@@ -94,6 +100,7 @@ export default function IntervalRulesTab() {
     }
   };
 
+  /** Bật hoặc vô hiệu hóa một quy tắc khoảng cách ngày hiến máu. */
   const handleToggleStatus = async (item: any) => {
     const newStatus = !item.is_active;
     const actionText = newStatus ? 'mở lại hoạt động' : 'vô hiệu hóa';
@@ -136,6 +143,7 @@ export default function IntervalRulesTab() {
     }
   ];
 
+  /** Trả về danh sách thao tác xem chi tiết, sửa hoặc ẩn/hiện quy tắc hiến máu. */
   const getRowActions = (item: any): ActionItem[] => [
     {
       label: 'Xem chi tiết',

@@ -22,6 +22,7 @@ const formSchema = z.object({
   otp_code: z.string().length(6, { message: 'Mã xác thực phải gồm 6 chữ số' }),
 });
 
+/** Form xử lý nhập mã OTP 6 chữ số, gửi lại mã và kích hoạt tài khoản người dùng. */
 function VerifyOtpForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -45,6 +46,7 @@ function VerifyOtpForm() {
     return () => clearTimeout(timer);
   }, [countdown]);
 
+  /** Xác thực mã OTP 6 chữ số với email đã đăng ký và chuyển về trang đăng nhập. */
   async function onSubmit(values: z.infer<typeof formSchema>) {
     if (!email) {
       toast.error('Không tìm thấy email. Vui lòng thử đăng ký lại.');
@@ -62,6 +64,7 @@ function VerifyOtpForm() {
     }
   }
 
+  /** Gửi lại mã OTP xác thực vào email và kích hoạt đồng hồ đếm ngược 60 giây. */
   async function handleResend() {
     if (!email) {
       toast.error('Không tìm thấy email.');
@@ -79,6 +82,7 @@ function VerifyOtpForm() {
     }
   }
 
+  /** Xử lý nhập từng ký tự số cho 6 ô OTP và tự động chuyển tiêu điểm sang ô tiếp theo. */
   const handleOtpChange = (index: number, e: React.ChangeEvent<HTMLInputElement>, field: any) => {
     const value = e.target.value;
     if (value && !/^[0-9]*$/.test(value)) return;
@@ -98,6 +102,7 @@ function VerifyOtpForm() {
     }
   };
 
+  /** Xử lý phím Backspace để xóa lùi và đưa con trỏ về ô OTP phía trước. */
   const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>, field: any) => {
     if (e.key === 'Backspace' && !field.value[index] && index > 0) {
       const currentOtp = field.value.split('');
@@ -107,6 +112,7 @@ function VerifyOtpForm() {
     }
   };
 
+  /** Hỗ trợ dán chuỗi 6 chữ số OTP trực tiếp từ clipboard vào các ô nhập liệu. */
   const handlePaste = (e: React.ClipboardEvent, field: any) => {
     e.preventDefault();
     const pastedData = e.clipboardData.getData('text/plain').replace(/[^0-9]/g, '').slice(0, 6);
@@ -202,6 +208,9 @@ function VerifyOtpForm() {
   );
 }
 
+/**
+ * Trang xác thực tài khoản bằng mã OTP gửi về email, bọc trong Suspense để đọc searchParams an toàn.
+ */
 export default function VerifyOtpPage() {
   return (
     <MainLayout>
