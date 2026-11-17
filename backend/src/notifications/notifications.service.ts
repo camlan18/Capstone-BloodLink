@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateNotificationDto } from './dto/create-notification.dto';
 
+/** Phân loại các mức độ thông báo trong hệ thống. */
 export enum NotificationType {
   INFO = 'INFO',
   SUCCESS = 'SUCCESS',

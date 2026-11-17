@@ -5,9 +5,13 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import apiClient from '@/lib/services/apiClient';
 
+/**
+ * Trang liên hệ và gửi góp ý/thắc mắc từ người dùng tới đội ngũ hỗ trợ BloodLink.
+ */
 export default function ContactPage() {
   const [loading, setLoading] = useState(false);
 
+  /** Thu thập dữ liệu biểu mẫu liên hệ và gửi qua API notifications/contact. */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);

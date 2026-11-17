@@ -92,6 +92,7 @@ export function DataTable<T extends Record<string, any>>({
 
   // Đóng column menu khi click ra ngoài
   useEffect(() => {
+    /** Đóng menu tùy chọn ẩn/hiện cột khi người dùng nhấn chuột ra ngoài vùng menu. */
     const handleClickOutside = (event: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
         setShowColumnMenu(false);
@@ -103,6 +104,7 @@ export function DataTable<T extends Record<string, any>>({
 
   // Đóng action menu khi cuộn chuột để tránh menu bị trôi
   useEffect(() => {
+    /** Đóng menu thao tác dòng khi người dùng cuộn trang để tránh lệch vị trí hiển thị. */
     const handleScroll = () => setActionMenu(null);
     window.addEventListener('scroll', handleScroll, true);
     return () => window.removeEventListener('scroll', handleScroll, true);

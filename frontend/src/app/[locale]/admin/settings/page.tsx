@@ -12,6 +12,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { PageHeader } from '@/components/ui/PageHeader';
 
 
+/**
+ * Trang quản trị cấu hình tham số hệ thống (thêm, sửa, xóa cặp setting key/value).
+ */
 export default function AdminSettingsPage() {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<any[]>([]);
@@ -40,6 +43,7 @@ export default function AdminSettingsPage() {
     fetchData();
   }, [page, pageSize, keyword]);
 
+  /** Tải danh sách cấu hình hệ thống phân trang và lọc theo từ khóa. */
   const fetchData = async () => {
     try {
       setLoading(true);
@@ -55,6 +59,7 @@ export default function AdminSettingsPage() {
     }
   };
 
+  /** Cảnh báo xác nhận và xóa một tham số cấu hình theo ID. */
   const handleDelete = async (id: number) => {
     if (!window.confirm('CẢNH BÁO: Xóa cấu hình hệ thống có thể gây ảnh hưởng nghiêm trọng tới hoạt động của ứng dụng. Bạn chắc chắn muốn xóa?')) return;
     try {
@@ -66,6 +71,7 @@ export default function AdminSettingsPage() {
     }
   };
 
+  /** Nạp thông tin tham số cấu hình cần sửa vào form và mở modal ở chế độ chỉnh sửa. */
   const handleEdit = (item: any) => {
     setFormData({
       setting_key: item.setting_key,
@@ -76,12 +82,14 @@ export default function AdminSettingsPage() {
     setIsModalOpen(true);
   };
 
+  /** Đặt lại form rỗng và mở modal thêm tham số cấu hình mới. */
   const handleCreate = () => {
     setFormData({ setting_key: '', setting_value: '', description: '' });
     setIsEditMode(false);
     setIsModalOpen(true);
   };
 
+  /** Kiểm tra khóa/giá trị hợp lệ và lưu cập nhật cấu hình qua API upsertSetting. */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.setting_key || !formData.setting_value) {
@@ -141,6 +149,7 @@ export default function AdminSettingsPage() {
     }
   ];
 
+  /** Trả về danh sách thao tác xem chi tiết, sửa và xóa cho từng dòng cấu hình. */
   const getRowActions = (item: any): ActionItem[] => [
     {
       label: 'Xem chi tiết',

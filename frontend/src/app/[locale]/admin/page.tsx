@@ -8,6 +8,9 @@ import { adminMasterDataService } from '@/lib/services/admin-master-data';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/lib/stores';
 
+/**
+ * Trang tổng quan quản trị hiển thị số liệu thống kê, cảnh báo kho máu và biểu đồ hoạt động theo cơ sở/thời gian.
+ */
 export default function AdminDashboardPage() {
   const { user } = useAuthStore();
   const userRole = typeof user?.role === 'string' ? user.role : user?.role?.role_code;
@@ -27,6 +30,7 @@ export default function AdminDashboardPage() {
   });
   const [endDate, setEndDate] = useState<string>(() => new Date().toISOString());
 
+  /** Tải danh sách cơ sở y tế phục vụ bộ lọc thống kê trên trang tổng quan. */
   const fetchFacilities = async () => {
     try {
       const res = await adminMasterDataService.getFacilities({ limit: 100 });
@@ -38,6 +42,7 @@ export default function AdminDashboardPage() {
     }
   };
 
+  /** Tải số liệu tổng quan, cảnh báo và dữ liệu biểu đồ theo khoảng ngày và cơ sở được chọn. */
   const fetchDashboardData = async () => {
     try {
       let queryStart = startDate;

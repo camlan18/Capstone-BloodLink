@@ -5,6 +5,7 @@ import { v2 as cloudinary } from 'cloudinary';
  */
 export const CloudinaryProvider = {
   provide: 'CLOUDINARY',
+  /** Khởi tạo cấu hình tài khoản Cloudinary bằng thông số từ biến môi trường. */
   useFactory: () => {
     return cloudinary.config({
       cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
