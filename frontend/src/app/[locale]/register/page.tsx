@@ -22,6 +22,7 @@ import { Link } from '@/i18n/routing';
 
 import { useTranslations } from 'next-intl';
 
+/** Tạo schema Zod kiểm tra dữ liệu đăng ký tài khoản mới theo bản dịch hiện tại. */
 const getFormSchema = (t: any) => z.object({
   username: z.string().min(3, { message: t('errUserMin') }),
   password: z.string().min(6, { message: t('errPassMin') }),
@@ -29,6 +30,9 @@ const getFormSchema = (t: any) => z.object({
   full_name: z.string().min(3, { message: t('errNameMin') }),
 });
 
+/**
+ * Trang đăng ký tài khoản người dùng mới và chuyển hướng sang bước xác thực OTP qua email.
+ */
 export default function RegisterPage() {
   const t = useTranslations('Register');
   const router = useRouter();
@@ -41,6 +45,7 @@ export default function RegisterPage() {
     defaultValues: { username: '', password: '', email: '', full_name: '' },
   });
 
+  /** Gửi biểu mẫu đăng ký tài khoản mới và chuyển sang trang nhập mã OTP. */
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
       setLoading(true);

@@ -8,6 +8,9 @@ import { Settings2 } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 
 
+/**
+ * Trang quản trị dữ liệu danh mục máu tổng hợp gồm 4 tab: nhóm máu, thành phần máu, tương thích và khoảng cách hiến.
+ */
 export default function BloodMasterDataPage() {
   const [activeTab, setActiveTab] = useState('blood_types');
 

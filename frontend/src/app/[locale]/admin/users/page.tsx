@@ -15,6 +15,9 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { useAuthStore } from '@/lib/stores';
 import { adminMasterDataService } from '@/lib/services/admin-master-data';
 
+/**
+ * Trang quản trị người dùng: danh sách tài khoản, tạo/sửa hồ sơ kèm thông tin người hiến, khóa/mở và nhập xuất Excel.
+ */
 export default function AdminUsersPage() {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<any[]>([]);
@@ -65,6 +68,7 @@ export default function AdminUsersPage() {
     fetchFacilities();
   }, [page, pageSize, keyword]);
 
+  /** Tải danh sách cơ sở y tế dùng khi gán cơ sở cho nhân viên bệnh viện. */
   const fetchFacilities = async () => {
     try {
       const res = await adminMasterDataService.getFacilities({ limit: 1000 });
@@ -72,6 +76,7 @@ export default function AdminUsersPage() {
     } catch (error) { }
   };
 
+  /** Tải danh sách vai trò người dùng từ danh mục hệ thống. */
   const fetchRoles = async () => {
     try {
       const res = await adminMasterDataService.getRoles();
@@ -79,6 +84,7 @@ export default function AdminUsersPage() {
     } catch (error) { }
   };
 
+  /** Tải danh sách nhóm máu phục vụ chọn nhóm máu cho hồ sơ người hiến. */
   const fetchBloodTypes = async () => {
     try {
       const res = await adminMasterDataService.getBloodTypes({ limit: 100 });
@@ -86,6 +92,7 @@ export default function AdminUsersPage() {
     } catch (error) { }
   };
 
+  /** Tải danh sách tỉnh/thành phố phục vụ chọn địa chỉ người dùng. */
   const fetchProvinces = async () => {
     try {
       const res = await adminMasterDataService.getProvinces();
@@ -101,11 +108,13 @@ export default function AdminUsersPage() {
     } else setWards([]);
   }, [formData.province_id]);
 
+  /** Cập nhật từ khóa tìm kiếm người dùng và đặt lại trang về 1. */
   const handleSearch = (val: string) => {
     setKeyword(val);
     setPage(1);
   };
 
+  /** Tải danh sách người dùng phân trang từ API quản trị. */
   const fetchData = async () => {
     try {
       setLoading(true);
@@ -121,6 +130,7 @@ export default function AdminUsersPage() {
     }
   };
 
+  /** Khóa hoặc mở khóa tài khoản người dùng theo ID. */
   const handleToggleLock = async (id: number) => {
     try {
       await adminUserService.toggleLock(id);
@@ -131,6 +141,7 @@ export default function AdminUsersPage() {
     }
   };
 
+  /** Đặt lại dữ liệu form trống và mở modal tạo người dùng mới. */
   const handleOpenCreate = () => {
     setEditingUser(null);
     setFormData({
@@ -149,6 +160,7 @@ export default function AdminUsersPage() {
     setIsModalOpen(true);
   };
 
+  /** Nạp thông tin chi tiết tài khoản, hồ sơ hiến máu và lịch sử để hiển thị trong modal xem chi tiết. */
   const handleOpenDetail = async (user: any) => {
     setIsDetailOpen(true);
     setActiveTab('info');
@@ -164,6 +176,7 @@ export default function AdminUsersPage() {
     }
   };
 
+  /** Tải đầy đủ thông tin tài khoản và hồ sơ người hiến máu vào form để mở modal chỉnh sửa. */
   const handleOpenEdit = async (user: any) => {
     setEditingUser(user);
     setIsModalOpen(true);
@@ -214,6 +227,7 @@ export default function AdminUsersPage() {
   const maxDobDate = new Date(today.getFullYear() - 18, today.getMonth(), today.getDate()).toISOString().split('T')[0];
   const minDobDate = new Date(today.getFullYear() - 65, today.getMonth(), today.getDate()).toISOString().split('T')[0];
 
+  /** Kiểm tra hợp lệ dữ liệu tài khoản/hồ sơ hiến máu và gửi tạo mới hoặc cập nhật người dùng. */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -377,6 +391,7 @@ export default function AdminUsersPage() {
     }
   };
 
+  /** Xuất danh sách người dùng hiện tại ra file Excel. */
   const handleExport = async () => {
     try {
       await adminUserService.exportExcel({
@@ -387,6 +402,7 @@ export default function AdminUsersPage() {
     }
   };
 
+  /** Import hàng loạt tài khoản người dùng từ file Excel tải lên. */
   const handleImport = async (file: File) => {
     try {
       const res = await adminUserService.importExcel(file);
@@ -398,6 +414,7 @@ export default function AdminUsersPage() {
     }
   };
 
+  /** Tải xuống file Excel mẫu dùng để import danh sách người dùng. */
   const handleDownloadTemplate = async () => {
     try {
       await adminUserService.downloadTemplate();
@@ -476,6 +493,7 @@ export default function AdminUsersPage() {
     }
   ];
 
+  /** Trả về danh sách thao tác xem, sửa hoặc khóa/mở khóa cho từng người dùng (chặn tự thao tác chính mình). */
   const getRowActions = (user: any): ActionItem[] => {
     const currentUser = useAuthStore.getState().user;
 

@@ -8,6 +8,9 @@ import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { Loader2, Plus, Edit, Trash2, Eye } from 'lucide-react';
 
+/**
+ * Tab quản lý danh mục thành phần máu (máu toàn phần, hồng cầu lắng, tiểu cầu, huyết tương...).
+ */
 export default function BloodComponentsTab() {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<any[]>([]);
@@ -25,6 +28,7 @@ export default function BloodComponentsTab() {
   const [formData, setFormData] = useState<any>({ component_code: '', component_name: '', description: '', is_active: true });
   const [submitting, setSubmitting] = useState(false);
 
+  /** Tải danh sách thành phần máu phân trang theo từ khóa tìm kiếm. */
   const fetchData = async () => {
     setLoading(true);
     try {
@@ -47,6 +51,7 @@ export default function BloodComponentsTab() {
     return () => clearTimeout(delay);
   }, [page, pageSize, keyword]);
 
+  /** Tạo mới hoặc cập nhật thông tin thành phần máu. */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.component_code || !formData.component_name) {
@@ -70,6 +75,7 @@ export default function BloodComponentsTab() {
     }
   };
 
+  /** Bật hoặc vô hiệu hóa trạng thái hoạt động của thành phần máu. */
   const handleToggleStatus = async (item: any) => {
     const newStatus = !item.is_active;
     const actionText = newStatus ? 'mở lại hoạt động' : 'vô hiệu hóa';
@@ -99,6 +105,7 @@ export default function BloodComponentsTab() {
     }
   ];
 
+  /** Trả về danh sách thao tác xem chi tiết, sửa và ẩn/hiện cho từng thành phần máu. */
   const getRowActions = (item: any): ActionItem[] => [
     {
       label: 'Xem chi tiết',

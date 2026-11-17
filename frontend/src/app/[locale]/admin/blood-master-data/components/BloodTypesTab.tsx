@@ -9,6 +9,9 @@ import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { toast } from 'sonner';
 import { Loader2, Plus, Edit, Trash2, Eye } from 'lucide-react';
 
+/**
+ * Tab quản lý danh mục nhóm máu (ABO/Rh) hỗ trợ tìm kiếm, thêm, sửa và bật/tắt trạng thái hiển thị.
+ */
 export default function BloodTypesTab() {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<any[]>([]);
@@ -26,6 +29,7 @@ export default function BloodTypesTab() {
   const [formData, setFormData] = useState<any>({ blood_group: '', rh_factor: '+', display_order: 0, is_active: true });
   const [submitting, setSubmitting] = useState(false);
 
+  /** Tải danh sách nhóm máu phân trang theo từ khóa tìm kiếm. */
   const fetchData = async () => {
     setLoading(true);
     try {
@@ -48,6 +52,7 @@ export default function BloodTypesTab() {
     return () => clearTimeout(delay);
   }, [page, pageSize, keyword]);
 
+  /** Tạo mới hoặc cập nhật thông tin nhóm máu ABO/Rh trong danh mục. */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.blood_group || !formData.rh_factor) {
@@ -71,6 +76,7 @@ export default function BloodTypesTab() {
     }
   };
 
+  /** Bật hoặc vô hiệu hóa trạng thái sử dụng của nhóm máu. */
   const handleToggleStatus = async (item: any) => {
     const newStatus = !item.is_active;
     const actionText = newStatus ? 'mở lại hoạt động' : 'vô hiệu hóa';
@@ -101,6 +107,7 @@ export default function BloodTypesTab() {
     }
   ];
 
+  /** Trả về danh sách thao tác xem chi tiết, sửa hoặc bật/tắt nhóm máu. */
   const getRowActions = (item: any): ActionItem[] => [
     {
       label: 'Xem chi tiết',

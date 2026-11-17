@@ -16,6 +16,9 @@ import { toast } from 'sonner';
 import { BaseModal } from '@/components/ui/BaseModal';
 import { useTranslations } from 'next-intl';
 
+/**
+ * Trang hồ sơ cá nhân người hiến máu: cập nhật thông tin sức khỏe, ảnh đại diện và đổi mật khẩu qua OTP.
+ */
 export default function DonorProfilePage() {
   const t = useTranslations('DonorProfile');
   
@@ -73,6 +76,7 @@ export default function DonorProfilePage() {
     fetchProfile();
   }, []);
 
+  /** Tải đồng thời hồ sơ hiến máu, thông tin tài khoản và danh mục nhóm máu để điền vào form. */
   const fetchProfile = async () => {
     try {
       setLoading(true);
@@ -121,6 +125,7 @@ export default function DonorProfilePage() {
     }
   };
 
+  /** Cập nhật thông tin hồ sơ người hiến máu và tải lại dữ liệu mới nhất. */
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
       setSubmitting(true);
@@ -135,6 +140,7 @@ export default function DonorProfilePage() {
     }
   };
 
+  /** Kiểm tra dung lượng ảnh <= 5MB và tải ảnh đại diện mới lên hệ thống. */
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -161,6 +167,7 @@ export default function DonorProfilePage() {
     }
   };
 
+  /** Gửi yêu cầu nhận mã OTP qua email để xác nhận đổi mật khẩu. */
   const handleRequestOtp = async () => {
     try {
       setSendingOtp(true);
@@ -174,6 +181,7 @@ export default function DonorProfilePage() {
     }
   };
 
+  /** Xác thực mật khẩu mới và gửi đổi mật khẩu kèm mã OTP đã nhận. */
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (passwordData.new_password !== passwordData.confirm_password) {
@@ -201,6 +209,7 @@ export default function DonorProfilePage() {
     }
   };
 
+  /** Chuyển mã giới tính ('M'/'F'/'O') sang nhãn hiển thị theo ngôn ngữ hiện tại. */
   const getGenderText = (g: string) => {
     if (g === 'M') return t('genderM');
     if (g === 'F') return t('genderF');
@@ -208,6 +217,7 @@ export default function DonorProfilePage() {
     return t('notUpdated');
   };
 
+  /** Tra cứu mã nhóm máu hiển thị từ blood_type_id trong danh mục nhóm máu. */
   const getBloodTypeText = (id: number) => {
     const bt = bloodTypes.find((b: any) => b.blood_type_id === id);
     return bt ? bt.blood_type_code : t('notUpdated');
