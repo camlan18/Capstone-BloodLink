@@ -4,6 +4,9 @@ import { seedLocations } from './seed-locations';
 
 const prisma = new PrismaClient();
 
+/**
+ * Hàm seed khởi tạo toàn bộ dữ liệu mẫu cho hệ thống BloodLink (danh mục máu, địa giới, cơ sở y tế, người dùng, lịch, kho máu, yêu cầu, blog và giáo dục).
+ */
 async function main() {
   console.log('Bắt đầu dọn dẹp dữ liệu cũ (Xóa từ bảng con đến bảng cha)...');
   
