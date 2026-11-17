@@ -8,6 +8,9 @@ import { DataTable, Column, ActionItem } from '@/components/ui/DataTable';
 import { BaseModal } from '@/components/ui/BaseModal';
 import { Input } from '@/components/ui/input';
 
+/**
+ * Tab quản lý danh mục bài viết blog (hiển thị, thêm mới, chỉnh sửa và xóa chuyên mục).
+ */
 export default function BlogCategoriesTab() {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<any[]>([]);
@@ -24,6 +27,7 @@ export default function BlogCategoriesTab() {
     fetchData();
   }, []);
 
+  /** Tải toàn bộ danh sách chuyên mục blog hiện có. */
   const fetchData = async () => {
     try {
       setLoading(true);
@@ -38,12 +42,14 @@ export default function BlogCategoriesTab() {
     }
   };
 
+  /** Đặt lại form rỗng và mở modal thêm chuyên mục blog mới. */
   const handleOpenCreate = () => {
     setEditingItem(null);
     setFormData({ category_name: '', slug: '' });
     setIsModalOpen(true);
   };
 
+  /** Nạp thông tin chuyên mục cần sửa vào form và mở modal cập nhật. */
   const handleOpenEdit = (item: any) => {
     setEditingItem(item);
     setFormData({
@@ -53,6 +59,7 @@ export default function BlogCategoriesTab() {
     setIsModalOpen(true);
   };
 
+  /** Xác nhận và xóa chuyên mục blog nếu không có bài viết ràng buộc. */
   const handleDelete = async (item: any) => {
     if (!confirm('Bạn có chắc chắn muốn xóa danh mục này? Không thể xóa nếu danh mục đang có bài viết.')) return;
     try {
@@ -64,6 +71,7 @@ export default function BlogCategoriesTab() {
     }
   };
 
+  /** Lưu tạo mới hoặc cập nhật thông tin chuyên mục blog qua API. */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -94,6 +102,7 @@ export default function BlogCategoriesTab() {
     }
   ];
 
+  /** Trả về danh sách thao tác chỉnh sửa và xóa chuyên mục blog. */
   const getRowActions = (item: any): ActionItem[] => [
     {
       label: 'Chỉnh sửa',

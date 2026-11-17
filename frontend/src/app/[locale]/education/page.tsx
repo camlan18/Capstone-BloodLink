@@ -12,6 +12,7 @@ import { useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 
 // Skeleton Component
+/** Khung xương giả lập (skeleton) khi đang tải danh sách tài liệu giáo dục. */
 const EducationCardSkeleton = () => (
   <Card className="overflow-hidden border-slate-100 rounded-2xl">
     <div className="h-48 bg-slate-100 animate-pulse relative"></div>
@@ -35,6 +36,7 @@ const EducationCardSkeleton = () => (
   </Card>
 );
 
+/** Nội dung chính trang kiến thức giáo dục hiến máu (lọc danh mục, tìm kiếm, sắp xếp và phân trang). */
 function EducationContent() {
   const t = useTranslations('Education');
   const tHeader = useTranslations('Header');
@@ -70,6 +72,7 @@ function EducationContent() {
     fetchDocuments();
   }, [search, categoryId, sortBy, limit, page]);
 
+  /** Tải danh sách danh mục tài liệu giáo dục từ API. */
   const fetchCategories = async () => {
     try {
       const res = await educationService.getCategories();
@@ -77,6 +80,7 @@ function EducationContent() {
     } catch (error) { console.error(error); }
   };
 
+  /** Tải danh sách tài liệu giáo dục theo bộ lọc tìm kiếm, danh mục, sắp xếp và trang hiện tại. */
   const fetchDocuments = async () => {
     try {
       setLoading(true);
@@ -114,6 +118,7 @@ function EducationContent() {
     }
   };
 
+  /** Cập nhật từ khóa tìm kiếm tài liệu và đặt lại trang về 1. */
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     setPage(1);
@@ -314,6 +319,9 @@ function EducationContent() {
   );
 }
 
+/**
+ * Trang thư viện kiến thức & tài liệu giáo dục hiến máu, bọc trong Suspense để đọc searchParams an toàn.
+ */
 export default function EducationPage() {
   return (
     <Suspense fallback={<div className="h-screen w-full flex items-center justify-center text-slate-500">Đang tải...</div>}>

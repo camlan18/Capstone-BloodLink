@@ -6,6 +6,9 @@ import BlogCommentsTab from './components/BlogCommentsTab';
 import { PageHeader } from '@/components/ui/PageHeader';
 
 
+/**
+ * Trang quản trị blog gồm 3 tab chức năng: bài viết, chuyên mục và kiểm duyệt bình luận.
+ */
 export default function AdminBlogPage() {
   const [activeTab, setActiveTab] = useState('posts');
 

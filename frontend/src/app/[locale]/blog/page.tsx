@@ -10,6 +10,7 @@ import { BookOpen, Search, Eye, Calendar, ArrowRight, Filter, ChevronLeft, Chevr
 import { Link } from '@/i18n/routing';
 
 // Skeleton Component
+/** Khung xương giả lập (skeleton) khi đang tải danh sách thẻ bài viết blog. */
 const BlogCardSkeleton = () => (
   <Card className="overflow-hidden border-slate-100 rounded-2xl">
     <div className="h-48 bg-slate-100 animate-pulse relative"></div>
@@ -33,6 +34,9 @@ const BlogCardSkeleton = () => (
   </Card>
 );
 
+/**
+ * Trang danh sách bài viết blog công khai hỗ trợ lọc chuyên mục, tìm kiếm, sắp xếp và phân trang.
+ */
 export default function BlogPage() {
   const [documents, setDocuments] = useState<BlogPost[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
@@ -56,6 +60,7 @@ export default function BlogPage() {
     fetchDocuments();
   }, [search, categoryId, sortBy, limit, page]);
 
+  /** Tải danh sách chuyên mục blog phục vụ bộ lọc. */
   const fetchCategories = async () => {
     try {
       const res = await blogService.getCategories();
@@ -63,6 +68,7 @@ export default function BlogPage() {
     } catch (error) { console.error(error); }
   };
 
+  /** Tải danh sách bài viết blog theo bộ lọc chuyên mục, từ khóa, sắp xếp và phân trang. */
   const fetchDocuments = async () => {
     try {
       setLoading(true);
@@ -100,6 +106,7 @@ export default function BlogPage() {
     }
   };
 
+  /** Áp dụng từ khóa tìm kiếm từ input và đặt lại trang hiện tại về 1. */
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     setPage(1);

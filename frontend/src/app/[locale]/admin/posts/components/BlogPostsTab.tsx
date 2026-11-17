@@ -16,6 +16,7 @@ import { uploadImage } from '@/lib/services/apiClient';
 
 const ReactQuill = dynamic(() => import('react-quill-new'), { ssr: false });
 
+/** Chuyển tiêu đề tiếng Việt có dấu thành chuỗi đường dẫn slug thân thiện URL. */
 const generateSlug = (text: string) => {
   return text.toString().toLowerCase()
     .replace(/á|à|ả|ạ|ã|ă|ắ|ằ|ẳ|ẵ|ặ|â|ấ|ầ|ẩ|ẫ|ậ/gi, 'a')
@@ -32,6 +33,9 @@ const generateSlug = (text: string) => {
     .replace(/-+$/, '');
 };
 
+/**
+ * Tab quản lý danh sách bài viết blog (soạn thảo rich-text, upload ảnh bìa, xuất bản/nháp và xóa bài).
+ */
 export default function BlogPostsTab() {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<any[]>([]);
@@ -69,11 +73,13 @@ export default function BlogPostsTab() {
     fetchData();
   }, [page, pageSize, keyword]);
 
+  /** Cập nhật từ khóa tìm kiếm bài viết và đặt lại trang về 1. */
   const handleSearch = (val: string) => {
     setKeyword(val);
     setPage(1);
   };
 
+  /** Tải danh sách chuyên mục bài viết phục vụ chọn lựa khi tạo/sửa bài viết. */
   const fetchCategories = async () => {
     try {
       const res = await blogService.getCategories();
@@ -86,6 +92,7 @@ export default function BlogPostsTab() {
     }
   };
 
+  /** Tải danh sách bài viết blog phân trang cho giao diện quản trị. */
   const fetchData = async () => {
     try {
       setLoading(true);
@@ -101,11 +108,13 @@ export default function BlogPostsTab() {
     }
   };
 
+  /** Mở modal xem trước nội dung chi tiết một bài viết blog. */
   const handleOpenDetail = (item: any) => {
     setDetailItem(item);
     setIsDetailOpen(true);
   };
 
+  /** Đặt lại dữ liệu form trống và mở modal tạo bài viết blog mới. */
   const handleOpenCreate = () => {
     setEditingItem(null);
     setFormData({ 
@@ -115,6 +124,7 @@ export default function BlogPostsTab() {
     setIsModalOpen(true);
   };
 
+  /** Nạp nội dung bài viết được chọn vào form và mở modal chỉnh sửa. */
   const handleOpenEdit = (item: any) => {
     setEditingItem(item);
     setFormData({
@@ -129,6 +139,7 @@ export default function BlogPostsTab() {
     setIsModalOpen(true);
   };
 
+  /** Xác nhận và xóa vĩnh viễn bài viết blog theo ID. */
   const handleDelete = async (item: any) => {
     if (!confirm('Bạn có chắc chắn muốn xóa bài viết này vĩnh viễn?')) return;
     try {
@@ -140,6 +151,7 @@ export default function BlogPostsTab() {
     }
   };
 
+  /** Gửi biểu mẫu tạo mới hoặc cập nhật nội dung bài viết blog lên API. */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -223,6 +235,7 @@ export default function BlogPostsTab() {
     }
   ];
 
+  /** Trả về danh sách thao tác xem chi tiết, sửa hoặc xóa bài viết trên từng dòng. */
   const getRowActions = (item: any): ActionItem[] => [
     {
       label: 'Xem chi tiết',

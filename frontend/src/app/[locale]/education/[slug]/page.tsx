@@ -9,6 +9,9 @@ import { Badge } from '@/components/ui/badge';
 import { Link } from '@/i18n/routing';
 import { useTranslations } from 'next-intl';
 
+/**
+ * Trang đọc chi tiết tài liệu giáo dục hiến máu theo slug kèm các tài liệu liên quan.
+ */
 export default function EducationDetailPage() {
   const { slug } = useParams();
   const router = useRouter();
@@ -24,6 +27,7 @@ export default function EducationDetailPage() {
     }
   }, [slug]);
 
+  /** Tải nội dung tài liệu giáo dục và danh sách tài liệu cùng chủ đề theo slug; điều hướng 404 nếu không có. */
   const fetchData = async (slugId: string) => {
     try {
       setLoading(true);

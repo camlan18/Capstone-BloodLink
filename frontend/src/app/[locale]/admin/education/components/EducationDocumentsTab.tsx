@@ -16,6 +16,7 @@ import { uploadImage } from '@/lib/services/apiClient';
 
 const ReactQuill = dynamic(() => import('react-quill-new'), { ssr: false });
 
+/** Chuyển tiêu đề tài liệu tiếng Việt thành chuỗi slug thân thiện URL. */
 const generateSlug = (text: string) => {
   return text.toString().toLowerCase()
     .replace(/á|à|ả|ạ|ã|ă|ắ|ằ|ẳ|ẵ|ặ|â|ấ|ầ|ẩ|ẫ|ậ/gi, 'a')
@@ -32,6 +33,9 @@ const generateSlug = (text: string) => {
     .replace(/-+$/, '');
 };
 
+/**
+ * Tab quản lý kho tài liệu giáo dục hiến máu (soạn thảo rich-text, gắn danh mục, nhóm máu liên quan và ảnh bìa).
+ */
 export default function EducationDocumentsTab() {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<any[]>([]);
@@ -69,6 +73,7 @@ export default function EducationDocumentsTab() {
     fetchData();
   }, [page, pageSize, keyword]);
 
+  /** Tải danh mục tài liệu giáo dục và danh mục nhóm máu phục vụ form soạn thảo. */
   const fetchAuxData = async () => {
     try {
       const catRes = await adminEducationService.getCategories();
@@ -81,6 +86,7 @@ export default function EducationDocumentsTab() {
     }
   };
 
+  /** Tải danh sách tài liệu giáo dục phân trang theo từ khóa tìm kiếm. */
   const fetchData = async () => {
     try {
       setLoading(true);
@@ -96,11 +102,13 @@ export default function EducationDocumentsTab() {
     }
   };
 
+  /** Mở modal xem trước nội dung chi tiết một tài liệu giáo dục. */
   const handleOpenDetail = (item: any) => {
     setDetailItem(item);
     setIsDetailOpen(true);
   };
 
+  /** Đặt lại dữ liệu form trống và mở modal thêm mới tài liệu giáo dục. */
   const handleOpenCreate = () => {
     setEditingItem(null);
     setFormData({ 
@@ -110,6 +118,7 @@ export default function EducationDocumentsTab() {
     setIsModalOpen(true);
   };
 
+  /** Nạp nội dung tài liệu hiện tại vào form và mở modal chỉnh sửa. */
   const handleOpenEdit = (item: any) => {
     setEditingItem(item);
     setFormData({
@@ -125,6 +134,7 @@ export default function EducationDocumentsTab() {
     setIsModalOpen(true);
   };
 
+  /** Xác nhận và xóa vĩnh viễn tài liệu giáo dục theo ID. */
   const handleDelete = async (item: any) => {
     if (!confirm('Bạn có chắc chắn muốn xóa tài liệu này vĩnh viễn?')) return;
     try {
@@ -136,6 +146,7 @@ export default function EducationDocumentsTab() {
     }
   };
 
+  /** Lưu tạo mới hoặc cập nhật tài liệu giáo dục qua API. */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -226,6 +237,7 @@ export default function EducationDocumentsTab() {
     }
   ];
 
+  /** Trả về danh sách thao tác xem chi tiết, sửa hoặc xóa tài liệu giáo dục. */
   const getRowActions = (item: any): ActionItem[] => [
     {
       label: 'Xem chi tiết',

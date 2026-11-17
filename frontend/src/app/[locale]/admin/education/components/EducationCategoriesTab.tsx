@@ -7,6 +7,9 @@ import { DataTable, Column, ActionItem } from '@/components/ui/DataTable';
 import { BaseModal } from '@/components/ui/BaseModal';
 import { Input } from '@/components/ui/input';
 
+/**
+ * Tab quản lý danh mục phân loại tài liệu giáo dục hiến máu (thêm, sửa, xóa và sắp xếp thứ tự).
+ */
 export default function EducationCategoriesTab() {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<any[]>([]);
@@ -24,6 +27,7 @@ export default function EducationCategoriesTab() {
     fetchData();
   }, []);
 
+  /** Tải danh sách danh mục tài liệu giáo dục hiện có từ API. */
   const fetchData = async () => {
     try {
       setLoading(true);
@@ -38,12 +42,14 @@ export default function EducationCategoriesTab() {
     }
   };
 
+  /** Đặt lại dữ liệu form trống và mở modal tạo mới danh mục giáo dục. */
   const handleOpenCreate = () => {
     setEditingItem(null);
     setFormData({ category_name: '', description: '', sort_order: '0' });
     setIsModalOpen(true);
   };
 
+  /** Nạp thông tin danh mục cần chỉnh sửa vào form và mở modal cập nhật. */
   const handleOpenEdit = (item: any) => {
     setEditingItem(item);
     setFormData({
@@ -54,6 +60,7 @@ export default function EducationCategoriesTab() {
     setIsModalOpen(true);
   };
 
+  /** Xác nhận và xóa danh mục tài liệu giáo dục nếu chưa chứa tài liệu con. */
   const handleDelete = async (item: any) => {
     if (!confirm('Bạn có chắc chắn muốn xóa danh mục này? Không thể xóa nếu danh mục đang có tài liệu.')) return;
     try {
@@ -65,6 +72,7 @@ export default function EducationCategoriesTab() {
     }
   };
 
+  /** Lưu tạo mới hoặc cập nhật danh mục tài liệu giáo dục qua API. */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -105,6 +113,7 @@ export default function EducationCategoriesTab() {
     }
   ];
 
+  /** Trả về danh sách thao tác sửa và xóa cho từng dòng danh mục giáo dục. */
   const getRowActions = (item: any): ActionItem[] => [
     {
       label: 'Chỉnh sửa',
