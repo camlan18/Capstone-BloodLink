@@ -6,6 +6,9 @@ import { BookOpen } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 
 
+/**
+ * Trang quản trị kho tài liệu giáo dục hiến máu gồm 2 tab: tài liệu và danh mục tài liệu.
+ */
 export default function AdminEducationPage() {
   const [activeTab, setActiveTab] = useState('documents');
 

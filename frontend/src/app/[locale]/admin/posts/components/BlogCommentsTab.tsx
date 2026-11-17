@@ -8,6 +8,9 @@ import { Button } from '@/components/ui/button';
 import { BaseModal } from '@/components/ui/BaseModal';
 import { blogService } from '@/lib/services/blog';
 
+/**
+ * Tab quản lý và kiểm duyệt bình luận blog của người dùng và khách (duyệt, hủy duyệt, xóa, xem bài viết gốc).
+ */
 export default function BlogCommentsTab() {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<any[]>([]);
@@ -27,6 +30,7 @@ export default function BlogCommentsTab() {
     fetchData();
   }, [page, pageSize, keyword, status]);
 
+  /** Tải danh sách bình luận phân trang theo trạng thái kiểm duyệt (ALL/PENDING/APPROVED). */
   const fetchData = async () => {
     try {
       setLoading(true);
@@ -42,11 +46,13 @@ export default function BlogCommentsTab() {
     }
   };
 
+  /** Cập nhật từ khóa lọc bình luận và đưa trang về 1. */
   const handleSearch = (val: string) => {
     setKeyword(val);
     setPage(1);
   };
 
+  /** Duyệt hoặc hủy duyệt hiển thị một bình luận theo ID. */
   const handleApprove = async (id: number, isApproved: boolean) => {
     try {
       await adminBlogService.approveComment(id, isApproved);
@@ -57,6 +63,7 @@ export default function BlogCommentsTab() {
     }
   };
 
+  /** Xác nhận và xóa vĩnh viễn một bình luận blog theo ID. */
   const handleDelete = async (id: number) => {
     if (!confirm('Bạn có chắc chắn muốn xóa vĩnh viễn bình luận này?')) return;
     try {
@@ -68,6 +75,7 @@ export default function BlogCommentsTab() {
     }
   };
 
+  /** Tải và mở modal xem nhanh nội dung bài viết gốc chứa bình luận đang kiểm duyệt. */
   const handleOpenPostDetail = async (slug: string) => {
     try {
       const res = await blogService.getPostBySlug(slug);
@@ -126,6 +134,7 @@ export default function BlogCommentsTab() {
     }
   ];
 
+  /** Trả về danh sách thao tác duyệt, hủy duyệt hoặc xóa bình luận trên từng dòng. */
   const getRowActions = (comment: any): ActionItem[] => {
     const actions: ActionItem[] = [];
     if (comment.is_approved) {

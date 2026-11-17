@@ -10,6 +10,9 @@ import { Link } from '@/i18n/routing';
 import { useTranslations } from 'next-intl';
 import { BlogComments } from '@/components/blog/BlogComments';
 
+/**
+ * Trang chi tiết bài viết blog theo slug kèm danh sách bài viết liên quan và khu vực bình luận.
+ */
 export default function BlogDetailPage() {
   const { slug } = useParams();
   const router = useRouter();
@@ -24,6 +27,7 @@ export default function BlogDetailPage() {
     }
   }, [slug]);
 
+  /** Tải nội dung chi tiết bài viết và các bài viết liên quan theo slug; chuyển về 404 nếu không tìm thấy. */
   const fetchData = async (slugId: string) => {
     try {
       setLoading(true);
