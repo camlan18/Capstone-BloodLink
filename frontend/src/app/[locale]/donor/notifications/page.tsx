@@ -6,6 +6,9 @@ import { Bell, CheckCircle, Search, Clock, MailOpen, Mail } from 'lucide-react';
 import { toast } from 'sonner';
 import { useTranslations } from 'next-intl';
 
+/**
+ * Trang hộp thư thông báo cá nhân của người hiến máu (lọc chưa đọc/đã đọc, đánh dấu đã đọc từng mục hoặc tất cả).
+ */
 export default function UserNotificationsPage() {
   const t = useTranslations('DonorNotifications');
   const [notifications, setNotifications] = useState<any[]>([]);
@@ -18,6 +21,7 @@ export default function UserNotificationsPage() {
   const [totalPages, setTotalPages] = useState(1);
   const limit = 10;
 
+  /** Tải danh sách thông báo của người dùng hiện tại theo trang, từ khóa và trạng thái đọc. */
   const fetchNotifications = async () => {
     try {
       setLoading(true);
@@ -48,6 +52,7 @@ export default function UserNotificationsPage() {
     fetchNotifications();
   }, [page, search, filter]);
 
+  /** Đánh dấu một thông báo cụ thể đã đọc và cập nhật lại state cục bộ. */
   const handleMarkAsRead = async (id: number) => {
     try {
       await notificationService.markAsRead(id);
@@ -59,6 +64,7 @@ export default function UserNotificationsPage() {
     }
   };
 
+  /** Đánh dấu toàn bộ thông báo của người dùng là đã đọc. */
   const handleMarkAllAsRead = async () => {
     try {
       await notificationService.markAllAsRead();

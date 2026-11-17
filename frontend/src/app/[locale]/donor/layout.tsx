@@ -7,6 +7,9 @@ import { Link } from '@/i18n/routing';
 import { User, Clock, CalendarPlus, Droplet, ClipboardList, Award, FileCheck } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
+/**
+ * Layout khu vực tài khoản người hiến máu: kiểm tra đăng nhập và hiển thị menu điều hướng bên trái.
+ */
 export default function DonorLayout({ children }: { children: ReactNode }) {
   const t = useTranslations('DonorLayout');
   const { isAuthenticated, user } = useAuthStore();

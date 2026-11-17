@@ -14,6 +14,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { PageHeader } from '@/components/ui/PageHeader';
 
 
+/**
+ * Trang quản trị gửi thông báo hệ thống đến toàn bộ người dùng hoặc nhóm người nhận được chọn.
+ */
 export default function AdminNotificationsPage() {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<any[]>([]);
@@ -47,6 +50,7 @@ export default function AdminNotificationsPage() {
     fetchUsers();
   }, [page, pageSize, keyword]);
 
+  /** Tải danh sách thông báo đã phát trong hệ thống có phân trang và tìm kiếm. */
   const fetchData = async () => {
     try {
       setLoading(true);
@@ -62,6 +66,7 @@ export default function AdminNotificationsPage() {
     }
   };
 
+  /** Tải danh sách người dùng phục vụ chọn người nhận khi tạo thông báo mới. */
   const fetchUsers = async () => {
     try {
       const res = await adminUserService.getUsers({ limit: 1000 });
@@ -71,6 +76,7 @@ export default function AdminNotificationsPage() {
     }
   };
 
+  /** Xác nhận và xóa một thông báo theo ID. */
   const handleDelete = async (id: number) => {
     if (!window.confirm('Bạn có chắc chắn muốn xóa thông báo này?')) return;
     try {
@@ -82,6 +88,7 @@ export default function AdminNotificationsPage() {
     }
   };
 
+  /** Kiểm tra danh sách người nhận và gửi tạo mới thông báo tới người dùng được chọn hoặc tất cả. */
   const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!sendToAll && selectedUserIds.length === 0) {
@@ -112,6 +119,7 @@ export default function AdminNotificationsPage() {
     }
   };
 
+  /** Bật hoặc bỏ chọn một người nhận theo user_id trong danh sách gửi thông báo. */
   const toggleUserSelection = (id: number) => {
     if (selectedUserIds.includes(id)) {
       setSelectedUserIds(prev => prev.filter(uid => uid !== id));
@@ -120,6 +128,7 @@ export default function AdminNotificationsPage() {
     }
   };
 
+  /** Trả về class CSS màu badge theo loại thông báo (SYSTEM, WARNING, ALERT, INFO). */
   const getTypeColor = (type: string) => {
     const t = type.toUpperCase();
     if (t === 'SYSTEM') return 'bg-slate-100 text-slate-700';
@@ -178,6 +187,7 @@ export default function AdminNotificationsPage() {
     }
   ];
 
+  /** Tạo danh sách thao tác xem chi tiết và xóa cho từng dòng thông báo. */
   const getRowActions = (item: any): ActionItem[] => [
     {
       label: 'Xem chi tiết',

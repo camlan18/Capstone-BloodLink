@@ -19,6 +19,7 @@ const BloodMap = dynamic(() => import('@/components/map/BloodMap'), {
   ),
 });
 
+/** Cấu trúc thông tin cơ sở y tế gắn trên bản đồ kèm danh sách yêu cầu máu chờ và khoảng cách. */
 interface FacilityOnMap {
   facility_id: number;
   facility_name: string;
@@ -34,6 +35,7 @@ interface FacilityOnMap {
   distance_km?: number;
 }
 
+/** Trả về bộ class màu badge và chấm trạng thái theo mã mức độ khẩn cấp. */
 const getUrgencyStyle = (code?: string) => {
   if (!code) return { bg: 'bg-slate-100', text: 'text-slate-500', border: 'border-slate-200', dot: 'bg-slate-400' };
   const c = code.toUpperCase();
@@ -43,6 +45,7 @@ const getUrgencyStyle = (code?: string) => {
 };
 
 // Haversine formula to calculate distance between two coordinates in km
+/** Tính khoảng cách đường chim bay (km) giữa hai tọa độ địa lý theo công thức Haversine. */
 function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371; // Earth's radius in km
   const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -54,6 +57,9 @@ function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
   return R * c;
 }
 
+/**
+ * Trang bản đồ yêu cầu máu trực quan hỗ trợ định vị GPS, lọc khu vực/nhóm máu và tìm cơ sở gần nhất.
+ */
 export default function BloodMapPage() {
   const t = useTranslations('BloodMap');
   const [facilities, setFacilities] = useState<FacilityOnMap[]>([]);
@@ -83,6 +89,7 @@ export default function BloodMapPage() {
     HA_NOI: { label: t('haNoi'), coords: [21.0285, 105.8542], zoom: 12, keywords: ['Hà Nội', 'Cầu Giấy', 'Đống Đa'] },
   };
 
+  /** Thay đổi khu vực lọc và điều hướng góc nhìn bản đồ tới tọa độ vùng được chọn. */
   const handleRegionChange = (regKey: string) => {
     setSelectedRegion(regKey);
     const reg = REGIONS[regKey];
@@ -96,6 +103,7 @@ export default function BloodMapPage() {
     fetchData();
   }, []);
 
+  /** Tải toàn bộ cơ sở y tế và yêu cầu máu công khai để ghép dữ liệu hiển thị lên bản đồ. */
   const fetchData = async () => {
     try {
       setLoading(true);
@@ -200,11 +208,13 @@ export default function BloodMapPage() {
     return facilities.filter(f => f.pendingRequests.length > 0).length;
   }, [facilities]);
 
+  /** Chọn một cơ sở y tế trên bản đồ hoặc danh sách để mở panel chi tiết yêu cầu máu. */
   const handleFacilitySelect = (facility: FacilityOnMap) => {
     setSelectedFacility(facility);
     setPanelOpen(true);
   };
 
+  /** Lấy tọa độ GPS hiện tại của trình duyệt để tính khoảng cách tới các cơ sở y tế. */
   const handleLocateUser = useCallback(() => {
     if (!navigator.geolocation) {
       setLocationError(t('browserNotSupportGeo'));
@@ -226,6 +236,7 @@ export default function BloodMapPage() {
     );
   }, []);
 
+  /** Định dạng chuỗi ngày tháng sang kiểu dd/MM/yyyy cho danh sách yêu cầu trên bản đồ. */
   const formatDate = (dateStr?: string) => {
     if (!dateStr) return '—';
     const d = new Date(dateStr);

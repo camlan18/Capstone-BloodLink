@@ -18,6 +18,9 @@ import { useAuthStore } from '@/lib/stores';
 import { PageHeader } from '@/components/ui/PageHeader';
 
 
+/**
+ * Trang quản trị ngân hàng máu: theo dõi tồn kho, nhập/sửa/tiêu hủy túi máu và nhập xuất Excel.
+ */
 export default function AdminInventoryPage() {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<any[]>([]);
@@ -47,6 +50,7 @@ export default function AdminInventoryPage() {
   // Import Modal State
   const [isImportOpen, setIsImportOpen] = useState(false);
 
+  /** Sinh mã túi máu ngẫu nhiên theo định dạng `BAG-XXXX-NNNN` khi tạo mới. */
   const generateBagCode = () => `BAG-${Math.random().toString(36).substring(2, 6).toUpperCase()}-${Math.floor(1000 + Math.random() * 9000)}`;
 
   const [formData, setFormData] = useState({
@@ -59,6 +63,7 @@ export default function AdminInventoryPage() {
     expiry_date: format(new Date(Date.now() + 35 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd')
   });
 
+  /** Khởi tạo dữ liệu mặc định và mở modal nhập túi máu mới vào kho. */
   const handleOpenAddModal = () => {
     setEditingItem(null);
     setFormData({
@@ -73,6 +78,7 @@ export default function AdminInventoryPage() {
     setIsModalOpen(true);
   };
 
+  /** Nạp thông tin túi máu cần chỉnh sửa vào form và mở modal cập nhật. */
   const handleOpenEditModal = (item: any) => {
     console.log("handleOpenEditModal item:", item);
     setEditingItem(item);
@@ -97,11 +103,13 @@ export default function AdminInventoryPage() {
   }, [page, pageSize, statusCode, bagCode, filterBloodType, filterFacility]);
 
   useEffect(() => {
+    /** Tải lại danh sách tồn kho khi có phiếu điều chuyển máu vừa cập nhật. */
     const handleUpdated = () => fetchData();
     window.addEventListener('transfer-updated', handleUpdated);
     return () => window.removeEventListener('transfer-updated', handleUpdated);
   }, [page, pageSize, statusCode, bagCode, filterBloodType, filterFacility]);
 
+  /** Tải danh mục cơ sở y tế, nhóm máu và thành phần máu cho bộ lọc và form kho. */
   const fetchMasterData = async () => {
     try {
       const [facRes, btRes, compRes] = await Promise.all([
@@ -117,16 +125,19 @@ export default function AdminInventoryPage() {
     }
   };
 
+  /** Cập nhật từ khóa mã túi máu tìm kiếm và đưa trang về 1. */
   const handleSearch = (val: string) => {
     setBagCode(val);
     setPage(1);
   };
 
+  /** Cập nhật bộ lọc trạng thái túi máu và đặt lại trang về 1. */
   const handleStatusChange = (val: string | null) => {
     setStatusCode(val || 'AVAILABLE');
     setPage(1);
   };
 
+  /** Tải danh sách túi máu phân trang từ API theo trạng thái, mã túi, nhóm máu và cơ sở. */
   const fetchData = async () => {
     try {
       setLoading(true);
@@ -149,6 +160,7 @@ export default function AdminInventoryPage() {
     }
   };
 
+  /** Xác nhận và chuyển trạng thái túi máu sang tiêu hủy theo ID. */
   const handleDiscard = async (id: number) => {
     if (!confirm('Bạn có chắc chắn muốn tiêu hủy túi máu này? Hành động này không thể hoàn tác.')) return;
     
@@ -163,6 +175,7 @@ export default function AdminInventoryPage() {
 
 
 
+  /** Gửi biểu mẫu nhập túi máu mới hoặc cập nhật thông tin túi máu đang chỉnh sửa. */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -195,6 +208,7 @@ export default function AdminInventoryPage() {
     }
   };
 
+  /** Xuất danh sách tồn kho máu hiện tại ra file Excel. */
   const handleExport = async () => {
     try {
       await adminInventoryService.exportExcel({
@@ -208,6 +222,7 @@ export default function AdminInventoryPage() {
     }
   };
 
+  /** Import hàng loạt túi máu vào kho từ file Excel tải lên. */
   const handleImport = async (file: File) => {
     try {
       const res = await adminInventoryService.importExcel(file);
@@ -219,6 +234,7 @@ export default function AdminInventoryPage() {
     }
   };
 
+  /** Tải xuống file Excel mẫu nhập dữ liệu kho máu. */
   const handleDownloadTemplate = async () => {
     try {
       await adminInventoryService.downloadTemplate();
@@ -295,6 +311,7 @@ export default function AdminInventoryPage() {
     }
   ];
 
+  /** Trả về danh sách thao tác chỉnh sửa hoặc tiêu hủy túi máu cho từng dòng bảng. */
   const getRowActions = (item: any): ActionItem[] => [
     {
       label: 'Chỉnh sửa',

@@ -5,6 +5,9 @@ import { Search, ChevronRight, ChevronLeft } from 'lucide-react';
 import apiClient from '@/lib/services/apiClient';
 import { useTranslations } from 'next-intl';
 
+/**
+ * Trang bảng xếp hạng vinh danh người hiến máu tiêu biểu hỗ trợ tìm kiếm và sắp xếp.
+ */
 export default function LeaderboardPage() {
   const t = useTranslations('Leaderboard');
   const [data, setData] = useState<any[]>([]);
@@ -21,6 +24,7 @@ export default function LeaderboardPage() {
     return () => clearTimeout(delayDebounceFn);
   }, [meta?.page, searchTerm, sortBy, sortOrder]);
 
+  /** Tải dữ liệu bảng xếp hạng người hiến máu công khai theo phân trang và tiêu chí sắp xếp. */
   const fetchLeaderboard = async (page: number, search: string, sort: string, order: string) => {
     try {
       setLoading(true);
@@ -43,6 +47,7 @@ export default function LeaderboardPage() {
     }
   };
 
+  /** Lấy 2 chữ cái đầu viết hoa từ họ tên để hiển thị ảnh đại diện mặc định. */
   const getInitials = (name: string) => {
     return name ? name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : 'U';
   };
