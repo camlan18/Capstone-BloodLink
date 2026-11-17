@@ -15,6 +15,9 @@ import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
 import { useTranslations } from 'next-intl';
 
+/**
+ * Trang gửi yêu cầu cần máu mới cho bệnh nhân/cơ sở điều trị với dữ liệu danh mục chọn lọc.
+ */
 export default function CreateBloodRequestPage() {
   const t = useTranslations('CreateBloodRequest');
   const router = useRouter();
@@ -40,6 +43,7 @@ export default function CreateBloodRequestPage() {
   });
 
   useEffect(() => {
+    /** Tải đồng thời danh mục nhóm máu, thành phần máu, cơ sở y tế và mức khẩn cấp. */
     const fetchMasterData = async () => {
       try {
         const [btRes, compRes, facRes, urgRes] = await Promise.all([
@@ -59,10 +63,12 @@ export default function CreateBloodRequestPage() {
     fetchMasterData();
   }, []);
 
+  /** Cập nhật giá trị trường nhập liệu tương ứng vào formData. */
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  /** Tự động điền tên bệnh viện và địa chỉ khi người dùng chọn cơ sở y tế. */
   const handleFacilityChange = (facId: string) => {
     const facility = facilities.find(f => f.facility_id.toString() === facId);
     if (facility) {
@@ -77,6 +83,7 @@ export default function CreateBloodRequestPage() {
     }
   };
 
+  /** Kiểm tra dữ liệu bắt buộc và gửi yêu cầu cần máu mới lên API. */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.facility_id || !formData.patient_name || !formData.blood_type_id || !formData.component_id || !formData.urgency_id) {

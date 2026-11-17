@@ -10,6 +10,7 @@ import { BlogPost } from '@/types';
 import { Badge } from '@/components/ui/badge';
 import { BookOpen } from 'lucide-react';
 
+/** Tạo danh sách 4 bước quy trình hiến máu hiển thị ở phần giới thiệu trang chủ. */
 const getSteps = (t: any) => [
   {
     icon: Search,
@@ -37,6 +38,7 @@ const getSteps = (t: any) => [
   },
 ];
 
+/** Tạo danh sách các chỉ số thống kê nổi bật hiển thị trên trang chủ. */
 const getStats = (t: any) => [
   { number: '12,543', label: t('stat1'), icon: Droplet },
   { number: '8,219', label: t('stat2'), icon: Users },
@@ -44,6 +46,9 @@ const getStats = (t: any) => [
   { number: '156', label: t('stat4'), icon: Building2 },
 ];
 
+/**
+ * Trang chủ công khai của BloodLink hiển thị banner kêu gọi, quy trình hiến máu và tin tức mới nhất.
+ */
 export default function HomePage() {
   const t = useTranslations('HomePage');
   const [latestDocs, setLatestDocs] = useState<BlogPost[]>([]);
@@ -51,6 +56,7 @@ export default function HomePage() {
 
   useEffect(() => {
     // Fetch latest blogs
+    /** Tải 3 bài viết blog mới nhất để hiển thị trên trang chủ. */
     const fetchLatest = async () => {
       try {
         setLoadingDocs(true);

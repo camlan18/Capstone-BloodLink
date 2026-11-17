@@ -3,6 +3,9 @@ import { MainLayout } from '@/components/layout/MainLayout';
 import { Heart, ShieldCheck, Users, Target } from 'lucide-react';
 import { Link } from '@/i18n/routing';
 
+/**
+ * Trang giới thiệu sứ mệnh, tầm nhìn, đội ngũ và thành tựu của hệ thống hiến máu BloodLink.
+ */
 export default function AboutPage() {
   return (
     <MainLayout>
@@ -105,6 +108,7 @@ export default function AboutPage() {
   );
 }
 
+/** Hiển thị nhãn tiêu đề nhỏ bo tròn ở đầu phần giới thiệu. */
 function Badge({ children }: { children: React.ReactNode }) {
   return (
     <span className="inline-block px-4 py-1.5 bg-blood/10 text-blood font-semibold rounded-full text-sm">
@@ -113,6 +117,7 @@ function Badge({ children }: { children: React.ReactNode }) {
   );
 }
 
+/** Thẻ hiển thị một con số thống kê nổi bật kèm biểu tượng và nhãn mô tả. */
 function StatCard({ number, label, icon: Icon }: { number: string; label: string; icon: any }) {
   return (
     <div className="p-6">

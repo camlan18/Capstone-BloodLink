@@ -10,6 +10,9 @@ import { DataTable, Column } from '@/components/ui/DataTable';
 import { BaseModal } from '@/components/ui/BaseModal';
 import { useTranslations } from 'next-intl';
 
+/**
+ * Trang quản lý danh sách các yêu cầu máu do chính người dùng hiện tại đã gửi.
+ */
 export default function MyRequestsPage() {
   const t = useTranslations('DonorRequests');
   const router = useRouter();
@@ -29,6 +32,7 @@ export default function MyRequestsPage() {
   const [detailTab, setDetailTab] = useState<'details' | 'history'>('details');
   const [detailLoading, setDetailLoading] = useState(false);
   
+  /** Mở modal xem chi tiết và gọi API nạp lịch sử xử lý mới nhất của yêu cầu máu. */
   const handleViewDetails = async (item: any) => {
     setIsDetailOpen(true);
     setDetailTab('details');
@@ -50,6 +54,7 @@ export default function MyRequestsPage() {
     }
   };
 
+  /** Tải danh sách yêu cầu máu cá nhân theo phân trang và từ khóa tìm kiếm. */
   const fetchRequests = async () => {
     try {
       setLoading(true);
@@ -79,6 +84,7 @@ export default function MyRequestsPage() {
     return () => clearTimeout(timer);
   }, [page, pageSize, search]);
 
+  /** Trả về class CSS badge theo mã trạng thái xử lý yêu cầu máu. */
   const getStatusColor = (status: string) => {
     if (!status) return 'bg-slate-100 text-slate-700';
     const s = status.toLowerCase();
@@ -89,6 +95,7 @@ export default function MyRequestsPage() {
     return 'bg-slate-100 text-slate-700';
   };
 
+  /** Trả về class CSS màu hiển thị mức độ khẩn cấp của yêu cầu. */
   const getUrgencyColor = (urgency: string) => {
     if (!urgency) return 'text-slate-500';
     const u = urgency.toLowerCase();

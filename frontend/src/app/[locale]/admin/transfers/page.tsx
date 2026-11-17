@@ -16,6 +16,7 @@ import { BaseModal } from '@/components/ui/BaseModal';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { useAuthStore } from '@/lib/stores';
 
+/** Bảng ánh xạ mã trạng thái phiếu chuyển máu sang nhãn tiếng Việt và màu badge. */
 const STATUS_MAP: Record<string, { label: string; color: string }> = {
   PENDING: { label: 'Chờ duyệt', color: 'bg-amber-50 text-amber-700 border-amber-200' },
   APPROVED: { label: 'Đã duyệt', color: 'bg-blue-50 text-blue-700 border-blue-200' },
@@ -26,6 +27,9 @@ const STATUS_MAP: Record<string, { label: string; color: string }> = {
   CANCELLED: { label: 'Đã hủy', color: 'bg-slate-50 text-slate-500 border-slate-200' },
 };
 
+/**
+ * Trang quản trị điều chuyển máu giữa các cơ sở y tế (tạo phiếu, chọn túi máu duyệt xuất, giao và nhận kho).
+ */
 export default function AdminTransfersPage() {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<any[]>([]);
@@ -84,6 +88,7 @@ export default function AdminTransfersPage() {
   }, [page, pageSize, keyword, filterStatus]);
 
   useEffect(() => {
+    /** Đồng bộ lại danh sách và thống kê kho khi modal xác nhận nhập kho toàn cục phát sự kiện cập nhật. */
     const handleUpdated = () => {
       fetchData();
       fetchMasterData();
@@ -92,6 +97,7 @@ export default function AdminTransfersPage() {
     return () => window.removeEventListener('transfer-updated', handleUpdated);
   }, [page, pageSize, keyword, filterStatus]);
 
+  /** Tải danh mục cơ sở, nhóm máu, chế phẩm máu và tồn kho tổng hợp toàn hệ thống. */
   const fetchMasterData = async () => {
     try {
       const [facRes, btRes, compRes, statsRes] = await Promise.all([
@@ -109,6 +115,7 @@ export default function AdminTransfersPage() {
     }
   };
 
+  /** Tải danh sách phiếu điều chuyển máu phân trang theo từ khóa và bộ lọc trạng thái. */
   const fetchData = async () => {
     try {
       setLoading(true);
@@ -129,13 +136,16 @@ export default function AdminTransfersPage() {
     }
   };
 
+  /** Cập nhật từ khóa tìm kiếm phiếu chuyển máu và đưa trang về 1. */
   const handleSearch = (val: string) => {
     setKeyword(val);
     setPage(1);
   };
 
+  /** Trả về mốc thời gian tối thiểu (hiện tại + 2 giờ) cho trường thời hạn cần máu. */
   const getMinDateTime = () => { const d = new Date(); d.setHours(d.getHours() + 2); return d.toISOString().slice(0, 16); };
 
+  /** Kiểm tra hạn cần máu tối thiểu 2 giờ và gửi tạo phiếu yêu cầu chuyển máu mới. */
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (createData.required_before) {
@@ -170,6 +180,7 @@ export default function AdminTransfersPage() {
     }
   };
 
+  /** Mở modal duyệt phiếu và tải danh sách túi máu khả dụng từ kho cơ sở nguồn. */
   const handleOpenApprove = async (item: any) => {
     setApproveItem(item);
     setSelectedInventoryIds([]);
@@ -190,6 +201,7 @@ export default function AdminTransfersPage() {
     }
   };
 
+  /** Kiểm tra tổng thể tích các túi máu đã chọn và duyệt phiếu chuyển máu. */
   const handleApprove = async () => {
     if (!approveItem) return;
     if (selectedInventoryIds.length === 0) {
@@ -224,6 +236,7 @@ export default function AdminTransfersPage() {
     }
   };
 
+  /** Đánh dấu xuất kho bắt đầu vận chuyển túi máu theo phiếu chuyển. */
   const handleShip = async (id: number) => {
     if (!confirm('Xác nhận xuất ngân hàng túi máu này?')) return;
     try {
@@ -235,6 +248,7 @@ export default function AdminTransfersPage() {
     }
   };
 
+  /** Đánh dấu phiếu chuyển máu đã giao tới cơ sở nhận. */
   const handleDeliver = async (id: number) => {
     if (!confirm('Xác nhận túi máu đã được giao đến nơi?')) return;
     try {
@@ -246,6 +260,7 @@ export default function AdminTransfersPage() {
     }
   };
 
+  /** Xác nhận cơ sở đích đã nhận kho các túi máu được chuyển đến. */
   const handleReceive = async (id: number) => {
     if (!confirm('Xác nhận đã nhận túi máu?')) return;
     try {
@@ -257,6 +272,7 @@ export default function AdminTransfersPage() {
     }
   };
 
+  /** Gửi từ chối phiếu chuyển máu kèm lý do tương ứng. */
   const handleReject = async () => {
     if (!rejectItem) return;
     try {
@@ -273,6 +289,7 @@ export default function AdminTransfersPage() {
     }
   };
 
+  /** Hủy phiếu chuyển máu đang ở trạng thái chờ duyệt. */
   const handleCancel = async (id: number) => {
     if (!confirm('Xác nhận hủy phiếu chuyển máu này?')) return;
     try {
@@ -365,6 +382,7 @@ export default function AdminTransfersPage() {
     },
   ];
 
+  /** Xây dựng danh sách thao tác khả dụng theo vai trò (bên gửi/nhận) và trạng thái phiếu chuyển máu. */
   const getRowActions = (item: any): ActionItem[] => {
     const actions: ActionItem[] = [
       {

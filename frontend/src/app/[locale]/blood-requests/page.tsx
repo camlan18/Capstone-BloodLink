@@ -8,6 +8,9 @@ import { MapPin, Clock, Heart, Filter, ArrowRight, Activity, Droplet, UserPlus, 
 import { Link } from '@/i18n/routing';
 import { useTranslations } from 'next-intl';
 
+/**
+ * Trang danh sách yêu cầu máu công khai hỗ trợ lọc theo mức độ khẩn, nhóm máu, sắp xếp và xem chi tiết.
+ */
 export default function BloodRequestsPage() {
   const t = useTranslations('BloodRequests');
   const [requests, setRequests] = useState<any[]>([]);
@@ -28,6 +31,7 @@ export default function BloodRequestsPage() {
 
   useEffect(() => { fetchRequests(); }, []);
 
+  /** Gọi API lấy toàn bộ danh sách yêu cầu máu công khai. */
   const fetchRequests = async () => {
     try {
       setLoading(true);
@@ -42,6 +46,7 @@ export default function BloodRequestsPage() {
     finally { setLoading(false); }
   };
 
+  /** Trả về cấu hình màu sắc và nhãn hiển thị theo mã mức độ khẩn cấp của yêu cầu máu. */
   const getUrgencyStyle = (code?: string) => {
     if (!code) return { bg: 'bg-slate-100', text: 'text-slate-500', border: 'border-slate-200', dot: 'bg-slate-400', label: t('unknown') };
     const c = code.toUpperCase();
@@ -50,6 +55,7 @@ export default function BloodRequestsPage() {
     return { bg: 'bg-blue-50', text: 'text-blue-600', border: 'border-blue-200', dot: 'bg-blue-500', label: t('normal') };
   };
 
+  /** Bật hoặc bỏ bộ lọc mức độ khẩn và đưa phân trang về trang 1. */
   const toggleUrgency = (level: string) => {
     setSelectedUrgencies(prev => 
       prev.includes(level) ? prev.filter(l => l !== level) : [...prev, level]
@@ -57,6 +63,7 @@ export default function BloodRequestsPage() {
     setCurrentPage(1);
   };
 
+  /** Bật hoặc bỏ bộ lọc nhóm máu và đưa phân trang về trang 1. */
   const toggleBloodType = (bt: string) => {
     setSelectedBloodTypes(prev => 
       prev.includes(bt) ? prev.filter(b => b !== bt) : [...prev, bt]
@@ -64,6 +71,7 @@ export default function BloodRequestsPage() {
     setCurrentPage(1);
   };
 
+  /** Định dạng chuỗi ngày tháng sang kiểu dd/MM/yyyy theo chuẩn Việt Nam. */
   const formatDate = (dateStr?: string) => {
     if (!dateStr) return '—';
     const d = new Date(dateStr);

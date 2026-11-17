@@ -11,6 +11,9 @@ import { Link } from '@/i18n/routing';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 
+/**
+ * Trang xem chi tiết một yêu cầu máu cụ thể của người dùng kèm lịch sử cập nhật trạng thái.
+ */
 export default function RequestDetailsPage({ params }: { params: Promise<{ id: string }> }) {
   const t = useTranslations('DonorRequests');
   const resolvedParams = use(params);
@@ -22,6 +25,7 @@ export default function RequestDetailsPage({ params }: { params: Promise<{ id: s
   const [activeTab, setActiveTab] = useState<'details' | 'history'>('details');
 
   useEffect(() => {
+    /** Tải dữ liệu chi tiết yêu cầu máu theo ID từ tham số đường dẫn. */
     const fetchDetails = async () => {
       try {
         setLoading(true);
@@ -45,6 +49,7 @@ export default function RequestDetailsPage({ params }: { params: Promise<{ id: s
     }
   }, [id, router]);
 
+  /** Trả về class màu badge theo trạng thái yêu cầu máu. */
   const getStatusColor = (status: string) => {
     if (!status) return 'bg-slate-100 text-slate-700';
     const s = status.toLowerCase();
@@ -55,6 +60,7 @@ export default function RequestDetailsPage({ params }: { params: Promise<{ id: s
     return 'bg-slate-100 text-slate-700';
   };
 
+  /** Trả về class màu badge theo mức độ khẩn cấp của yêu cầu máu. */
   const getUrgencyColor = (urgency: string) => {
     if (!urgency) return 'text-slate-500';
     const u = urgency.toLowerCase();
