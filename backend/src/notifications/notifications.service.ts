@@ -21,10 +21,12 @@ export class NotificationsService {
    * Tạo hàng loạt bản ghi thông báo chưa đọc cho danh sách `user_ids`.
    */
   async createNotification(dto: CreateNotificationDto) {
+    // B1: Đảm bảo danh sách người nhận không rỗng
     if (!dto.user_ids || dto.user_ids.length === 0) {
       throw new Error('Cần chọn ít nhất 1 người dùng để gửi thông báo');
     }
 
+    // B2: Nhân bản payload thông báo ở trạng thái chưa đọc (is_read: false) cho từng user_id và lưu hàng loạt
     const data = dto.user_ids.map(user_id => ({
       user_id,
       title: dto.title,
@@ -46,6 +48,7 @@ export class NotificationsService {
    * Gửi thông báo hệ thống tới tất cả tài khoản ADMIN đang hoạt động.
    */
   async notifyAdmins(title: string, message: string, type: string = NotificationType.SYSTEM, reference_type?: string, reference_id?: number) {
+    // Truy vấn các user mang vai trò ADMIN đang kích hoạt rồi gửi thông báo hàng loạt
     const admins = await this.prisma.users.findMany({
       where: {
         role: {
@@ -72,6 +75,7 @@ export class NotificationsService {
    * Lấy danh sách thông báo có phân trang và lọc theo người dùng, loại thông báo hoặc từ khóa.
    */
   async getNotifications(query: any) {
+    // Tính phân trang và áp dụng điều kiện lọc theo user, loại thông báo hoặc từ khóa tiêu đề/nội dung
     const page = Number(query.page) || 1;
     const limit = Number(query.limit) || 20;
     const skip = (page - 1) * limit;

@@ -13,6 +13,7 @@ export class SystemSettingsService {
    * Lấy danh sách cấu hình hệ thống có phân trang và tìm kiếm theo khóa hoặc mô tả.
    */
   async getSettings(query: any) {
+    // Khởi tạo phân trang và lọc từ khóa theo tên khóa cấu hình hoặc mô tả
     const page = Number(query.page) || 1;
     const limit = Number(query.limit) || 50;
     const skip = (page - 1) * limit;
@@ -45,6 +46,7 @@ export class SystemSettingsService {
    * Tạo mới hoặc cập nhật giá trị cấu hình theo `setting_key`.
    */
   async upsertSetting(dto: UpsertSettingDto) {
+    // Kiểm tra setting_key đã tồn tại chưa để quyết định cập nhật hay tạo bản ghi mới
     const existing = await this.prisma.system_settings.findUnique({
       where: { setting_key: dto.setting_key }
     });

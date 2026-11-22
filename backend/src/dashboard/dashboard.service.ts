@@ -13,6 +13,7 @@ export class DashboardService {
    * Tính toán và tổng hợp số liệu thống kê tồn kho, yêu cầu máu, lượt hiến và biểu đồ theo khoảng thời gian.
    */
   async getStats(startDateStr?: string, endDateStr?: string, facilityIdStr?: string, user?: any) {
+    // B1: Nếu là MODERATOR thì chỉ thống kê các chỉ số nội dung (bài viết, bình luận chờ duyệt, tài liệu) và trả về ngay
     if (user?.role_code === 'MODERATOR') {
       const postsCount = await this.prisma.blog_posts.count();
       const categoriesCount = await this.prisma.blog_categories.count();
@@ -36,6 +37,7 @@ export class DashboardService {
       };
     }
 
+    // B2: Chuẩn hóa khoảng thời gian thống kê (mặc định 7 ngày gần nhất, tròn ngày 00:00 -> 23:59:59)
     // Determine dates
     let startDate = new Date();
     startDate.setDate(startDate.getDate() - 7); // default 7 days ago
@@ -53,6 +55,7 @@ export class DashboardService {
       endDate.setHours(23, 59, 59, 999);
     }
 
+    // B3: Ép phạm vi cơ sở y tế theo user.facility_id nếu là HOSPITAL_STAFF
     let facilityId = facilityIdStr ? parseInt(facilityIdStr, 10) : undefined;
     if (user?.role_code === 'HOSPITAL_STAFF') {
       facilityId = user.facility_id || -1;
@@ -62,6 +65,7 @@ export class DashboardService {
     // blood_donations -> schedule -> facility
     // blood_requests -> facility
 
+    // B4: Tính 6 KPI tổng quan: lượt hiến hôm nay, thể tích máu trong kỳ, donor mới, lịch mở, yêu cầu chờ và tổng donor
     // 1. Lượt hiến máu hôm nay (Today's donations)
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
@@ -137,6 +141,7 @@ export class DashboardService {
       }
     });
 
+    // B5: Tạo các cảnh báo vận hành: nhóm máu dưới 10 túi, yêu cầu khẩn cấp đang chờ và lịch trong 7 ngày tới
     // --- ALERTS ---
 
     // Alert 1: Low Blood Inventory (e.g., < 10 bags)
@@ -191,6 +196,7 @@ export class DashboardService {
     // Alert 4: Pending Posts/Comments
     const pendingCommentsCount = 0;
 
+    // B6: Lập chuỗi dữ liệu biểu đồ từng ngày từ startDate đến endDate (khởi tạo giá trị 0 cho ngày không có ca hiến)
     // --- CHART DATA ---
     const donationsInRange = await this.prisma.donations.findMany({
       where: {
@@ -209,6 +215,7 @@ export class DashboardService {
 
     const chartMap = new Map<string, number>();
 
+    // Điền trước toàn bộ các ngày DD/MM trong khoảng để biểu đồ không bị khuyết ngày trống
     const tempDate = new Date(startDate);
     while (tempDate <= endDate) {
       const dateStr = `${String(tempDate.getDate()).padStart(2, '0')}/${String(tempDate.getMonth() + 1).padStart(2, '0')}`;
@@ -216,6 +223,7 @@ export class DashboardService {
       tempDate.setDate(tempDate.getDate() + 1);
     }
 
+    // Cộng dồn số ca hiến máu vào từng ngày tương ứng trên chartMap
     donationsInRange.forEach((d: any) => {
       const dateStr = `${String(d.donation_date.getDate()).padStart(2, '0')}/${String(d.donation_date.getMonth() + 1).padStart(2, '0')}`;
       if (chartMap.has(dateStr)) {
@@ -228,6 +236,7 @@ export class DashboardService {
       count
     }));
 
+    // B7: Tổng hợp cơ cấu tồn kho theo từng nhóm máu để vẽ biểu đồ phân bổ
     // Advanced Charts (B9)
     // 1. Tỷ lệ nhóm máu trong kho
     const inventoryStats = await this.prisma.blood_inventory.groupBy({
@@ -271,6 +280,7 @@ export class DashboardService {
    */
   // B16: Automated Reports
   async exportReport(startDateStr?: string, endDateStr?: string, facilityIdStr?: string, user?: any) {
+    // Tái sử dụng getStats theo bộ lọc ngày/cơ sở rồi chuyển thành 1 dòng tóm tắt để xuất Excel
     const stats = await this.getStats(startDateStr, endDateStr, facilityIdStr, user);
 
     const excelData = [
