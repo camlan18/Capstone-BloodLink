@@ -20,6 +20,7 @@ export class TransferService {
    * Generate transfer code: TRF-YYYYMMDD-XXXX
    */
   private generateTransferCode(): string {
+    // Ghép ngày hiện tại YYYYMMDD với 4 chữ số ngẫu nhiên để tạo mã phiếu TRF duy nhất
     const now = new Date();
     const dateStr = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
     const rand = Math.floor(1000 + Math.random() * 9000);
@@ -31,10 +32,12 @@ export class TransferService {
    * Cơ sở đang thiếu máu tạo yêu cầu gửi đến cơ sở có máu
    */
   async createTransfer(dto: CreateTransferDto, user: any) {
+    // B1: Chặn trường hợp cơ sở xuất và cơ sở nhận trùng nhau
     if (dto.from_facility_id === dto.to_facility_id) {
       throw new BadRequestException('Cơ sở xuất và cơ sở nhận không được trùng nhau');
     }
 
+    // B2: Truy vấn song song và kiểm tra cả hai cơ sở y tế đều tồn tại
     // Verify both facilities exist
     const [fromFac, toFac] = await Promise.all([
       this.prisma.medical_facilities.findUnique({ where: { facility_id: dto.from_facility_id } }),
@@ -44,6 +47,7 @@ export class TransferService {
     if (!fromFac) throw new BadRequestException('Cơ sở xuất không tồn tại');
     if (!toFac) throw new BadRequestException('Cơ sở nhận không tồn tại');
 
+    // B3: Đảm bảo hạn cần máu (nếu có) cách thời điểm hiện tại ít nhất 2 giờ
     // Validation cho required_before (phải cách hiện tại ít nhất 2h)
     if ((dto as any).required_before) {
       const requiredDate = new Date((dto as any).required_before);
@@ -54,6 +58,7 @@ export class TransferService {
       }
     }
 
+    // B4: Nếu phiếu chỉ định sẵn túi máu, kiểm tra túi thuộc cơ sở xuất và đang AVAILABLE
     // If specific inventory_id is provided, validate it
     if (dto.inventory_id) {
       const inv = await this.prisma.blood_inventory.findUnique({
@@ -68,6 +73,7 @@ export class TransferService {
       }
     }
 
+    // B5: Lưu phiếu điều chuyển mới ở trạng thái PENDING
     const transfer = await this.prisma.blood_transfers.create({
       data: {
         transfer_code: this.generateTransferCode(),
@@ -91,6 +97,7 @@ export class TransferService {
       },
     });
 
+    // B6: Gửi thông báo cho nhân viên/admin tại cơ sở xuất (lỗi gửi thông báo không làm hủy phiếu)
     // Notify staff of the source facility
     try {
       const staffOfSource = await this.prisma.users.findMany({
@@ -124,6 +131,7 @@ export class TransferService {
    * Cơ sở có máu duyệt, chọn túi máu cụ thể để chuyển
    */
   async approveTransfer(transferId: number, user: any, inventoryIds?: number[]) {
+    // B1: Tìm phiếu chuyển và chỉ cho phép duyệt khi đang ở trạng thái PENDING
     const transfer = await this.prisma.blood_transfers.findUnique({
       where: { transfer_id: transferId },
       include: { from_facility: true, to_facility: true },
@@ -135,6 +143,7 @@ export class TransferService {
     }
 
     return await this.prisma.$transaction(async (tx) => {
+      // B2: Ưu tiên danh sách túi máu truyền vào; nếu rỗng thì dùng túi mặc định đã gắn sẵn trên phiếu
       let finalIds = inventoryIds || [];
       if (finalIds.length === 0 && transfer.inventory_id) {
         finalIds = [transfer.inventory_id];
@@ -142,6 +151,7 @@ export class TransferService {
 
       const bagsToStore = [];
 
+      // B3: Kiểm tra từng túi thuộc đúng cơ sở xuất, còn AVAILABLE rồi khóa sang ALLOCATED
       if (finalIds.length > 0) {
         for (const invId of finalIds) {
           const inv = await tx.blood_inventory.findUnique({
@@ -165,6 +175,7 @@ export class TransferService {
         }
       }
 
+      // B4: Cập nhật phiếu sang APPROVED và lưu snapshot JSON các túi máu đã chọn
       const updated = await tx.blood_transfers.update({
         where: { transfer_id: transferId },
         data: {
@@ -194,6 +205,7 @@ export class TransferService {
    */
   async shipTransfer(transferId: number, user: any) {
     return await this.prisma.$transaction(async (tx) => {
+      // B1: Kiểm tra phiếu tồn tại và đã được duyệt (APPROVED) trước khi xuất kho
       const transfer = await tx.blood_transfers.findUnique({
         where: { transfer_id: transferId },
         include: { inventory: true },
@@ -204,6 +216,7 @@ export class TransferService {
         throw new BadRequestException(`Phiếu đang ở trạng thái ${transfer.status}, cần duyệt trước khi xuất kho`);
       }
 
+      // B2: Trích xuất danh sách ID túi máu từ JSON inventory_ids (fallback về inventory_id đơn lẻ)
       let finalIds: number[] = [];
       if (transfer.inventory_ids) {
         try {
@@ -219,6 +232,7 @@ export class TransferService {
         throw new BadRequestException('Chưa chọn túi máu cụ thể cho phiếu chuyển này');
       }
 
+      // B3: Đảm bảo mỗi túi ở trạng thái ALLOCATED và tạo giao dịch xuất kho OUT
       for (const invId of finalIds) {
         await tx.blood_inventory.update({
           where: { inventory_id: invId },
@@ -238,6 +252,7 @@ export class TransferService {
         });
       }
 
+      // B4: Chuyển trạng thái phiếu sang IN_TRANSIT và ghi nhận thời điểm xuất kho
       const updated = await tx.blood_transfers.update({
         where: { transfer_id: transferId },
         data: {
@@ -263,6 +278,7 @@ export class TransferService {
    */
   async deliverTransfer(transferId: number, user: any) {
     return await this.prisma.$transaction(async (tx) => {
+      // Kiểm tra phiếu đang ở trạng thái IN_TRANSIT rồi mới đánh dấu DELIVERED
       const transfer = await tx.blood_transfers.findUnique({
         where: { transfer_id: transferId },
       });
@@ -299,6 +315,7 @@ export class TransferService {
    */
   async receiveTransfer(transferId: number, user: any) {
     return await this.prisma.$transaction(async (tx) => {
+      // B1: Cho phép nhận kho khi phiếu đang ở IN_TRANSIT hoặc DELIVERED
       const transfer = await tx.blood_transfers.findUnique({
         where: { transfer_id: transferId },
         include: { inventory: true },
@@ -309,6 +326,7 @@ export class TransferService {
         throw new BadRequestException(`Phiếu đang ở trạng thái ${transfer.status}, chưa được giao đến`);
       }
 
+      // B2: Lấy danh sách ID túi máu thuộc phiếu để chuyển quyền sở hữu kho
       let finalIds: number[] = [];
       if (transfer.inventory_ids) {
         try {
@@ -324,6 +342,7 @@ export class TransferService {
         throw new BadRequestException('Phiếu chuyển không có túi máu');
       }
 
+      // B3: Cập nhật facility_id của từng túi sang cơ sở nhận, mở về AVAILABLE và ghi giao dịch nhập kho IN
       for (const invId of finalIds) {
         // Move inventory to new facility, set back to AVAILABLE
         await tx.blood_inventory.update({
@@ -348,6 +367,7 @@ export class TransferService {
         });
       }
 
+      // B4: Chốt trạng thái phiếu sang RECEIVED và ghi thời điểm received_at
       const updated = await tx.blood_transfers.update({
         where: { transfer_id: transferId },
         data: {
@@ -377,6 +397,7 @@ export class TransferService {
       throw new BadRequestException('Vui lòng chọn ít nhất một phiếu chuyển máu để xác nhận');
     }
 
+    // Tuần tự gọi receiveTransfer cho từng phiếu để đảm bảo mỗi phiếu giữ trọn giao dịch riêng
     const results = [];
     for (const id of transferIds) {
       const res = await this.receiveTransfer(Number(id), user);
@@ -393,6 +414,7 @@ export class TransferService {
    * 5. Từ chối phiếu chuyển (PENDING → REJECTED)
    */
   async rejectTransfer(transferId: number, user: any, rejectReason: string) {
+    // B1: Kiểm tra phiếu còn ở PENDING hoặc APPROVED mới được phép từ chối
     const transfer = await this.prisma.blood_transfers.findUnique({
       where: { transfer_id: transferId },
     });
@@ -402,6 +424,7 @@ export class TransferService {
       throw new BadRequestException(`Phiếu đang ở trạng thái ${transfer.status}, không thể từ chối`);
     }
 
+    // B2: Nếu trước đó đã duyệt giữ túi máu thì giải phóng toàn bộ về lại AVAILABLE
     // Nếu phiếu đã duyệt và đã giữ túi máu, trả túi về kho
     if (transfer.status === 'APPROVED') {
       let finalIds: number[] = [];
@@ -422,6 +445,7 @@ export class TransferService {
       }
     }
 
+    // B3: Cập nhật trạng thái REJECTED kèm lý do từ chối
     const updated = await this.prisma.blood_transfers.update({
       where: { transfer_id: transferId },
       data: {
@@ -445,6 +469,7 @@ export class TransferService {
    */
   async cancelTransfer(transferId: number, user: any) {
     return await this.prisma.$transaction(async (tx) => {
+      // B1: Chỉ cho phép hủy khi phiếu chưa bước vào vận chuyển (PENDING hoặc APPROVED)
       const transfer = await tx.blood_transfers.findUnique({
         where: { transfer_id: transferId },
       });
@@ -454,6 +479,7 @@ export class TransferService {
         throw new BadRequestException(`Phiếu đang ở trạng thái ${transfer.status}, không thể hủy`);
       }
 
+      // B2: Nếu phiếu đã duyệt giữ túi máu, kiểm tra trạng thái ALLOCATED và mở về AVAILABLE
       // If inventory was allocated during approval, release it
       if (transfer.status === 'APPROVED') {
         let finalIds: number[] = [];
@@ -480,6 +506,7 @@ export class TransferService {
         }
       }
 
+      // B3: Đánh dấu phiếu chuyển sang CANCELLED
       const updated = await tx.blood_transfers.update({
         where: { transfer_id: transferId },
         data: {
@@ -502,12 +529,14 @@ export class TransferService {
    * 7. Lấy danh sách phiếu chuyển máu
    */
   async getTransfers(query: any, user: any) {
+    // B1: Thiết lập phân trang và điều kiện lọc mặc định
     const page = Number(query.page) || 1;
     const limit = Number(query.limit) || 20;
     const skip = (page - 1) * limit;
 
     const where: any = {};
 
+    // B2: Giới hạn HOSPITAL_STAFF chỉ xem được các phiếu có cơ sở mình là bên xuất hoặc bên nhận
     // Staff can only see transfers related to their facility
     if (user?.role_code === 'HOSPITAL_STAFF' && user?.facility_id) {
       where.OR = [
@@ -516,6 +545,7 @@ export class TransferService {
       ];
     }
 
+    // B3: Áp dụng các bộ lọc trạng thái, cơ sở xuất/nhận và mã phiếu
     if (query.status) where.status = query.status;
     if (query.from_facility_id) where.from_facility_id = Number(query.from_facility_id);
     if (query.to_facility_id) where.to_facility_id = Number(query.to_facility_id);
@@ -523,6 +553,7 @@ export class TransferService {
       where.transfer_code = { contains: query.search };
     }
 
+    // B4: Truy vấn song song dữ liệu phân trang và tổng số bản ghi
     const [data, total] = await Promise.all([
       this.prisma.blood_transfers.findMany({
         where,
@@ -577,6 +608,7 @@ export class TransferService {
   @Cron(CronExpression.EVERY_MINUTE)
   async handleExpiredTransfers() {
     try {
+      // Tìm tất cả phiếu PENDING hoặc APPROVED đã quá hạn required_before so với hiện tại
       const expiredTransfers = await this.prisma.blood_transfers.findMany({
         where: {
           required_before: {
@@ -588,6 +620,7 @@ export class TransferService {
         },
       });
 
+      // Hủy hàng loạt các phiếu quá hạn tìm được và ghi rõ lý do tự động đóng
       if (expiredTransfers.length > 0) {
         const ids = expiredTransfers.map(t => t.transfer_id);
         
