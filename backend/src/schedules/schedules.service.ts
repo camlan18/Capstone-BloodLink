@@ -38,6 +38,7 @@ export class SchedulesService implements OnModuleInit {
   async handleCronClosePastSchedules() {
     this.logger.log('Running daily cron job to close past donation schedules...');
     
+    // Lấy mốc 0h00 hôm nay để khóa mọi lịch đang OPEN có ngày tổ chức ở quá khứ
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -64,6 +65,7 @@ export class SchedulesService implements OnModuleInit {
    * Lấy danh sách lịch tổ chức hiến máu có lọc theo cơ sở y tế, ngày và phân trang.
    */
   async getAllSchedules(query: ScheduleFilterDto, user: any) {
+    // B1: Tính phân trang và áp dụng bộ lọc trạng thái, ngày tổ chức
     const page = query.page || 1;
     const limit = query.limit || 20;
     const skip = (page - 1) * limit;
@@ -72,6 +74,7 @@ export class SchedulesService implements OnModuleInit {
     if (query.status) where.status = query.status;
     if (query.date) where.date = new Date(query.date);
 
+    // B2: Giới hạn HOSPITAL_STAFF chỉ xem được lịch thuộc cơ sở mình công tác
     if (user.role_code === 'HOSPITAL_STAFF') {
       if (!user.facility_id) {
         return { data: [], meta: { total: 0, page, limit, totalPages: 0 } };
@@ -84,6 +87,7 @@ export class SchedulesService implements OnModuleInit {
       }
     }
 
+    // B3: Truy vấn song song danh sách lịch theo trang và tổng số lịch thỏa mãn
     const [data, total] = await Promise.all([
       this.prisma.facility_donation_schedules.findMany({
         where,
@@ -128,6 +132,7 @@ export class SchedulesService implements OnModuleInit {
    * Tạo mới lịch tổ chức hiến máu cho cơ sở y tế.
    */
   async createSchedule(dto: CreateScheduleDto, user: any) {
+    // B1: Định nghĩa helper chuyển đổi chuỗi giờ HH:mm sang Date giả định mốc 1970-01-01 cho MySQL Time
     // Parse time strings (e.g. "08:00") into Date objects (using a dummy date since it's @db.Time)
     const baseDate = new Date();
     baseDate.setHours(0, 0, 0, 0);
@@ -140,6 +145,7 @@ export class SchedulesService implements OnModuleInit {
       return dt;
     };
 
+    // B2: Kiểm tra giờ kết thúc phải sau giờ bắt đầu và ép facility_id theo cơ sở của HOSPITAL_STAFF
     if (toMinutes(dto.start_time) >= toMinutes(dto.end_time)) {
       throw new BadRequestException('Giờ kết thúc phải lớn hơn giờ bắt đầu trong cùng một ngày');
     }
@@ -147,6 +153,7 @@ export class SchedulesService implements OnModuleInit {
     const facility_id = user.role_code === 'HOSPITAL_STAFF' ? user.facility_id : dto.facility_id;
     if (!facility_id) throw new BadRequestException('Vui lòng chọn cơ sở y tế');
 
+    // B3: Tạo lịch tổ chức hiến máu mới với sức chứa mặc định 50 người nếu không truyền
     return await this.prisma.facility_donation_schedules.create({
       data: {
         facility_id: facility_id,
@@ -164,6 +171,7 @@ export class SchedulesService implements OnModuleInit {
    * Cập nhật thông tin lịch tổ chức hiến máu theo ID.
    */
   async updateSchedule(id: number, dto: UpdateScheduleDto, user: any) {
+    // B1: Xác nhận lịch tồn tại và thuộc phạm vi cơ sở của nhân viên đang thao tác
     const where: any = { schedule_id: id };
     if (user.role_code === 'HOSPITAL_STAFF') {
       if (!user.facility_id) throw new NotFoundException('Lịch hiến máu không tồn tại hoặc bạn không có quyền sửa');
@@ -185,6 +193,7 @@ export class SchedulesService implements OnModuleInit {
       return dt;
     };
 
+    // B2: Đối chiếu khung giờ bắt đầu/kết thúc mới (kể cả khi chỉ sửa 1 trong 2 đầu giờ)
     const newStartTime = dto.start_time || schedule.start_time; // Need to format schedule.start_time to string to compare?
     // Actually, schedule.start_time and schedule.end_time are Date objects from Prisma.
     // It's safer to just check if both dto.start_time and dto.end_time are provided.
@@ -204,6 +213,7 @@ export class SchedulesService implements OnModuleInit {
       }
     }
 
+    // B3: Chặn chuyển lịch sang cơ sở khác với nhân viên và không cho giảm max_donors xuống dưới số đã đăng ký
     if (user.role_code === 'HOSPITAL_STAFF' && dto.facility_id && dto.facility_id !== user.facility_id) {
       throw new BadRequestException('Bạn không có quyền chuyển lịch sang cơ sở khác');
     }
@@ -229,6 +239,7 @@ export class SchedulesService implements OnModuleInit {
    * Xóa lịch tổ chức hiến máu theo ID (nếu chưa phát sinh người đăng ký).
    */
   async deleteSchedule(id: number, user: any) {
+    // B1: Kiểm tra tồn tại, phạm vi cơ sở và đếm số slot đã đăng ký vào lịch này
     const where: any = { schedule_id: id };
     if (user.role_code === 'HOSPITAL_STAFF') {
       if (!user.facility_id) throw new NotFoundException('Lịch hiến máu không tồn tại');
@@ -241,6 +252,7 @@ export class SchedulesService implements OnModuleInit {
     });
     if (!schedule) throw new NotFoundException('Lịch hiến máu không tồn tại');
 
+    // B2: Không cho xóa nếu đã phát sinh lượt đăng ký của người hiến máu
     if (schedule._count.donor_availability_slots > 0) {
       throw new BadRequestException('Không thể xóa lịch này vì đã có người đăng ký hoặc slot');
     }
@@ -301,6 +313,7 @@ export class SchedulesService implements OnModuleInit {
    * Cập nhật trạng thái lượt tham gia hiến máu của người hiến trong một lịch cụ thể.
    */
   async updateDonorStatus(scheduleId: number, slotId: number, status: string, user: any) {
+    // B1: Kiểm tra quyền trên lịch tổ chức và xác nhận slot thuộc đúng scheduleId yêu cầu
     await this.getScheduleById(scheduleId, user); // Check permission
     const slot = await this.prisma.donor_availability_slots.findUnique({
       where: { slot_id: slotId }
@@ -312,6 +325,7 @@ export class SchedulesService implements OnModuleInit {
 
     if (!status) throw new BadRequestException('Trạng thái không hợp lệ');
 
+    // B2: Cập nhật trạng thái mới (vô hiệu hóa is_active và hoàn lại 1 chỗ trống nếu chuyển sang CANCELLED)
     const updatedSlot = await this.prisma.donor_availability_slots.update({
       where: { slot_id: slotId },
       data: { status, ...(status === 'CANCELLED' && { is_active: false }) }
@@ -324,6 +338,7 @@ export class SchedulesService implements OnModuleInit {
       });
     }
 
+    // B3: Gửi thông báo cho người hiến máu về trạng thái mới của lịch hẹn
     await this.notificationsService.createNotification({
       user_ids: [updatedSlot.user_id],
       title: 'Cập nhật trạng thái lịch hẹn',
@@ -340,6 +355,7 @@ export class SchedulesService implements OnModuleInit {
    * Xuất danh sách người hiến máu đã đăng ký theo lịch ra tệp Excel.
    */
   async exportScheduleDonors(scheduleId: number, user: any) {
+    // B1: Xác thực quyền xem lịch và lấy toàn bộ slot đăng ký theo thứ tự thời gian đăng ký
     const schedule = await this.getScheduleById(scheduleId, user);
     
     const donors = await this.prisma.donor_availability_slots.findMany({
@@ -352,6 +368,7 @@ export class SchedulesService implements OnModuleInit {
       orderBy: { created_at: 'asc' },
     });
 
+    // B2: Ánh xạ mã trạng thái sang nhãn tiếng Việt và chuẩn bị dòng dữ liệu xuất Excel
     const statusMap: any = {
       'PENDING': 'Đã đăng ký',
       'CONFIRMED': 'Đã xác nhận',
