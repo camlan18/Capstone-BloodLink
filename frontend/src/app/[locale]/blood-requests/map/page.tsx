@@ -107,11 +107,13 @@ export default function BloodMapPage() {
   const fetchData = async () => {
     try {
       setLoading(true);
+      // B1: Tải song song danh sách cơ sở y tế và yêu cầu máu công khai
       const [facRes, reqRes] = await Promise.all([
         adminMasterDataService.getFacilities({ limit: 1000 }),
         bloodRequestService.getAllRequests({ limit: 1000 }),
       ]);
 
+      // Chuẩn hóa dữ liệu trả về từ hai cấu trúc response có thể gặp (mảng trực tiếp hoặc bọc lồng data)
       let facilityList: any[] = [];
       if (facRes) {
         const data: any = (facRes as any).data;
@@ -128,6 +130,7 @@ export default function BloodMapPage() {
 
       setAllRequests(requestList);
 
+      // B2: Gắn danh sách yêu cầu đang ở trạng thái PENDING hoặc APPROVED vào từng cơ sở tương ứng
       // Merge requests into facilities
       const merged: FacilityOnMap[] = facilityList.map((f: any) => ({
         ...f,
@@ -165,6 +168,7 @@ export default function BloodMapPage() {
     return validFacilities[0].facility_id;
   }, [facilitiesWithDistance, userLocation]);
 
+  // B3: Áp dụng dây chuyền lọc khu vực, nhóm máu cần, cơ sở có yêu cầu và sắp xếp theo khoảng cách Haversine
   const displayFacilities = useMemo(() => {
     let list = facilitiesWithDistance;
 
@@ -216,6 +220,7 @@ export default function BloodMapPage() {
 
   /** Lấy tọa độ GPS hiện tại của trình duyệt để tính khoảng cách tới các cơ sở y tế. */
   const handleLocateUser = useCallback(() => {
+    // Gọi Geolocation API trình duyệt; khi thành công tự bật chế độ sắp xếp theo khoảng cách gần nhất
     if (!navigator.geolocation) {
       setLocationError(t('browserNotSupportGeo'));
       return;

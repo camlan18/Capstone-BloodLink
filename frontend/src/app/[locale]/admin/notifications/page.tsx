@@ -91,11 +91,13 @@ export default function AdminNotificationsPage() {
   /** Kiểm tra danh sách người nhận và gửi tạo mới thông báo tới người dùng được chọn hoặc tất cả. */
   const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    // B1: Nếu chọn gửi riêng lẻ thì bắt buộc phải tích ít nhất một người nhận
     if (!sendToAll && selectedUserIds.length === 0) {
       toast.error('Vui lòng chọn ít nhất một người nhận');
       return;
     }
     
+    // B2: Chuẩn bị danh sách user_ids (toàn bộ hệ thống hoặc nhóm đã chọn) rồi gọi API gửi thông báo
     try {
       setCreating(true);
       const payload = {

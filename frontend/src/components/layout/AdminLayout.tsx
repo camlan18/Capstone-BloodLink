@@ -44,6 +44,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
     { label: 'Cài đặt', href: '/admin/settings', icon: Settings, roles: ['ADMIN'] },
   ];
 
+  // B1: Lọc mục menu sidebar theo role_code và tự động đẩy về /admin nếu user truy cập route vượt quyền
   const userRole = typeof user?.role === 'string' ? user.role : user?.role?.role_code;
   const filteredNavItems = navItems.filter(item => !item.roles || item.roles.includes(userRole || ''));
 

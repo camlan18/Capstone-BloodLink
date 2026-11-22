@@ -180,6 +180,7 @@ export default function AdminInventoryPage() {
     e.preventDefault();
     try {
       setSubmitting(true);
+      // B1: Chuẩn hóa kiểu dữ liệu và ngày ISO trước khi quyết định gọi API cập nhật hay nhập kho mới
       const payload = {
         facility_id: Number(formData.facility_id),
         donor_user_id: 1, // Placeholder
