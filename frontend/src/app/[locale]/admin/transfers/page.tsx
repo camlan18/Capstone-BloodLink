@@ -148,6 +148,7 @@ export default function AdminTransfersPage() {
   /** Kiểm tra hạn cần máu tối thiểu 2 giờ và gửi tạo phiếu yêu cầu chuyển máu mới. */
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
+    // B1: Ràng buộc ở client hạn cần máu phải cách hiện tại tối thiểu 2 giờ trước khi gọi API
     if (createData.required_before) {
       const requiredDate = new Date(createData.required_before);
       const minDate = new Date();
@@ -157,6 +158,7 @@ export default function AdminTransfersPage() {
         return;
       }
     }
+    // B2: Chuyển đổi ID sang kiểu Number, gửi tạo phiếu và làm mới bảng danh sách
     try {
       setCreating(true);
       const res = await adminTransferService.createTransfer({
@@ -209,6 +211,7 @@ export default function AdminTransfersPage() {
       return;
     }
 
+    // B1: Tính tổng thể tích thực tế của các túi đã chọn và đối chiếu với định mức tối thiểu (250ml/đơn vị)
     const requiredVolume = (approveItem.units_requested || 1) * 250;
     const selectedVolume = selectedInventoryIds.reduce((sum, id) => {
       const bag = availableInventory.find((x: any) => x.inventory_id === id);
@@ -220,6 +223,7 @@ export default function AdminTransfersPage() {
       return;
     }
 
+    // B2: Gửi duyệt phiếu kèm mảng inventory_ids để khóa túi máu tại cơ sở nguồn
     try {
       setSubmitting(true);
       // In the frontend API service, ensure approveTransfer accepts an object or updates correctly.
@@ -392,6 +396,7 @@ export default function AdminTransfersPage() {
       },
     ];
 
+    // B1: Xác định vai trò người dùng hiện tại đối với từng phiếu (Admin / bên gửi / bên nhận)
     const isAdmin = currentUser?.role?.role_code === 'ADMIN' || currentUser?.role === 'ADMIN';
     const isSender = isAdmin || (currentUser?.facility_id === item.from_facility_id);
     const isReceiver = isAdmin || (currentUser?.facility_id === item.to_facility_id);

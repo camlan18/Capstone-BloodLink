@@ -78,6 +78,7 @@ export default function MyRequestsPage() {
   };
 
   useEffect(() => {
+    // Debounce 500ms khi gõ từ khóa tìm kiếm để tránh gọi API liên tục theo từng phím
     const timer = setTimeout(() => {
       fetchRequests();
     }, 500);
@@ -104,6 +105,7 @@ export default function MyRequestsPage() {
     return 'text-emerald-600 bg-emerald-50';
   };
 
+  // B1: Lọc cục bộ trên danh sách đã tải theo nhóm trạng thái rút gọn
   // Filter requests locally by status since we don't have status_id mapping easily accessible
   let displayRequests = requests;
   if (statusFilter !== 'all') {
@@ -117,6 +119,7 @@ export default function MyRequestsPage() {
     });
   }
 
+  // B2: Sắp xếp cục bộ theo cột đang chọn (bệnh nhân, nhóm máu, cơ sở hoặc ngày tạo)
   // Sort locally
   const sortedRequests = [...displayRequests].sort((a, b) => {
     let aVal: any = a[sortBy];

@@ -21,14 +21,17 @@ export function GlobalTransferConfirmModal() {
 
   /** Tải danh sách phiếu chuyển máu có trạng thái DELIVERED gửi tới cơ sở của người dùng. */
   const fetchPendingTransfers = async () => {
+    // B1: Bỏ qua nếu người dùng chưa đăng nhập hoặc chưa gắn với cơ sở y tế nào
     if (!user || !user.facility_id) return;
     try {
       setLoading(true);
+      // B2: Lấy các phiếu đang chờ nhập kho (DELIVERED) gửi tới cơ sở hiện tại
       const res = await adminTransferService.getTransfers({
         to_facility_id: user.facility_id,
         status: 'DELIVERED', // Chờ xác nhận đã nhận kho
         limit: 100,
       });
+      // B3: Cập nhật danh sách và loại bỏ các ID đã chọn nhưng không còn trong kết quả mới
       if (res && res.data) {
         const list = Array.isArray(res.data) ? res.data : (Array.isArray(res) ? res : []);
         setPendingTransfers(list);
@@ -45,6 +48,7 @@ export function GlobalTransferConfirmModal() {
   };
 
   useEffect(() => {
+    // Gọi kiểm tra ngay khi đăng nhập vào cơ sở và thiết lập polling định kỳ mỗi 30 giây
     if (user && user.facility_id) {
       fetchPendingTransfers();
       const interval = setInterval(fetchPendingTransfers, 30000);
@@ -75,6 +79,7 @@ export function GlobalTransferConfirmModal() {
 
   /** Gửi xác nhận nhập kho hàng loạt nhiều phiếu, tự fallback sang gọi tuần tự nếu route batch chưa sẵn sàng. */
   const confirmMultipleIds = async (ids: number[]) => {
+    // Thử gọi endpoint xác nhận hàng loạt; nếu server chưa hỗ trợ (404/400) thì tự động chuyển sang xác nhận từng phiếu
     try {
       const res = await adminTransferService.receiveBatchTransfers(ids);
       return (res as any)?.message || (res as any)?.data?.message || `Đã xác nhận nhận kho ${ids.length} phiếu thành công!`;
@@ -146,6 +151,7 @@ export function GlobalTransferConfirmModal() {
 
   /** Tạo chuỗi tóm tắt số lượng túi máu và tổng thể tích (ml) từ dữ liệu phiếu chuyển. */
   const getBagSummary = (item: any) => {
+    // Ưu tiên đọc danh sách nhiều túi lưu dưới dạng chuỗi JSON; nếu không có thì fallback về bag_code đơn hoặc số đơn vị
     if (item.inventory_ids) {
       try {
         const parsed = JSON.parse(item.inventory_ids);

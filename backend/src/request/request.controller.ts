@@ -80,6 +80,7 @@ export class RequestController {
   @Roles(RoleCode.ADMIN, RoleCode.STAFF, RoleCode.HOSPITAL_STAFF)
   @Get('export')
   async exportExcel(@Query() query: any, @Res() res: Response, @Req() req: any) {
+    // Tạo buffer file Excel từ service rồi thiết lập header MIME xlsx và tên tệp tải xuống
     const buffer = await this.requestService.exportExcel(query, req.user);
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', 'attachment; filename=requests.xlsx');
@@ -101,6 +102,7 @@ export class RequestController {
   @Post('import')
   @UseInterceptors(FileInterceptor('file'))
   async importExcel(@UploadedFile() file: Express.Multer.File, @Req() req: any) {
+    // Kiểm tra bắt buộc có file đính kèm trước khi chuyển buffer sang service đọc từng dòng Excel
     if (!file) throw new BadRequestException('Vui lòng chọn file Excel');
     return await this.requestService.importExcel(file.buffer, req.user);
   }
