@@ -14,6 +14,7 @@ const apiClient = axios.create({
 
 apiClient.interceptors.request.use(
   (config) => {
+    // Trên trình duyệt, tự động đính kèm access_token từ localStorage vào header Authorization
     if (typeof window !== 'undefined') {
       const token = localStorage.getItem('access_token');
       if (token && config.headers) {
@@ -34,6 +35,7 @@ let failedQueue: any[] = [];
  * Đẩy các request đang chờ trong hàng đợi thực thi tiếp sau khi quá trình refresh token hoàn tất hoặc thất bại.
  */
 const processQueue = (error: any, token: string | null = null) => {
+  // Duyệt hàng đợi để resolve kèm token mới hoặc reject hàng loạt nếu refresh thất bại
   failedQueue.forEach(prom => {
     if (error) {
       prom.reject(error);
@@ -46,16 +48,20 @@ const processQueue = (error: any, token: string | null = null) => {
 
 apiClient.interceptors.response.use(
   (response) => {
+    // Mở bọc response.data để caller nhận trực tiếp payload từ backend
     return response.data;
   },
   async (error) => {
     const originalRequest = error.config;
 
+    // Tránh lặp vô hạn nếu chính endpoint làm mới token bị lỗi
     if (originalRequest.url?.includes('/auth/refresh-token')) {
       return Promise.reject(error);
     }
 
+    // Xử lý hết hạn phiên đăng nhập (HTTP 401) khi request chưa từng retry
     if (error.response && error.response.status === 401 && !originalRequest._retry) {
+      // Nếu đang có tiến trình refresh khác chạy, xếp request này vào hàng đợi chờ token mới
       if (isRefreshing) {
         return new Promise(function (resolve, reject) {
           failedQueue.push({ resolve, reject });
@@ -70,6 +76,7 @@ apiClient.interceptors.response.use(
       originalRequest._retry = true;
       isRefreshing = true;
 
+      // Kiểm tra refresh_token; nếu không có thì buộc đăng xuất ngay
       const refreshToken = typeof window !== 'undefined' ? localStorage.getItem('refresh_token') : null;
 
       if (!refreshToken) {
@@ -81,6 +88,7 @@ apiClient.interceptors.response.use(
       }
 
       try {
+        // Gọi endpoint refresh bằng axios gốc để không đi qua interceptor hiện tại
         const response = await axios.post(`${apiClient.defaults.baseURL}/auth/refresh-token`, {
           refresh_token: refreshToken
         });
@@ -90,6 +98,7 @@ apiClient.interceptors.response.use(
 
         if (!newAccessToken) throw new Error('Không thể lấy access_token mới');
 
+        // Lưu cặp token mới vào localStorage và đồng bộ lại thông tin user trong store
         if (typeof window !== 'undefined') {
           localStorage.setItem('access_token', newAccessToken);
           if (newRefreshToken) localStorage.setItem('refresh_token', newRefreshToken);
@@ -100,6 +109,7 @@ apiClient.interceptors.response.use(
           }
         }
 
+        // Cập nhật header mặc định rồi đánh thức toàn bộ request trong failedQueue và gọi lại request ban đầu
         apiClient.defaults.headers.common['Authorization'] = 'Bearer ' + newAccessToken;
         originalRequest.headers['Authorization'] = 'Bearer ' + newAccessToken;
 
@@ -108,6 +118,7 @@ apiClient.interceptors.response.use(
 
         return apiClient(originalRequest);
       } catch (err) {
+        // Nếu refresh thất bại: hủy hàng đợi chờ và đăng xuất người dùng
         processQueue(err, null);
         isRefreshing = false;
         if (typeof window !== 'undefined') {
@@ -117,6 +128,7 @@ apiClient.interceptors.response.use(
       }
     }
 
+    // Hiển thị thông báo tiếng Việt khi người dùng không đủ quyền truy cập (HTTP 403)
     if (error.response && error.response.status === 403) {
       if (typeof window !== 'undefined') {
         toast.error('Bạn không có đủ quyền để thực hiện thao tác này (Lỗi 403)');
@@ -134,6 +146,7 @@ apiClient.interceptors.response.use(
  * Tải một tệp hình ảnh lên server thông qua API `/upload/image` và trả về URL ảnh sau khi upload.
  */
 export const uploadImage = async (file: File): Promise<string> => {
+  // Đóng gói file vào FormData và gửi dưới dạng multipart/form-data
   const formData = new FormData();
   formData.append('file', file);
   const res: any = await apiClient.post('/upload/image', formData, {

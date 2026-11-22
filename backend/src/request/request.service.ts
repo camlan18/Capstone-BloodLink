@@ -29,16 +29,19 @@ export class RequestService {
   async handleCronCloseExpiredRequests() {
     this.logger.log('Running daily cron job to close expired blood requests...');
     
+    // Lấy mốc 0h00 hôm nay làm ngưỡng so sánh hạn chót required_before
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
     try {
+      // Lấy status_id của trạng thái CLOSED để đóng các yêu cầu quá hạn
       const closedStatus = await this.prisma.blood_request_statuses.findFirst({
         where: { status_code: 'CLOSED' }
       });
 
       if (!closedStatus) return;
 
+      // Chuyển hàng loạt yêu cầu chưa kết thúc và đã qua required_before sang CLOSED
       const result = await this.prisma.blood_requests.updateMany({
         where: {
           status: {
@@ -65,11 +68,13 @@ export class RequestService {
    * Tạo yêu cầu cần máu nội bộ (gắn cơ sở của nhân viên y tế nếu là HOSPITAL_STAFF) và lưu lịch sử trạng thái.
    */
   async createRequest(dto: CreateRequestDto, user: any) {
+    // B1: Nếu là HOSPITAL_STAFF thì bắt buộc gắn facility_id theo cơ sở của nhân viên, bỏ qua giá trị gửi lên
     const facility_id = user?.role_code === 'HOSPITAL_STAFF' ? user.facility_id : dto.facility_id;
     if (!facility_id) throw new BadRequestException('Vui lòng chọn cơ sở y tế');
 
     const requestCode = `RQ-${Date.now()}`;
 
+    // B2: Tạo yêu cầu cần máu ở trạng thái PENDING và ghi log lịch sử khởi tạo trong cùng transaction
     const result = await this.prisma.$transaction(async (tx) => {
       // Tìm status 'pending'
       const pendingStatus = await tx.blood_request_statuses.findFirst({
@@ -133,6 +138,7 @@ export class RequestService {
    * Tạo yêu cầu cần máu từ cổng công khai (có thể ẩn danh hoặc gắn tài khoản đang đăng nhập).
    */
   async createPublicRequest(dto: CreateRequestDto, userId: number | null = null) {
+    // B1: Khởi tạo yêu cầu công khai ở trạng thái PENDING và ghi nhận lịch sử hệ thống (changed_by = null)
     const result = await this.prisma.$transaction(async (tx) => {
       const pendingStatus = await tx.blood_request_statuses.findFirst({
         where: { status_code: 'PENDING' },
@@ -142,6 +148,7 @@ export class RequestService {
 
       const requestCode = `RQ-${Date.now()}`;
 
+      // Lưu bản ghi yêu cầu cần máu gắn với requester_user_id nếu người dùng đã đăng nhập
       const request = await tx.blood_requests.create({
         data: {
           request_code: requestCode,
@@ -179,6 +186,7 @@ export class RequestService {
       return request;
     });
 
+    // B2: Gửi cảnh báo tới tất cả Admin để kịp thời điều phối ca khẩn cấp
     await this.notificationsService.notifyAdmins(
       'Yêu cầu máu khẩn cấp',
       `Yêu cầu máu công khai (Khẩn cấp) vừa được tạo cho bệnh nhân ${dto.patient_name}.`,
@@ -195,6 +203,7 @@ export class RequestService {
    */
   async processRequest(requestId: number, user: any) {
     return await this.prisma.$transaction(async (tx) => {
+      // B1: Kiểm tra yêu cầu tồn tại, đang ở trạng thái pending và thuộc quyền cơ sở của nhân viên
       const request = await tx.blood_requests.findUnique({
         where: { request_id: requestId },
         include: { status: true },
@@ -209,6 +218,7 @@ export class RequestService {
         throw new BadRequestException('Bạn không có quyền xử lý yêu cầu của cơ sở khác');
       }
 
+      // B2: Tìm các túi máu AVAILABLE khớp cơ sở, nhóm máu và thành phần (giới hạn đúng số units_needed)
       const availableInventory = await tx.blood_inventory.findMany({
         where: {
           facility_id: request.facility_id,
@@ -219,6 +229,7 @@ export class RequestService {
         take: request.units_needed,
       });
 
+      // B3: Nếu đủ số lượng đơn vị -> khóa túi máu, tạo bản ghi cấp phát & giao dịch kho, thông báo người yêu cầu
       if (availableInventory.length >= request.units_needed) {
         // ĐỦ MÁU -> Cấp từ kho
         const allocatedStatus = await tx.blood_request_statuses.findFirst({ where: { status_code: 'ALLOCATED' } });
@@ -266,6 +277,7 @@ export class RequestService {
         return { success: true, message: 'Đã cấp đủ máu từ kho.' };
 
       } else {
+        // B4: Kho chưa đủ máu -> chuyển trạng thái sang APPROVED và phát sự kiện tìm kiếm người hiến tự động
         const matchingStatus = await tx.blood_request_statuses.findFirst({ where: { status_code: 'APPROVED' } });
 
         await tx.blood_requests.update({
@@ -277,8 +289,10 @@ export class RequestService {
           data: { request_id: requestId, from_status_id: request.status_id, to_status_id: matchingStatus!.status_id, changed_by: user.user_id, change_reason: 'Kho thiếu máu, bắt đầu tìm người hiến' },
         });
 
+        // Phát sự kiện bất đồng bộ để chạy thuật toán matching người hiến phù hợp
         this.eventEmitter.emit('request.match_donors', { requestId, facilityId: request.facility_id, bloodTypeId: request.blood_type_id });
 
+        // Thông báo cho người tạo yêu cầu biết hệ thống đang tìm người hiến hỗ trợ
         if (request.requester_user_id) {
           await this.notificationsService.createNotification({
             user_ids: [request.requester_user_id],
@@ -299,6 +313,7 @@ export class RequestService {
    * Tra cứu công khai thông tin yêu cầu cần máu theo mã yêu cầu (`request_code`).
    */
   async getRequestByCode(code: string) {
+    // B1: Tìm yêu cầu theo request_code kèm đầy đủ thông tin cơ sở, nhóm máu, trạng thái và độ khẩn
     const request = await this.prisma.blood_requests.findFirst({
       where: { request_code: code },
       include: {
@@ -314,6 +329,7 @@ export class RequestService {
       throw new NotFoundException('Không tìm thấy yêu cầu máu với mã này');
     }
 
+    // B2: Đếm số người hiến đã đăng ký lịch rảnh tham chiếu mã yêu cầu này (loại trừ lịch hủy/từ chối)
     const registeredDonorsCount = await this.prisma.donor_availability_slots.count({
       where: {
         notes: { contains: request.request_code },
@@ -328,6 +344,7 @@ export class RequestService {
    * Lấy danh sách yêu cầu cần máu có phân trang, tìm kiếm và lọc theo cơ sở/trạng thái/nhóm máu.
    */
   async getRequests(query: any, user?: any) {
+    // B1: Chủ động đóng các yêu cầu quá hạn trước khi truy vấn danh sách (lỗi cron không làm fail API đọc)
     try {
       await this.handleCronCloseExpiredRequests();
     } catch (e) {
@@ -337,6 +354,7 @@ export class RequestService {
     const limit = Number(query.limit) || 20;
     const skip = (page - 1) * limit;
 
+    // B2: Xây dựng điều kiện lọc theo quyền cơ sở của nhân viên y tế và các tham số tìm kiếm
     const where: any = {};
     if (query.status_id) where.status_id = Number(query.status_id);
     if (user?.role_code === 'HOSPITAL_STAFF') {
@@ -350,6 +368,7 @@ export class RequestService {
       where.patient_name = { contains: query.search };
     }
 
+    // Chế độ xem công khai chỉ hiển thị yêu cầu chưa kết thúc và còn hạn required_before
     if (query.is_public_view) {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
@@ -364,6 +383,7 @@ export class RequestService {
       };
     }
 
+    // B3: Cấu hình thứ tự sắp xếp (mặc định ưu tiên độ khẩn cao -> thứ tự trạng thái -> mới nhất)
     // Xử lý sorting
     const isDefaultSort = !query.sortBy || query.sortBy === 'default';
     const sortOrder = query.sortOrder || 'desc';
@@ -392,6 +412,7 @@ export class RequestService {
       orderBy = [{ created_at: 'desc' }];
     }
 
+    // B4: Truy vấn song song danh sách theo trang và tổng số bản ghi thỏa mãn điều kiện
     const [data, total] = await Promise.all([
       this.prisma.blood_requests.findMany({
         where,
@@ -419,6 +440,7 @@ export class RequestService {
       this.prisma.blood_requests.count({ where }),
     ]);
 
+    // B5: Bổ sung số lượt người hiến đã đăng ký hỗ trợ cho từng yêu cầu
     const enhancedData = await Promise.all(data.map(async (req) => {
       const registeredDonorsCount = await this.prisma.donor_availability_slots.count({
         where: {
@@ -441,6 +463,7 @@ export class RequestService {
    * Xuất danh sách yêu cầu cần máu ra file Excel theo bộ lọc hiện tại.
    */
   async exportExcel(query: any, user?: any): Promise<Buffer> {
+    // Lấy tối đa 10.000 bản ghi theo bộ lọc hiện hành rồi chuẩn hóa cột tiếng Việt trước khi xuất Excel
     const list = await this.getRequests({ ...query, limit: 10000 }, user);
     const data = list.data.map((item: any) => ({
       'Mã YC': item.request_code,
@@ -476,6 +499,7 @@ export class RequestService {
    * Đọc file Excel tải lên và tạo hàng loạt yêu cầu cần máu vào cơ sở dữ liệu.
    */
   async importExcel(buffer: Buffer, user: any) {
+    // B1: Đọc dữ liệu từ buffer Excel và nạp sẵn trạng thái PENDING cùng bảng độ khẩn cấp
     const data = ExcelUtil.parseExcel(buffer);
     let success = 0;
     let failed = 0;
@@ -486,6 +510,7 @@ export class RequestService {
 
     const urgencies = await this.prisma.urgency_levels.findMany();
 
+    // B2: Duyệt từng dòng Excel, ép facility_id nếu là nhân viên bệnh viện và validate các trường bắt buộc
     for (const row of data) {
       try {
         let facilityId = Number(row['Cơ sở (ID)']);
@@ -497,15 +522,18 @@ export class RequestService {
         const unitsNeeded = Number(row['Cần (Đơn vị)']);
         const notes = row['Ghi chú'] || null;
 
+        // Bỏ qua dòng thiếu dữ liệu bắt buộc hoặc sai định dạng số
         if (!facilityId || !patientName || !bloodTypeId || !componentId || !urgencyId || !unitsNeeded) {
           failed++;
           continue;
         }
 
+        // Tạo mã yêu cầu duy nhất và tự động bật cờ is_emergency khi mức độ là CRITICAL
         const requestCode = `REQ-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
         const urgency = urgencies.find(u => u.urgency_id === urgencyId);
 
+        // Lưu yêu cầu cần máu và ghi lịch sử khởi tạo từ Excel
         const request = await this.prisma.blood_requests.create({
           data: {
             request_code: requestCode,
@@ -544,6 +572,7 @@ export class RequestService {
    * Cập nhật thông tin yêu cầu cần máu khi vẫn còn ở trạng thái PENDING.
    */
   async updateRequest(requestId: number, dto: Partial<CreateRequestDto>, user: any) {
+    // B1: Chỉ cho phép cập nhật khi yêu cầu tồn tại, thuộc quyền cơ sở và còn ở trạng thái pending
     const req = await this.prisma.blood_requests.findUnique({ where: { request_id: requestId }, include: { status: true } });
     if (!req) throw new NotFoundException('Không tìm thấy yêu cầu');
     if (user.role_code === 'HOSPITAL_STAFF' && req.facility_id !== user.facility_id) {
@@ -552,6 +581,7 @@ export class RequestService {
     if (req.status.status_code.toLowerCase() !== 'pending') {
       throw new BadRequestException('Chỉ có thể sửa yêu cầu ở trạng thái pending');
     }
+    // B2: Cập nhật thông tin yêu cầu (HOSPITAL_STAFF không được đổi cơ sở y tế)
     return await this.prisma.blood_requests.update({
       where: { request_id: requestId },
       data: {
@@ -580,6 +610,7 @@ export class RequestService {
    * Xóa cứng yêu cầu cần máu cùng các bản ghi ghép nối, phân bổ và lịch sử trạng thái liên quan.
    */
   async deleteRequest(requestId: number, user: any) {
+    // B1: Kiểm tra tồn tại, quyền cơ sở và chỉ cho phép xóa ở giai đoạn chưa cấp phát
     const req = await this.prisma.blood_requests.findUnique({ where: { request_id: requestId }, include: { status: true } });
     if (!req) throw new NotFoundException('Không tìm thấy yêu cầu');
     if (user.role_code === 'HOSPITAL_STAFF' && req.facility_id !== user.facility_id) {
@@ -588,6 +619,7 @@ export class RequestService {
     if (!['pending', 'matching_donors'].includes(req.status.status_code.toLowerCase())) {
       throw new BadRequestException('Chỉ có thể xóa yêu cầu ở trạng thái pending hoặc đang tìm người hiến');
     }
+    // B2: Xóa toàn bộ bảng phụ thuộc (ghép nối, lịch sử, phân bổ) trước khi xóa bản ghi chính
     await this.prisma.blood_request_donor_matches.deleteMany({ where: { request_id: requestId } });
     await this.prisma.blood_request_status_history.deleteMany({ where: { request_id: requestId } });
     await this.prisma.blood_request_inventory_allocations.deleteMany({ where: { request_id: requestId } });
@@ -598,6 +630,7 @@ export class RequestService {
    * Hủy yêu cầu cần máu đang chờ xử lý hoặc đang tìm người hiến và ghi lịch sử thay đổi.
    */
   async cancelRequest(requestId: number, user: any) {
+    // B1: Xác thực yêu cầu còn ở trạng thái pending/matching_donors và thuộc cơ sở được phép
     const req = await this.prisma.blood_requests.findUnique({ where: { request_id: requestId }, include: { status: true } });
     if (!req) throw new NotFoundException('Không tìm thấy yêu cầu');
     if (user.role_code === 'HOSPITAL_STAFF' && req.facility_id !== user.facility_id) {
@@ -609,6 +642,7 @@ export class RequestService {
     const cancelledStatus = await this.prisma.blood_request_statuses.findFirst({ where: { status_code: 'cancelled' } });
     if (!cancelledStatus) throw new BadRequestException('Không tìm thấy trạng thái cancelled trong hệ thống');
 
+    // B2: Chuyển trạng thái sang cancelled và lưu lịch sử người hủy
     const updated = await this.prisma.blood_requests.update({
       where: { request_id: requestId },
       data: { status_id: cancelledStatus.status_id }
@@ -625,6 +659,7 @@ export class RequestService {
    * Lấy chi tiết một yêu cầu cần máu theo ID sau khi kiểm tra quyền sở hữu của người tạo.
    */
   async getRequestById(requestId: number, userId: number) {
+    // B1: Truy vấn chi tiết yêu cầu kèm danh mục liên quan và lịch sử chuyển trạng thái giảm dần
     const request = await this.prisma.blood_requests.findUnique({
       where: { request_id: requestId },
       include: {
@@ -645,6 +680,7 @@ export class RequestService {
       }
     });
 
+    // B2: Chỉ cho phép chính người tạo yêu cầu truy cập chi tiết qua endpoint cá nhân này
     if (!request) {
       throw new BadRequestException('Yêu cầu không tồn tại');
     }
@@ -662,6 +698,7 @@ export class RequestService {
    * Lấy danh sách ứng viên hiến máu đã được ghép nối cho một yêu cầu (sắp xếp theo điểm phù hợp giảm dần).
    */
   async getMatches(requestId: number, user?: any) {
+    // Nhân viên bệnh viện chỉ xem được danh sách ứng viên thuộc yêu cầu của cơ sở mình
     if (user?.role_code === 'HOSPITAL_STAFF') {
       const req = await this.prisma.blood_requests.findUnique({ where: { request_id: requestId } });
       if (req?.facility_id !== user.facility_id) throw new BadRequestException('Bạn không có quyền xem thông tin này');
@@ -679,6 +716,7 @@ export class RequestService {
    * Tìm và chấm điểm người hiến máu phù hợp theo quy tắc tương thích nhóm máu, khoảng cách hiến tối thiểu và bán kính địa lý.
    */
   async findDonorMatches(requestId: number, user?: any) {
+    // B1: Kiểm tra yêu cầu tồn tại và quyền thao tác theo cơ sở y tế
     const request = await this.prisma.blood_requests.findUnique({
       where: { request_id: requestId },
       include: {
@@ -692,6 +730,7 @@ export class RequestService {
       throw new BadRequestException('Bạn không có quyền thao tác trên yêu cầu này');
     }
 
+    // B2: Truy vấn các nhóm máu người hiến tương thích theo thành phần máu; nếu chưa cấu hình thì lấy cùng nhóm
     // Bug 1 fix: Query blood_compatibility để lấy tất cả donor blood type tương thích
     const compatibleEntries = await this.prisma.blood_compatibility.findMany({
       where: {
@@ -709,6 +748,7 @@ export class RequestService {
       compatibleBloodTypeIds.push(request.blood_type_id);
     }
 
+    // B3: Lọc người hiến đang hoạt động, có nhóm máu tương thích và chưa có match đang xử lý cho yêu cầu này
     const matchingDonors = await this.prisma.users.findMany({
       where: {
         blood_type_id: { in: compatibleBloodTypeIds },
@@ -733,6 +773,7 @@ export class RequestService {
       return { message: 'Không tìm thấy người hiến máu phù hợp lúc này', count: 0 };
     }
 
+    // B4: Nạp ngưỡng ngày nghỉ giữa hai lần hiến và bán kính tìm kiếm tối đa từ cơ sở dữ liệu
     // Bug 2 fix: Lấy quy tắc khoảng cách hiến từ DB thay vì hardcode
     const intervalRule = await this.prisma.donation_interval_rules.findFirst({
       where: { component_id: request.component_id, is_active: true }
@@ -747,6 +788,7 @@ export class RequestService {
 
     const matchesData = [];
 
+    // B5: Chấm điểm từng ứng viên (tối đa 100 điểm) dựa trên độ khớp nhóm máu, trạng thái sẵn sàng, lịch sử hiến và khoảng cách
     for (const donor of matchingDonors) {
       let score = 100;
 
@@ -841,6 +883,7 @@ export class RequestService {
    * Cập nhật trạng thái phản hồi của một lượt ghép nối người hiến máu.
    */
   async updateMatchStatus(matchId: number, status: string, user?: any) {
+    // Kiểm tra quyền thao tác theo cơ sở y tế và cập nhật trạng thái phản hồi ghép nối
     const match = await this.prisma.blood_request_donor_matches.findUnique({
       where: { match_id: matchId },
       include: { request: true }
@@ -860,10 +903,12 @@ export class RequestService {
    * Lấy danh sách các túi máu đang được phân bổ cho một yêu cầu cần máu.
    */
   async getAllocations(requestId: number, user?: any) {
+    // Nhân viên bệnh viện chỉ xem được các phân bổ thuộc cơ sở mình quản lý
     if (user?.role_code === 'HOSPITAL_STAFF') {
       const req = await this.prisma.blood_requests.findUnique({ where: { request_id: requestId } });
       if (req?.facility_id !== user.facility_id) throw new BadRequestException('Bạn không có quyền xem thông tin này');
     }
+    // Truy vấn các túi máu đang còn hiệu lực cấp phát kèm thông tin nhóm máu và người cấp phát
     return await this.prisma.blood_request_inventory_allocations.findMany({
       where: { request_id: requestId, is_active: true },
       include: {
@@ -878,6 +923,7 @@ export class RequestService {
    */
   async allocateInventory(requestId: number, inventoryIds: number[], user: any) {
     return await this.prisma.$transaction(async (tx) => {
+      // B1: Kiểm tra yêu cầu tồn tại, chưa kết thúc và thuộc đúng cơ sở được phép thao tác
       const request = await tx.blood_requests.findUnique({ where: { request_id: requestId }, include: { status: true } });
       if (!request) throw new NotFoundException('Yêu cầu không tồn tại');
       if (['cancelled', 'completed', 'rejected'].includes(request.status?.status_code?.toLowerCase())) {
@@ -887,6 +933,7 @@ export class RequestService {
         throw new BadRequestException('Bạn không có quyền cấp phát cho yêu cầu này');
       }
 
+      // B2: Xác thực toàn bộ danh sách túi máu được chọn đều đang ở trạng thái AVAILABLE
       const bags = await tx.blood_inventory.findMany({
         where: { inventory_id: { in: inventoryIds }, status_code: 'AVAILABLE' }
       });
@@ -897,6 +944,7 @@ export class RequestService {
 
       let allocatedCount = 0;
 
+      // B3: Chuyển từng túi máu sang RESERVED, tạo bản ghi phân bổ và ghi log giao dịch kho
       for (const bag of bags) {
         // Change bag status
         await tx.blood_inventory.update({
@@ -929,6 +977,7 @@ export class RequestService {
         allocatedCount++;
       }
 
+      // B4: Tính lại tổng đơn vị đã cấp phát và chuyển trạng thái sang completed hoặc allocated_stock nếu đổi
       // Update request fulfilled units
       const newFulfilled = request.units_fulfilled + allocatedCount;
       const dataToUpdate: any = { units_fulfilled: newFulfilled };
@@ -980,6 +1029,7 @@ export class RequestService {
    */
   async releaseAllocation(allocationId: number, user: any) {
     return await this.prisma.$transaction(async (tx) => {
+      // B1: Kiểm tra bản ghi phân bổ còn hiệu lực và quyền sở hữu theo cơ sở y tế
       const allocation = await tx.blood_request_inventory_allocations.findUnique({
         where: { allocation_id: allocationId },
         include: { request: true }
@@ -993,6 +1043,7 @@ export class RequestService {
         throw new BadRequestException('Bạn không có quyền giải phóng phân bổ này');
       }
 
+      // B2: Đưa túi máu về lại AVAILABLE, vô hiệu hóa bản ghi phân bổ và ghi lịch sử giao dịch RELEASE
       // Release bag back to inventory
       await tx.blood_inventory.update({
         where: { inventory_id: allocation.inventory_id },
@@ -1017,6 +1068,7 @@ export class RequestService {
         }
       });
 
+      // B3: Giảm units_fulfilled đi 1 và lùi trạng thái yêu cầu (về matching_donors hoặc allocated_stock) nếu cần
       // Update request fulfilled units
       const request = await tx.blood_requests.findUnique({ where: { request_id: allocation.request_id } });
       if (request && request.units_fulfilled > 0) {
@@ -1031,6 +1083,7 @@ export class RequestService {
         let newStatusId = request.status_id;
         let newStatusName = '';
 
+        // Chọn trạng thái lùi phù hợp theo số lượng đơn vị còn lại sau khi thu hồi
         if (newFulfilled === 0 && approvedStatus) {
           newStatusId = approvedStatus.status_id;
           newStatusName = 'APPROVED';
@@ -1039,6 +1092,7 @@ export class RequestService {
           newStatusName = 'ALLOCATED';
         }
 
+        // Lưu lịch sử chuyển trạng thái nếu trạng thái yêu cầu thay đổi
         if (newStatusId !== request.status_id) {
           dataToUpdate.status_id = newStatusId;
           await tx.blood_request_status_history.create({
@@ -1082,10 +1136,12 @@ export class RequestService {
   async handleCronExpireRequests() {
     this.logger.log('Kiểm tra yêu cầu máu hết hạn (required_before)...');
 
+    // Lấy mốc 0h00 hôm nay để xác định các yêu cầu đã qua ngày required_before
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
     try {
+      // B1: Lấy ID các trạng thái đang hoạt động và trạng thái đích 'expired'
       const activeStatuses = await this.prisma.blood_request_statuses.findMany({
         where: { status_code: { in: ['pending', 'matching_donors', 'allocated_stock'] } }
       });
@@ -1097,6 +1153,7 @@ export class RequestService {
 
       if (!expiredStatus) return;
 
+      // B2: Tìm các yêu cầu đang xử lý nhưng đã quá hạn required_before
       const overdueRequests = await this.prisma.blood_requests.findMany({
         where: {
           required_before: { lt: today },
@@ -1109,6 +1166,7 @@ export class RequestService {
         return;
       }
 
+      // B3: Đóng từng yêu cầu quá hạn, ghi lịch sử và thu hồi toàn bộ túi máu đã giữ chỗ
       for (const req of overdueRequests) {
         await this.prisma.blood_requests.update({
           where: { request_id: req.request_id },
@@ -1130,6 +1188,7 @@ export class RequestService {
           where: { request_id: req.request_id, is_active: true }
         });
         
+        // Trả từng túi máu đang RESERVED về AVAILABLE và ghi log giao dịch SYSTEM_CRON
         for (const allocation of allocations) {
           // Trả máu về kho
           await this.prisma.blood_inventory.update({
