@@ -81,6 +81,7 @@ export default function BloodRequestsPage() {
 
   const bloodTypesList = ['O+', 'O-', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-'];
 
+  // B1: Lọc danh sách theo mức độ khẩn và nhóm máu (ghép ABO + Rh), sau đó sắp xếp theo tiêu chí người dùng chọn
   const filteredRequests = requests.filter(req => {
     const matchUrgency = selectedUrgencies.length === 0 || selectedUrgencies.includes(req.urgency?.urgency_code);
     const btStr = req.blood_type ? `${req.blood_type.abo}${req.blood_type.rh_factor}`.replace(/\s+/g, '') : '';
@@ -97,6 +98,7 @@ export default function BloodRequestsPage() {
     }
   });
 
+  // B2: Cắt lát danh sách đã lọc/sắp xếp theo trang hiện tại (6 yêu cầu mỗi trang)
   const totalPages = Math.ceil(filteredRequests.length / pageSize) || 1;
   const paginatedRequests = filteredRequests.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 

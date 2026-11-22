@@ -108,6 +108,7 @@ export default function AdminRequestsPage() {
   }, [page, pageSize, keyword, statusId, urgencyId, sortBy, sortOrder]);
 
   useEffect(() => {
+    // Khi mở modal chi tiết và chuyển qua tab ghép nối hoặc cấp phát -> nạp dữ liệu tương ứng theo nhu cầu
     if (isDetailOpen && selectedItem) {
       if (detailTab === 'matching') {
         fetchMatches(selectedItem.request_id);
@@ -122,6 +123,7 @@ export default function AdminRequestsPage() {
 
   /** Tải dữ liệu danh mục phục vụ bộ lọc và form tạo/sửa yêu cầu máu. */
   const fetchMasterData = async () => {
+    // Tải song song 4 danh mục (nhóm máu, thành phần, cơ sở, độ khẩn) để giảm thời gian khởi tạo trang
     try {
       const [btRes, compRes, facRes, urgRes] = await Promise.all([
         adminMasterDataService.getBloodTypes({ limit: 100 }),
@@ -263,6 +265,7 @@ export default function AdminRequestsPage() {
     e.preventDefault();
     try {
       setCreating(true);
+      // B1: Xác định cờ khẩn cấp từ urgency_code và chuẩn hóa kiểu số/ngày cho payload gửi API
       const selectedUrgency = urgencyLevels.find(u => u.urgency_id.toString() === createData.urgency_id);
       
       const payload = {
@@ -285,6 +288,7 @@ export default function AdminRequestsPage() {
         required_before: createData.required_before || undefined,
       };
 
+      // B2: Rẽ nhánh gọi API cập nhật (nếu có editId) hoặc tạo mới yêu cầu cần máu
       if (editId) {
         await adminRequestService.updateRequest(editId, payload);
         toast.success('Cập nhật yêu cầu thành công');
@@ -293,6 +297,7 @@ export default function AdminRequestsPage() {
         toast.success('Tạo yêu cầu thành công');
       }
       
+      // B3: Đóng modal, reset biểu mẫu về mặc định và tải lại bảng dữ liệu
       setIsCreateOpen(false);
       setEditId(null);
       setCreateData({ 
@@ -386,10 +391,12 @@ export default function AdminRequestsPage() {
     if (!selectedItem || selectedInventoryIds.length === 0) return;
     try {
       setIsAllocationLoading(true);
+      // B1: Gửi danh sách túi máu được chọn lên backend để giữ chỗ và cộng units_fulfilled
       const res = await adminRequestService.allocateInventory(selectedItem.request_id, selectedInventoryIds);
       toast.success(res?.data?.message || 'Cấp phát thành công');
       setSelectedInventoryIds([]);
       
+      // B2: Đồng bộ lại danh sách phân bổ, túi kho khả dụng, bảng chính và chi tiết yêu cầu đang mở
       // Refresh all data
       fetchAllocations(selectedItem.request_id);
       fetchAvailableInventory(selectedItem.blood_type_id, selectedItem.component_id);

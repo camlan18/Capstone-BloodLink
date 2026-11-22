@@ -86,11 +86,13 @@ export default function CreateBloodRequestPage() {
   /** Kiểm tra dữ liệu bắt buộc và gửi yêu cầu cần máu mới lên API. */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    // B1: Kiểm tra các trường bắt buộc (cơ sở, tên bệnh nhân, nhóm máu, thành phần, độ khẩn) trước khi gửi
     if (!formData.facility_id || !formData.patient_name || !formData.blood_type_id || !formData.component_id || !formData.urgency_id) {
       toast.error(t('errorMissingFields'));
       return;
     }
 
+    // B2: Chuẩn hóa kiểu dữ liệu gửi API công khai, tự bật cờ is_emergency nếu độ khẩn là CRITICAL rồi điều hướng về danh sách
     try {
       setLoading(true);
       const selectedUrgency = urgencyLevels.find(u => u.urgency_id.toString() === formData.urgency_id);
