@@ -230,6 +230,7 @@ export default function AdminDonationsPage() {
   /** Ghi nhận kết quả hiến máu (đạt hay không đạt sức khỏe) và đồng bộ trạng thái slot. */
   const handleRecordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    // B1: Khi kết quả sàng lọc đạt thì bắt buộc chọn đủ nhóm máu, thành phần và thể tích
     if (recordData.health_check_passed) {
       if (!recordData.blood_type_id) {
         toast.error('Vui lòng chọn nhóm máu');
@@ -248,6 +249,7 @@ export default function AdminDonationsPage() {
     try {
       setRecording(true);
       
+      // B2: Tách mã yêu cầu máu (REQ-/RQ-...) từ ghi chú slot nếu người hiến đăng ký theo lời kêu gọi khẩn cấp
       const matchRQ = selectedSlot?.notes?.match(/Mã:\s*(R[EQ]+-[A-Za-z0-9\-]+)/i);
       const reqCode = matchRQ ? matchRQ[1] : undefined;
       
@@ -255,6 +257,7 @@ export default function AdminDonationsPage() {
         ? (recordData.result_notes ? `${selectedSlot.notes} | ${recordData.result_notes}` : selectedSlot.notes)
         : recordData.result_notes;
 
+      // B3: Nếu đạt -> gọi recordDonation nhập kho/cấp chứng nhận + chuyển slot COMPLETED; nếu không -> cập nhật EXAMINED_FAILED
       if (recordData.health_check_passed) {
         await adminDonationService.recordDonation({
           facility_id: Number(recordData.facility_id),

@@ -64,6 +64,7 @@ export const DigitalSignaturePad: React.FC<Props> = ({
     if (!canvas) return { x: 0, y: 0 };
     const rect = canvas.getBoundingClientRect();
 
+    // B1: Trích xuất tọa độ clientX/Y thống nhất từ cả TouchEvent lẫn MouseEvent
     let clientX = 0;
     let clientY = 0;
 
@@ -80,6 +81,7 @@ export const DigitalSignaturePad: React.FC<Props> = ({
       clientY = e.clientY;
     }
 
+    // B2: Quy đổi theo tỷ lệ giữa kích thước buffer canvas (1000x440) và kích thước CSS thực tế
     // Exact scale factor from bounding client rect (screen CSS pixels) to canvas buffer pixels
     const scaleX = canvas.width / rect.width;
     const scaleY = canvas.height / rect.height;
@@ -177,6 +179,7 @@ export const DigitalSignaturePad: React.FC<Props> = ({
     const ctx = sourceCanvas.getContext('2d');
     if (!ctx) return sourceCanvas.toDataURL('image/png');
 
+    // B1: Quét toàn bộ pixel của canvas để tìm hình chữ nhật bao khít các điểm có alpha > 10
     const width = sourceCanvas.width;
     const height = sourceCanvas.height;
     const imageData = ctx.getImageData(0, 0, width, height);
@@ -205,6 +208,7 @@ export const DigitalSignaturePad: React.FC<Props> = ({
       return sourceCanvas.toDataURL('image/png');
     }
 
+    // B2: Nới lề 20px quanh chữ ký, sao chép sang canvas mới vừa khít rồi xuất Base64 PNG
     // Add padding around cropped signature
     const padding = 20;
     minX = Math.max(0, minX - padding);

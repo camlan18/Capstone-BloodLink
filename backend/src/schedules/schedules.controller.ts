@@ -93,6 +93,7 @@ export class SchedulesController {
   @Roles(RoleCode.ADMIN, RoleCode.STAFF, RoleCode.HOSPITAL_STAFF)
   @Get(':id/donors/export')
   async exportScheduleDonors(@Param('id', ParseIntPipe) id: number, @Res() res: Response, @CurrentUser() user: any) {
+    // Xuất danh sách slot đăng ký ra buffer Excel và mã hóa tên tệp tiếng Việt theo chuẩn RFC 5987
     const { buffer, filename } = await this.schedulesService.exportScheduleDonors(id, user);
     
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');

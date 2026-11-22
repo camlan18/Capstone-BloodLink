@@ -38,6 +38,7 @@ interface Props {
 // Isolated Print Engine for A4 Landscape Certificate
 /** Tạo iframe ẩn cô lập CSS để in giấy chứng nhận hiến máu theo khổ A4 ngang chuẩn. */
 export const printCertificate = (targetElementId: string = 'vietnamese-blood-certificate') => {
+  // B1: Kiểm tra môi trường trình duyệt và lấy phần tử DOM chứa mẫu giấy chứng nhận
   if (typeof window === 'undefined') return;
   const target = document.getElementById(targetElementId);
   if (!target) {
@@ -45,6 +46,7 @@ export const printCertificate = (targetElementId: string = 'vietnamese-blood-cer
     return;
   }
 
+  // B2: Dọn dẹp iframe in cũ (nếu còn) rồi tạo mới iframe ẩn kích thước 0 để cô lập hoàn toàn CSS trang chính
   // Remove stale print iframes
   const oldFrame = document.getElementById('certificate-print-iframe');
   if (oldFrame) {
@@ -68,6 +70,7 @@ export const printCertificate = (targetElementId: string = 'vietnamese-blood-cer
     return;
   }
 
+  // B3: Thu thập toàn bộ thẻ stylesheet/style hiện hành và bơm CSS khổ in A4 ngang (@page size: A4 landscape)
   // Collect active stylesheets
   const headStyles = Array.from(document.querySelectorAll('link[rel="stylesheet"], style'))
     .map(el => el.outerHTML)
@@ -126,6 +129,7 @@ export const printCertificate = (targetElementId: string = 'vietnamese-blood-cer
   `);
   doc.close();
 
+  // B4: Chờ 400ms để iframe render xong font/QR trước khi mở hộp thoại in và tự gỡ bỏ sau 2 giây
   setTimeout(() => {
     iframe.contentWindow?.focus();
     iframe.contentWindow?.print();

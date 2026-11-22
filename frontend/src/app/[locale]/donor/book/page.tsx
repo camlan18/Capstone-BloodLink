@@ -149,6 +149,7 @@ export default function BookDonationPage() {
 
   /** Xử lý khi chọn một ngày trên lịch: kiểm tra điều kiện ngày hiến kế tiếp và mở modal xem hoặc đặt lịch. */
   const handleDayClick = (day: Date) => {
+    // B1: Chặn chọn ngày quá khứ; nếu ngày này đã có lịch đặt trước thì mở modal xem/hủy slot đó
     if (isBefore(day, startOfDay(new Date()))) return;
     
     const hasSlot = mySlots.find(s => s.schedule && isSameDay(parseISO(s.schedule.date), day));
@@ -158,6 +159,7 @@ export default function BookDonationPage() {
       return;
     }
 
+    // B2: Đối chiếu với next_eligible_date để đảm bảo người hiến đã đủ số ngày nghỉ hồi phục
     if (donorProfile?.next_eligible_date) {
       const eligibleDate = startOfDay(parseISO(donorProfile.next_eligible_date));
       if (isBefore(day, eligibleDate)) {
@@ -166,6 +168,7 @@ export default function BookDonationPage() {
       }
     }
 
+    // B3: Lọc lịch mở trong ngày; nếu đang đăng ký hỗ trợ yêu cầu khẩn cấp mà cơ sở chưa tạo lịch thì dựng slot ngầm định (is_implicit)
     let openSchedules = schedules.filter(sch => isSameDay(parseISO(sch.date), day));
     
     if (requestContext && facilityIdParam) {
@@ -202,6 +205,7 @@ export default function BookDonationPage() {
     try {
       setIsSubmitting(scheduleId || -1);
       
+      // B1: Nếu là lịch ngầm định cho ca khẩn cấp thì bắt buộc chọn giờ dự kiến đến hiến máu
       // Client-side validation if requestContext exists
       if (requestContext) {
          if (availableSchedulesOnDate.some(s => s.is_implicit) && !expectedTime) {
@@ -211,6 +215,7 @@ export default function BookDonationPage() {
          }
       }
 
+      // B2: Nối các câu ghi chú sức khỏe phụ đã tích chọn vào chuỗi notes trước khi gửi API bookSlot
       let finalNotes = notes;
       const selectedNotes = noteAnswers.map((checked, idx) => checked ? noteQuestions[idx] : null).filter(Boolean);
       if (selectedNotes.length > 0) {
