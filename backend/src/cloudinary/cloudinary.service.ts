@@ -11,6 +11,7 @@ export class CloudinaryService {
    * Tải buffer của ảnh tải lên từ Multer vào Cloudinary thông qua stream.
    */
   uploadFile(file: Express.Multer.File): Promise<any> {
+    // Mở luồng upload_stream lên Cloudinary và pipe buffer ảnh trực tiếp từ Multer memory storage
     return new Promise((resolve, reject) => {
       const upload = cloudinary.uploader.upload_stream((error, result) => {
         if (error) return reject(error);
