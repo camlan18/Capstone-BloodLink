@@ -59,6 +59,7 @@ export class EducationService {
    * Xóa danh mục tài liệu giáo dục theo ID nếu chưa chứa tài liệu nào.
    */
   async deleteCategory(id: number) {
+    // Đếm số tài liệu đang gắn vào danh mục để ngăn xóa danh mục còn tài liệu phụ thuộc
     const category = await this.prisma.education_document_categories.findUnique({ 
       where: { category_id: id },
       include: { _count: { select: { education_documents: true } } }
@@ -79,6 +80,7 @@ export class EducationService {
    */
   // --- DOCUMENTS ---
   async getDocuments(query: EducationFilterDto, includeDrafts = false) {
+    // Thiết lập phân trang và lọc theo trạng thái xuất bản, danh mục, nhóm máu, từ khóa tiêu đề/tóm tắt
     const page = query.page || 1;
     const limit = query.limit || 20;
     const skip = (page - 1) * limit;
@@ -193,6 +195,7 @@ export class EducationService {
    * Cập nhật nội dung tài liệu giáo dục theo ID và kiểm tra trùng slug khi đổi đường dẫn.
    */
   async updateDocument(id: number, dto: UpdateEducationDocumentDto) {
+    // B1: Kiểm tra tài liệu tồn tại và kiểm tra trùng slug nếu người dùng thay đổi đường dẫn
     const doc = await this.prisma.education_documents.findUnique({ where: { document_id: id } });
     if (!doc) throw new NotFoundException('Tài liệu không tồn tại');
 
@@ -201,6 +204,7 @@ export class EducationService {
       if (existing) throw new BadRequestException('Slug đã tồn tại');
     }
 
+    // B2: Cập nhật nội dung và chỉ đặt mốc published_at khi tài liệu mới được chuyển sang xuất bản
     return await this.prisma.education_documents.update({
       where: { document_id: id },
       data: {

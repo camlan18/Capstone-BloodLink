@@ -39,6 +39,7 @@ export class BlogService {
    * Cập nhật thông tin danh mục blog theo ID (kiểm tra trùng slug).
    */
   async updateCategory(id: number, dto: UpdateCategoryDto) {
+    // B1: Kiểm tra danh mục tồn tại và chỉ check trùng slug nếu người dùng thay đổi slug mới
     const category = await this.prisma.blog_categories.findUnique({ where: { blog_category_id: id } });
     if (!category) throw new NotFoundException('Danh mục không tồn tại');
 
@@ -47,6 +48,7 @@ export class BlogService {
       if (existing) throw new BadRequestException('Đường dẫn danh mục (slug) đã tồn tại');
     }
 
+    // B2: Lưu cập nhật tên và slug danh mục
     return await this.prisma.blog_categories.update({
       where: { blog_category_id: id },
       data: {
@@ -60,6 +62,7 @@ export class BlogService {
    * Xóa danh mục blog theo ID nếu không còn bài viết trực thuộc.
    */
   async deleteCategory(id: number) {
+    // Đếm số bài viết trực thuộc danh mục trước khi xóa để tránh lỗi toàn vẹn dữ liệu
     const category = await this.prisma.blog_categories.findUnique({ 
       where: { blog_category_id: id },
       include: { _count: { select: { blog_posts: true } } }
@@ -79,6 +82,7 @@ export class BlogService {
    * Lấy danh sách bài viết blog có lọc theo danh mục, tìm kiếm từ khóa và phân trang.
    */
   async getAllPosts(query: BlogFilterDto) {
+    // B1: Tính phân trang và chỉ lọc các bài viết đã xuất bản (kèm lọc danh mục và từ khóa tiêu đề/tóm tắt)
     const page = query.page || 1;
     const limit = query.limit || 20;
     const skip = (page - 1) * limit;
@@ -122,6 +126,7 @@ export class BlogService {
    * Lấy chi tiết bài viết blog theo slug và tăng lượt xem (`view_count`).
    */
   async getPostBySlug(slug: string) {
+    // B1: Tìm bài viết theo slug và chặn truy cập nếu bài viết chưa được xuất bản
     const post = await this.prisma.blog_posts.findUnique({
       where: { slug },
       include: {
@@ -134,6 +139,7 @@ export class BlogService {
       throw new NotFoundException('Bài viết không tồn tại');
     }
 
+    // B2: Cộng dồn view_count bất đồng bộ để không làm chậm thời gian phản hồi đọc bài
     // Tăng lượt view (Fire and forget)
     this.prisma.blog_posts.update({
       where: { post_id: post.post_id },
@@ -166,6 +172,7 @@ export class BlogService {
    * Thêm bình luận mới (hoặc phản hồi bình luận cha) cho bài viết.
    */
   async addComment(postId: number, userId: number | null, data: AddCommentDto) {
+    // Kiểm tra bài viết tồn tại; người dùng đã đăng nhập được duyệt tự động, khách vãng lai phải chờ kiểm duyệt
     const post = await this.prisma.blog_posts.findUnique({ where: { post_id: postId } });
     if (!post) throw new NotFoundException('Bài viết không tồn tại');
 
@@ -211,6 +218,7 @@ export class BlogService {
    * Lấy danh sách bình luận đã duyệt theo bài viết kèm cây phản hồi và phân trang.
    */
   async getComments(postId: number, query: any) {
+    // B1: Thiết lập phân trang, chiều sắp xếp thời gian và chỉ lấy bình luận gốc đã duyệt (parent_comment_id = null)
     const page = query.page ? Number(query.page) : 1;
     const limit = query.limit ? Number(query.limit) : 5;
     const skip = (page - 1) * limit;
@@ -219,6 +227,7 @@ export class BlogService {
 
     const where = { post_id: postId, is_approved: true, parent_comment_id: null };
 
+    // B2: Tải kèm cây phản hồi (replies) đã duyệt sắp xếp tăng dần theo thời gian
     const [data, total] = await Promise.all([
       this.prisma.blog_comments.findMany({
         where,
@@ -273,9 +282,11 @@ export class BlogService {
    * Cập nhật nội dung và trạng thái xuất bản của bài viết blog theo ID.
    */
   async updatePost(postId: number, dto: UpdatePostDto) {
+    // B1: Kiểm tra bài viết tồn tại trước khi cập nhật
     const post = await this.prisma.blog_posts.findUnique({ where: { post_id: postId } });
     if (!post) throw new NotFoundException('Bài viết không tồn tại');
 
+    // B2: Cập nhật nội dung và chỉ gán published_at mới khi bài viết chuyển từ nháp sang xuất bản
     try {
       return await this.prisma.blog_posts.update({
       where: { post_id: postId },
@@ -312,6 +323,7 @@ export class BlogService {
    */
   // Moderator functions
   async getAdminComments(query: any) {
+    // Thiết lập phân trang và lọc bình luận theo trạng thái chờ duyệt (PENDING) hoặc đã duyệt (APPROVED)
     const page = Number(query.page) || 1;
     const limit = Number(query.limit) || 20;
     const skip = (page - 1) * limit;
