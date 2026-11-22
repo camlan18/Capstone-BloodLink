@@ -115,6 +115,7 @@ export default function AdminSchedulesPage() {
 
   /** Nạp thông tin đợt hiến máu cần sửa vào form và mở modal chỉnh sửa. */
   const openEditModal = (item: FacilityDonationSchedule) => {
+    // Chuẩn hóa giờ ISO trả về từ Prisma sang HH:mm rồi nạp toàn bộ cấu hình lịch vào form sửa
     // start_time / end_time might be returned as ISO strings from Prisma
     /** Chuẩn hóa chuỗi thời gian ISO từ DB thành định dạng HH:mm để hiển thị trên input time. */
     const formatTime = (timeStr: string) => {

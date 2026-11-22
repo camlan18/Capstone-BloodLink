@@ -141,6 +141,7 @@ export class DonorController {
     @Query('sortBy') sortBy: string,
     @Query('sortOrder') sortOrder: string,
   ) {
+    // Chuẩn hóa query string sang kiểu số/giá trị mặc định rồi chuyển sang service tổng hợp bảng xếp hạng
     return await this.donorService.getPublicLeaderboard({
       page: page ? parseInt(page) : 1,
       limit: limit ? parseInt(limit) : 10,
