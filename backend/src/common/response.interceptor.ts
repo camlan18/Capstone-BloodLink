@@ -21,6 +21,7 @@ export class ResponseInterceptor<T> implements NestInterceptor<T, Response<T>> {
   intercept(context: ExecutionContext, next: CallHandler): Observable<Response<T>> {
     return next.handle().pipe(
       map(data => {
+        // Trường hợp 1: Kết quả đã có sẵn cặp data và meta (API phân trang) -> giữ nguyên cấu trúc và bọc thêm statusCode
         // If data is already formatted (contains data and meta), use it
         if (data && typeof data === 'object' && 'data' in data && 'meta' in data) {
           return {
@@ -31,6 +32,7 @@ export class ResponseInterceptor<T> implements NestInterceptor<T, Response<T>> {
           };
         }
 
+        // Trường hợp 2: Service không trả về dữ liệu -> chuẩn hóa data thành null
         // If data is null or undefined
         if (data === null || data === undefined) {
            return {
@@ -40,6 +42,7 @@ export class ResponseInterceptor<T> implements NestInterceptor<T, Response<T>> {
            };
         }
 
+        // Trường hợp 3: Nếu object chỉ có duy nhất khóa message thì gán data = null, ngược lại giữ nguyên payload
         // Otherwise, wrap the data
         return {
           statusCode: context.switchToHttp().getResponse().statusCode,
