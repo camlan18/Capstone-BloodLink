@@ -45,8 +45,10 @@ export class UsersService {
    * Cập nhật thông tin hồ sơ cá nhân của người dùng đang đăng nhập.
    */
   async updateProfile(userId: number, data: any) {
+    // B1: Xác thực định dạng họ tên, SĐT, ngày sinh trước khi cập nhật
     this.validateUserPayload(data, true);
 
+    // B2: Chỉ lọc lấy các trường an toàn cho phép người dùng tự sửa (chặn sửa role/active)
     // Only allow updating safe fields
     const safeData = {
       full_name: data.full_name?.trim(),
@@ -91,6 +93,7 @@ export class UsersService {
    * Lấy danh sách người dùng có lọc theo vai trò, trạng thái hoạt động, từ khóa tìm kiếm và phân trang.
    */
   async getAllUsers(query: UserFilterDto) {
+    // B1: Khởi tạo phân trang và điều kiện lọc theo vai trò, trạng thái hoặc từ khóa tìm kiếm
     const page = query.page || 1;
     const limit = query.limit || 20;
     const skip = (page - 1) * limit;
@@ -117,6 +120,7 @@ export class UsersService {
       orderBy.created_at = 'desc';
     }
 
+    // B2: Truy vấn song song danh sách user theo trang và tổng số lượng
     const [data, total] = await Promise.all([
       this.prisma.users.findMany({
         where,
@@ -128,6 +132,7 @@ export class UsersService {
       this.prisma.users.count({ where }),
     ]);
 
+    // B3: Gỡ bỏ password_hash và tính nhãn trạng thái hiển thị (computed_status) cho từng user
     data.forEach((user: any) => {
       delete user.password_hash;
       
@@ -156,12 +161,14 @@ export class UsersService {
    * Tạo và gửi mã OTP qua email để xác nhận thao tác đổi mật khẩu của người dùng.
    */
   async sendChangePasswordOtp(userId: number) {
+    // B1: Kiểm tra tài khoản tồn tại và sinh mã OTP 6 chữ số kèm bản hash bcrypt
     const user = await this.prisma.users.findUnique({ where: { user_id: userId } });
     if (!user) throw new NotFoundException('User không tồn tại');
 
     const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
     const otpHash = await bcrypt.hash(otpCode, 10);
 
+    // B2: Vô hiệu hóa các OTP đổi mật khẩu cũ chưa xác thực rồi lưu OTP mới trong transaction
     await this.prisma.$transaction(async (tx) => {
       let otpType = await tx.otp_types.findUnique({ where: { otp_type_code: OtpTypeCode.CHANGE_PASSWORD }});
       if (!otpType) {
@@ -201,6 +208,7 @@ export class UsersService {
    * Kiểm tra OTP đổi mật khẩu và cập nhật mật khẩu mới đã băm.
    */
   async changePassword(userId: number, dto: ChangePasswordVerifyDto) {
+    // B1: Tìm tài khoản và bản ghi OTP CHANGE_PASSWORD mới nhất còn hiệu lực
     const user = await this.prisma.users.findUnique({ where: { user_id: userId } });
     if (!user) throw new NotFoundException('User không tồn tại');
 
@@ -215,6 +223,7 @@ export class UsersService {
       orderBy: { created_at: 'desc' },
     });
 
+    // B2: Kiểm tra hạn OTP, số lần sai tối đa và đối chiếu mã OTP (tăng attempt_count nếu sai)
     if (!latestOtp) throw new BadRequestException('Không tìm thấy mã OTP nào đang chờ xác thực');
     if (new Date() > latestOtp.expires_at) throw new BadRequestException('Mã OTP đã hết hạn');
     if (latestOtp.attempt_count >= latestOtp.max_attempts) throw new BadRequestException('Bạn đã nhập sai OTP quá nhiều lần');
@@ -229,6 +238,7 @@ export class UsersService {
       throw new BadRequestException('Mã OTP không hợp lệ');
     }
 
+    // B3: Băm mật khẩu mới, cập nhật OTP đã xác thực + mật khẩu trong transaction và gửi thông báo
     const salt = await bcrypt.genSalt(10);
     const hash = await bcrypt.hash(dto.new_password, salt);
 
@@ -371,6 +381,7 @@ export class UsersService {
    * Quản trị viên tạo mới tài khoản người dùng kèm hồ sơ hiến máu tùy chọn.
    */
   async createUserAdmin(dto: CreateUserAdminDto) {
+    // B1: Kiểm tra ràng buộc dữ liệu (tuổi, SĐT, CCCD, hồ sơ hiến máu) và chống trùng email/CCCD
     this.validateUserPayload(dto, false);
 
     const existingUser = await this.prisma.users.findUnique({ where: { email: dto.email } });
@@ -381,6 +392,7 @@ export class UsersService {
       if (existingCccd) throw new BadRequestException('CCCD/CMND này đã được đăng ký cho một tài khoản khác');
     }
 
+    // B2: Băm mật khẩu (dùng mật khẩu mặc định Blood@123456 nếu admin không nhập) và dựng payload lưu DB
     const rawPassword = dto.password || 'Blood@123456';
     const salt = await bcrypt.genSalt(10);
     const hash = await bcrypt.hash(rawPassword, salt);
@@ -406,11 +418,13 @@ export class UsersService {
     if (dto.is_available_for_donation !== undefined) data.is_available_for_donation = dto.is_available_for_donation;
     if (dto.facility_id !== undefined) data.facility_id = dto.facility_id && dto.facility_id > 0 ? dto.facility_id : null;
 
+    // B3: Bắt buộc gán cơ sở y tế nếu tài khoản tạo mới mang vai trò HOSPITAL_STAFF
     const role = await this.prisma.roles.findUnique({ where: { role_id: dto.role_id } });
     if (role?.role_code === 'HOSPITAL_STAFF' && (!data.facility_id || data.facility_id <= 0)) {
       throw new BadRequestException('Vai trò Nhân viên bệnh viện bắt buộc phải chọn Cơ sở y tế trực thuộc');
     }
 
+    // B4: Đính kèm khởi tạo lồng nhau donor_profile nếu admin có nhập thông tin hiến máu
     if (dto.donor_profile) {
       data.donor_profile = {
         create: {
@@ -466,6 +480,7 @@ export class UsersService {
    * Quản trị viên cập nhật thông tin tài khoản, vai trò, cơ sở và hồ sơ hiến máu của người dùng.
    */
   async updateUserAdmin(userId: number, dto: UpdateUserAdminDto) {
+    // B1: Validate dữ liệu đầu vào và kiểm tra trùng email/CCCD với các user khác
     this.validateUserPayload(dto, true);
 
     if (dto.email) {
@@ -482,6 +497,7 @@ export class UsersService {
       if (existingCccd) throw new BadRequestException('CCCD/CMND này đã được đăng ký cho một tài khoản khác');
     }
 
+    // B2: Chỉ cập nhật các trường được truyền lên (băm lại mật khẩu nếu có đổi)
     const data: any = {};
     if (dto.password) {
       const salt = await bcrypt.genSalt(10);
@@ -505,6 +521,7 @@ export class UsersService {
     if (dto.is_email_verified !== undefined) data.is_email_verified = dto.is_email_verified;
     if (dto.facility_id !== undefined) data.facility_id = dto.facility_id && dto.facility_id > 0 ? dto.facility_id : null;
 
+    // B3: Đảm bảo HOSPITAL_STAFF vẫn còn gắn cơ sở y tế và upsert đồng thời donor_profile nếu có
     const targetRoleId = dto.role_id || (await this.prisma.users.findUnique({ where: { user_id: userId } }))?.role_id;
     if (targetRoleId) {
       const role = await this.prisma.roles.findUnique({ where: { role_id: targetRoleId } });
@@ -558,6 +575,7 @@ export class UsersService {
    * Đảo trạng thái khóa/mở khóa (`is_active`) của một tài khoản người dùng.
    */
   async toggleLockUser(userId: number) {
+    // Tìm tài khoản, chặn tự khóa tài khoản ADMIN và đảo trạng thái is_active
     const user = await this.prisma.users.findUnique({ where: { user_id: userId }, include: { role: true } });
     if (!user) throw new NotFoundException('User không tồn tại');
 
@@ -614,10 +632,12 @@ export class UsersService {
    * Đọc tệp Excel tải lên để nhập hàng loạt tài khoản người dùng mới.
    */
   async importExcel(buffer: Buffer, staffId: number) {
+    // B1: Đọc dữ liệu Excel đầu vào và đếm số dòng tạo thành công hoặc bỏ qua
     const data = ExcelUtil.parseExcel(buffer);
     let success = 0;
     let failed = 0;
 
+    // B2: Kiểm tra đủ Email/Họ tên/Role, bỏ qua email trùng, băm mật khẩu rồi tạo user mới
     for (const row of data) {
       try {
         const email = row['Email'];

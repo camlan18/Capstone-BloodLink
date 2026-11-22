@@ -21,6 +21,7 @@ export class MasterDataService {
    * Lấy danh sách thành phần máu có hỗ trợ tìm kiếm, lọc trạng thái và phân trang.
    */
   async getBloodComponents(query?: MasterDataFilterDto) {
+    // B1: Nếu không truyền bộ lọc, trả toàn bộ thành phần đang hoạt động cho các dropdown
     if (!query || Object.keys(query).length === 0) {
       // Return all active components without pagination for dropdowns if no query provided
       return await this.prisma.blood_components.findMany({
@@ -30,6 +31,7 @@ export class MasterDataService {
       });
     }
 
+    // B2: Ngược lại áp dụng phân trang, lọc is_active/search và sắp xếp phục vụ bảng quản trị
     const page = query.page || 1;
     const limit = query.limit || 20;
     const skip = (page - 1) * limit;
@@ -256,10 +258,12 @@ export class MasterDataService {
    * Tạo mới cơ sở y tế trong hệ thống.
    */
   async createFacility(dto: CreateFacilityDto) {
+    // B1: Tạo mã facility_code mặc định nếu trống và đảm bảo không trùng mã cơ sở
     const facilityCode = dto.facility_code || `FAC-${Date.now()}`;
     const exists = await this.prisma.medical_facilities.findUnique({ where: { facility_code: facilityCode } });
     if (exists) throw new BadRequestException('Mã cơ sở y tế đã tồn tại');
 
+    // B2: Nếu đánh dấu cơ sở mới là cơ sở chính (is_primary) thì hạ cờ ở các cơ sở cũ
     if (dto.is_primary) {
       await this.prisma.medical_facilities.updateMany({
         where: { is_primary: true },
@@ -267,6 +271,7 @@ export class MasterDataService {
       });
     }
 
+    // B3: Lưu cơ sở y tế mới vào DB
     return await this.prisma.medical_facilities.create({
       data: {
         ...dto,
@@ -309,6 +314,7 @@ export class MasterDataService {
    * Lấy thông tin cơ sở y tế gắn với tài khoản nhân viên đang đăng nhập.
    */
   async getMyFacility(user: any) {
+    // B1: Nếu user không gắn cơ sở cụ thể (Admin) thì fallback sang cơ sở chính hoặc cơ sở hoạt động đầu tiên
     let targetFacilityId = user.facility_id;
     if (!targetFacilityId) {
       const firstFacility = await this.prisma.medical_facilities.findFirst({
@@ -319,6 +325,7 @@ export class MasterDataService {
       if (firstFacility) return firstFacility;
       throw new NotFoundException('Không tìm thấy cơ sở y tế');
     }
+    // B2: Truy vấn chi tiết cơ sở theo facility_id gắn với tài khoản
     const facility = await this.prisma.medical_facilities.findUnique({
       where: { facility_id: targetFacilityId },
       include: { province: true, ward: true }
@@ -333,6 +340,7 @@ export class MasterDataService {
    * Cập nhật ảnh con dấu và chữ ký xác nhận cho cơ sở y tế.
    */
   async updateFacilitySealSignature(id: number, dto: any, user: any) {
+    // HOSPITAL_STAFF chỉ được phép sửa con dấu và chữ ký của đúng cơ sở mình trực thuộc
     if (user.role_code === 'HOSPITAL_STAFF' && user.facility_id !== id) {
       throw new ForbiddenException('Bạn chỉ có quyền cập nhật con dấu và chữ ký của cơ sở y tế mình trực thuộc');
     }
@@ -394,10 +402,12 @@ export class MasterDataService {
    * Đọc tệp Excel tải lên và nhập hàng loạt cơ sở y tế vào hệ thống.
    */
   async importFacilitiesExcel(buffer: Buffer) {
+    // B1: Đọc danh sách cơ sở y tế từ file Excel
     const data = ExcelUtil.parseExcel(buffer);
     let success = 0;
     let failed = 0;
 
+    // B2: Kiểm tra Tên cơ sở và Địa chỉ bắt buộc, cập nhật cờ is_primary nếu được đánh dấu là 1
     for (const row of data) {
       try {
         const facilityName = row['Tên cơ sở'];
@@ -455,6 +465,7 @@ export class MasterDataService {
    */
   // B17: Blood Compatibility Checker
   async checkCompatibility(donorBloodTypeId: number, recipientBloodTypeId: number, componentId: number) {
+    // B1: Ưu tiên tra cứu trực tiếp từ bảng quy tắc blood_compatibility đã cấu hình trong DB
     const compatibility = await this.prisma.blood_compatibility.findFirst({
       where: {
         donor_blood_type_id: donorBloodTypeId,
@@ -467,6 +478,7 @@ export class MasterDataService {
       return { is_compatible: compatibility.is_compatible };
     }
 
+    // B2: Nếu DB chưa có rule cụ thể -> tải thông tin ABO/Rh và thành phần để suy luận theo quy tắc y khoa chuẩn
     // Default fallback rules if not explicitly mapped
     const donorType = await this.prisma.blood_types.findUnique({ where: { blood_type_id: donorBloodTypeId } });
     const recipientType = await this.prisma.blood_types.findUnique({ where: { blood_type_id: recipientBloodTypeId } });
@@ -476,6 +488,7 @@ export class MasterDataService {
       throw new BadRequestException('Thông tin nhóm máu hoặc thành phần máu không hợp lệ');
     }
 
+    // B3: Quy tắc Hồng cầu/Máu toàn phần (O truyền chung, AB nhận chung, Rh- truyền được cho cả Rh+ và Rh-)
     // Simple rule for Whole Blood / Red Blood Cells
     let isCompatible = false;
     
@@ -490,6 +503,7 @@ export class MasterDataService {
       else if (donorType.abo === recipientType.abo) isCompatible = true;
     }
 
+    // B4: Huyết tương/Tiểu cầu áp dụng chiều ngược lại về ABO (AB truyền chung, O nhận chung)
     // Plasma/Platelets have different rules (AB is universal donor, O is universal recipient)
     if (component.component_code.includes('PLASMA') || component.component_code.includes('PLATELET')) {
        // Reverse rule for ABO

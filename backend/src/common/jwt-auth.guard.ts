@@ -24,6 +24,7 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
    * Xử lý kết quả xác thực token; cho phép đi qua nếu route là @Public() và báo UnauthorizedException nếu thiếu token hợp lệ.
    */
   handleRequest(err: any, user: any, info: any, context: ExecutionContext) {
+    // Kiểm tra metadata @Public() trên method hoặc class controller hiện tại
     const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
       context.getHandler(),
       context.getClass(),
