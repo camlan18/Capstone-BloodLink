@@ -22,12 +22,14 @@ export class CloudinaryController {
   @Post('image')
   @UseInterceptors(FileInterceptor('file'))
   async uploadImage(@UploadedFile() file: Express.Multer.File) {
+    // B1: Kiểm tra tệp đính kèm và đọc ngưỡng MB tối đa từ cấu hình hệ thống trước khi đẩy lên Cloudinary
     if (!file) throw new BadRequestException('Vui lòng chọn ảnh');
     const maxMbStr = await this.systemSettingsService.getSettingValue(SystemSettingKey.MAX_IMAGE_UPLOAD_SIZE_MB, '5');
     const maxMb = parseFloat(maxMbStr) || 5;
     if (file.size > maxMb * 1024 * 1024) {
       throw new BadRequestException(`Dung lượng file vượt quá giới hạn cho phép (${maxMb}MB)`);
     }
+    // B2: Tải stream lên Cloudinary và trả về secure_url công khai
     const result = await this.cloudinaryService.uploadFile(file);
     return { url: result.secure_url };
   }

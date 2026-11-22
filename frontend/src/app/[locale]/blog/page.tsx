@@ -72,6 +72,7 @@ export default function BlogPage() {
   const fetchDocuments = async () => {
     try {
       setLoading(true);
+      // Tách sortField/sortOrder từ state, gọi API lấy bài viết đã xuất bản và hỗ trợ cả hai kiểu payload trả về
       const [sortField, sortOrder] = sortBy.split('-');
       
       const params: any = {

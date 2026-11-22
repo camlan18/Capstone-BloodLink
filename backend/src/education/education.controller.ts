@@ -40,6 +40,7 @@ export class EducationController {
   @Get('documents')
   @ApiOperation({ summary: 'Lấy danh sách tài liệu' })
   async getDocuments(@Req() req: any, @Query() query: EducationFilterDto) {
+    // Cho phép hiển thị thêm các tài liệu bản nháp nếu người gọi là Admin hoặc Moderator đã xác thực
     const role = String(req.user?.role_code || '').toLowerCase();
     const includeDrafts = role === String(RoleCode.ADMIN).toLowerCase() || role === String(RoleCode.MODERATOR).toLowerCase();
     return await this.educationService.getDocuments(query, includeDrafts);

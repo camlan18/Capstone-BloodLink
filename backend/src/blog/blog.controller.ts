@@ -67,6 +67,7 @@ export class BlogController {
   @Public() 
   @Post('posts/:id/comments')
   async addComment(@Param('id', ParseIntPipe) id: number, @Req() req: any, @Body() body: AddCommentDto) {
+    // Nếu request không có token (khách vãng lai từ @Public), userId = null để chuyển sang luồng kiểm duyệt
     const userId = (req.user && typeof req.user === 'object' && req.user.user_id) ? req.user.user_id : null;
     return await this.blogService.addComment(id, userId, body);
   }
