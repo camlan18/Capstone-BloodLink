@@ -101,6 +101,7 @@ export default function AdminUsersPage() {
   };
 
   useEffect(() => {
+    // Tải danh sách xã/phường phụ thuộc mỗi khi admin thay đổi tỉnh/thành phố trong form
     if (formData.province_id) {
       adminMasterDataService.getWards(Number(formData.province_id)).then(res => {
         if (res && res.data) setWards(res.data);
@@ -178,6 +179,7 @@ export default function AdminUsersPage() {
 
   /** Tải đầy đủ thông tin tài khoản và hồ sơ người hiến máu vào form để mở modal chỉnh sửa. */
   const handleOpenEdit = async (user: any) => {
+    // Mở sẵn modal và gọi API chi tiết để lấy đầy đủ cả thông tin user lẫn donor_profile lồng nhau
     setEditingUser(user);
     setIsModalOpen(true);
     setModalTab('info');
@@ -231,6 +233,7 @@ export default function AdminUsersPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // B1: Kiểm tra lần lượt 9 nhóm ràng buộc hợp lệ ở client (email, họ tên, vai trò, mật khẩu, SĐT, CCCD, tuổi >=18..65, cơ sở, chỉ số cơ thể)
     // 1. Validate email
     const emailTrim = formData.email.trim();
     if (!emailTrim || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailTrim)) {
@@ -333,6 +336,7 @@ export default function AdminUsersPage() {
       }
     }
 
+    // B2: Chuẩn hóa payload gửi API (chỉ gán facility_id khi là HOSPITAL_STAFF và ghép donor_profile nếu có dữ liệu)
     try {
       const payload: any = {
         email: emailTrim,

@@ -80,6 +80,7 @@ export default function DonorProfilePage() {
   const fetchProfile = async () => {
     try {
       setLoading(true);
+      // B1: Tải song song hồ sơ hiến máu, tài khoản và danh mục nhóm máu (bỏ qua lỗi từng nhánh để không chặn trang)
       const [donorRes, authRes, btRes] = await Promise.all([
         donorService.getProfile().catch(() => null),
         authService.getProfile().catch(() => null),
@@ -104,6 +105,7 @@ export default function DonorProfilePage() {
         currentUser = authRes.data;
       }
 
+      // B2: Đồng bộ dữ liệu gộp từ User và DonorProfile vào React Hook Form
       form.reset({
         full_name: currentUser?.full_name || '',
         identity_card: (currentUser as any)?.identity_card || '',
@@ -142,6 +144,7 @@ export default function DonorProfilePage() {
 
   /** Kiểm tra dung lượng ảnh <= 5MB và tải ảnh đại diện mới lên hệ thống. */
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Kiểm tra kích thước ảnh <= 5MB, upload lên backend và reset input file ở finally để chọn lại cùng file nếu cần
     const file = e.target.files?.[0];
     if (!file) return;
     
@@ -184,6 +187,7 @@ export default function DonorProfilePage() {
   /** Xác thực mật khẩu mới và gửi đổi mật khẩu kèm mã OTP đã nhận. */
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
+    // Đối chiếu mật khẩu xác nhận và độ dài tối thiểu (>= 6) trước khi gửi mã OTP xác thực đổi mật khẩu
     if (passwordData.new_password !== passwordData.confirm_password) {
       toast.error(t('errPassMismatch'));
       return;

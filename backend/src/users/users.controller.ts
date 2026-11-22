@@ -42,6 +42,7 @@ export class UsersController {
   @Post('avatar')
   @UseInterceptors(FileInterceptor('file'))
   async uploadAvatar(@Req() req: any, @UploadedFile() file: Express.Multer.File) {
+    // Đọc ngưỡng dung lượng ảnh tối đa từ system_settings (mặc định 5MB) trước khi cho upload lên Cloudinary
     const maxMbStr = await this.systemSettingsService.getSettingValue(SystemSettingKey.MAX_IMAGE_UPLOAD_SIZE_MB, '5');
     const maxMb = parseFloat(maxMbStr) || 5;
     if (file.size > maxMb * 1024 * 1024) {

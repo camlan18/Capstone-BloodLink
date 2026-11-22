@@ -64,6 +64,7 @@ export const Header = () => {
     
     /** Tải danh mục kiến thức hiến máu từ API để cập nhật động menu con mục Giáo dục. */
     const fetchCategories = async () => {
+      // Nạp danh sách chuyên mục giáo dục từ API và ánh xạ i18n cho 4 danh mục cốt lõi
       try {
         const res = await educationService.getCategories();
         if (res.data) {
@@ -104,6 +105,7 @@ export const Header = () => {
   const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
+    // Khi đã đăng nhập, gọi lấy số thông báo chưa đọc ngay và lặp lại định kỳ mỗi 60 giây
     if (isAuthenticated) {
       /** Truy vấn số lượng thông báo chưa đọc của người dùng hiện tại. */
       const fetchUnreadCount = async () => {

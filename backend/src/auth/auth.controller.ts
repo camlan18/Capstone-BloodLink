@@ -47,6 +47,7 @@ export class AuthController {
   @Post('login')
   @HttpCode(HttpStatus.OK)
   async login(@Body() dto: LoginDto, @Req() req: Request) {
+    // Ưu tiên lấy IP gốc từ header X-Forwarded-For (nếu đứng sau proxy) và user-agent thiết bị
     const ip_address = (req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress;
     const device_info = req.headers['user-agent'] as string;
     return await this.authService.login(dto, { ip_address, device_info });

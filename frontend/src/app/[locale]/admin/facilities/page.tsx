@@ -148,6 +148,7 @@ export default function AdminFacilitiesPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      // B1: Chuyển đổi tọa độ và địa giới sang kiểu Number, đồng thời xóa các trường chuỗi rỗng trước khi gửi
       const payload = {
         ...formData,
         province_id: formData.province_id ? Number(formData.province_id) : undefined,
