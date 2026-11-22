@@ -18,6 +18,7 @@ const ReactQuill = dynamic(() => import('react-quill-new'), { ssr: false });
 
 /** Chuyển tiêu đề tiếng Việt có dấu thành chuỗi đường dẫn slug thân thiện URL. */
 const generateSlug = (text: string) => {
+  // Loại bỏ dấu tiếng Việt, giữ lại ký tự chữ-số và dấu gạch ngang để dựng slug bài viết
   return text.toString().toLowerCase()
     .replace(/á|à|ả|ạ|ã|ă|ắ|ằ|ẳ|ẵ|ặ|â|ấ|ầ|ẩ|ẫ|ậ/gi, 'a')
     .replace(/é|è|ẻ|ẽ|ẹ|ê|ế|ề|ể|ễ|ệ/gi, 'e')
@@ -154,6 +155,7 @@ export default function BlogPostsTab() {
   /** Gửi biểu mẫu tạo mới hoặc cập nhật nội dung bài viết blog lên API. */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    // Ép kiểu blog_category_id/is_published rồi rẽ nhánh gọi API cập nhật hoặc tạo mới bài viết
     try {
       const payload = {
         title: formData.title,

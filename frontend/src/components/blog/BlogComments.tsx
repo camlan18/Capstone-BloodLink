@@ -75,6 +75,7 @@ export function BlogComments({ postId }: BlogCommentsProps) {
   /** Gửi bình luận gốc hoặc bình luận phản hồi lên API và làm mới danh sách. */
   const handleSubmit = async (e: React.FormEvent, parentId?: number) => {
     e.preventDefault();
+    // B1: Phân biệt nguồn dữ liệu form (phản hồi theo parentId hoặc bình luận gốc) và kiểm tra tên khách nếu chưa đăng nhập
     const commentContent = parentId ? replyContent : content;
     const name = parentId ? replyGuestName : guestName;
 
@@ -88,6 +89,7 @@ export function BlogComments({ postId }: BlogCommentsProps) {
       return;
     }
 
+    // B2: Gửi bình luận lên API; reset form tương ứng và đưa về trang 1 nếu là bình luận gốc mới
     try {
       setSubmitting(true);
       await blogService.addComment(postId, commentContent, isAuthenticated ? undefined : name, parentId);

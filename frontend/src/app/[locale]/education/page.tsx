@@ -84,6 +84,7 @@ function EducationContent() {
   const fetchDocuments = async () => {
     try {
       setLoading(true);
+      // Tách chuỗi sortBy dạng "trường-CHIỀU", gọi API và xử lý linh hoạt cả hai dạng response mảng hoặc { items, total }
       const [sortField, sortOrder] = sortBy.split('-');
       
       const params: any = {

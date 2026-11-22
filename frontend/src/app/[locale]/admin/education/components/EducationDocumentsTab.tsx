@@ -18,6 +18,7 @@ const ReactQuill = dynamic(() => import('react-quill-new'), { ssr: false });
 
 /** Chuyển tiêu đề tài liệu tiếng Việt thành chuỗi slug thân thiện URL. */
 const generateSlug = (text: string) => {
+  // Chuẩn hóa ký tự có dấu tiếng Việt sang không dấu, thay khoảng trắng bằng '-' để tạo URL slug chuẩn SEO
   return text.toString().toLowerCase()
     .replace(/á|à|ả|ạ|ã|ă|ắ|ằ|ẳ|ẵ|ặ|â|ấ|ầ|ẩ|ẫ|ậ/gi, 'a')
     .replace(/é|è|ẻ|ẽ|ẹ|ê|ế|ề|ể|ễ|ệ/gi, 'e')
@@ -149,6 +150,7 @@ export default function EducationDocumentsTab() {
   /** Lưu tạo mới hoặc cập nhật tài liệu giáo dục qua API. */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    // Chuẩn hóa các khóa ngoại (category_id, blood_type_id) và rẽ nhánh gọi API cập nhật hoặc tạo tài liệu mới
     try {
       const payload = {
         title: formData.title,
