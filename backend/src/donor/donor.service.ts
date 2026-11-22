@@ -27,11 +27,13 @@ export class DonorService {
    * Đăng ký hồ sơ người hiến máu cho tài khoản và kích hoạt cờ `is_donor_registered`.
    */
   async registerDonorProfile(userId: number, data: any) {
+    // B1: Chặn đăng ký trùng nếu user đã có donor_profiles
     const existing = await this.prisma.donor_profiles.findUnique({
       where: { user_id: userId },
     });
     if (existing) throw new BadRequestException('Hồ sơ hiến máu đã tồn tại');
 
+    // B2: Tạo hồ sơ hiến máu và đồng bộ cờ is_donor_registered + nhóm máu sang bảng users trong transaction
     try {
     return await this.prisma.$transaction(async (tx) => {
       const profile = await tx.donor_profiles.create({
@@ -63,6 +65,7 @@ export class DonorService {
    * Tính toán khả năng đủ điều kiện hiến máu tiếp theo dựa trên ngày hiến gần nhất và quy tắc khoảng cách ngày.
    */
   async calculateDonorEligibility(userId: number) {
+    // B1: Lấy hồ sơ hiện tại và lần hiến máu COMPLETED gần nhất của người dùng
     const profile = await this.prisma.donor_profiles.findUnique({
       where: { user_id: userId },
     });
@@ -72,6 +75,7 @@ export class DonorService {
       orderBy: { donation_date: 'desc' },
     });
 
+    // B2: Xác định mốc ngày đủ điều kiện tiếp theo (ưu tiên ngày lưu trên lần hiến hoặc cộng mặc định 84 ngày)
     let nextEligibleDate: Date | null = null;
 
     if (latestDonation) {
@@ -86,6 +90,7 @@ export class DonorService {
       nextEligibleDate = new Date(profile.next_eligible_date);
     }
 
+    // B3: So sánh mốc ngày đủ điều kiện với hôm nay (00:00) để tính số ngày còn lại
     let daysUntilNextDonation = 0;
     let isEligible = true;
 
@@ -104,6 +109,7 @@ export class DonorService {
       }
     }
 
+    // B4: Đồng bộ lại next_eligible_date trong DB nếu ngày tính toán sai khác so với hồ sơ đã lưu
     // Tự động đồng bộ lại donor_profiles.next_eligible_date nếu chưa khớp
     if (profile) {
       const dbDateStr = profile.next_eligible_date ? new Date(profile.next_eligible_date).toISOString().slice(0, 10) : null;
@@ -213,6 +219,7 @@ export class DonorService {
    * Đặt lịch hẹn hiến máu theo lịch sẵn có, yêu cầu khẩn cấp hoặc tự động tạo lịch tại cơ sở y tế.
    */
   async bookDonationSlot(userId: number, data: BookDonationSlotDto) {
+    // B1: Kiểm tra kết quả sàng lọc sức khỏe ban đầu và tính đầy đủ thông tin lịch/yêu cầu
     if (data.is_health_cleared === false) {
       throw new BadRequestException('Xin lỗi bạn, với dữ liệu sàng lọc hiện tại thì bạn không thể hiến máu được rồi. Hãy khám bệnh kỹ và chăm sóc sức khỏe nhé!');
     }
@@ -225,6 +232,7 @@ export class DonorService {
     let bloodRequest: any = null;
     let implicitSchedule = false;
 
+    // Helper nội bộ: đảm bảo ngày dự kiến hiến không sớm hơn next_eligible_date của người hiến
     // Kiểm tra quy tắc khoảng cách hiến máu (next_eligible_date) so với ngày của lịch
     const assertEligibleOn = async (date: Date | string) => {
       const eligibility = await this.calculateDonorEligibility(userId);
@@ -240,6 +248,7 @@ export class DonorService {
       }
     };
 
+    // B2: Nếu đăng ký hỗ trợ một yêu cầu cần máu cụ thể -> kiểm tra tương thích nhóm máu, giới hạn 3 người và tạo lịch riêng nếu cần
     // 1. Nếu đang đăng ký cho một yêu cầu cụ thể
     if (data.request_id) {
       bloodRequest = await this.prisma.blood_requests.findUnique({
@@ -313,6 +322,7 @@ export class DonorService {
       }
     }
 
+    // B3: Kiểm tra lịch đích tồn tại, còn mở, còn chỗ trống, đúng hạn hiến và người dùng chưa đăng ký trùng
     if (!finalScheduleId) {
       throw new BadRequestException('Không thể xác định lịch hiến máu.');
     }
@@ -344,6 +354,7 @@ export class DonorService {
       throw new BadRequestException('Bạn đã đăng ký lịch này rồi');
     }
 
+    // B4: Tạo bản ghi đăng ký CONFIRMED, tăng current_donors và gắn bản ghi match ACCEPTED nếu đi theo yêu cầu máu
     // Đánh dấu notes nếu có request_id
     let slotNotes = data.notes || '';
     if (bloodRequest) {
@@ -376,6 +387,7 @@ export class DonorService {
       });
     }
 
+    // B5: Gửi thông báo xác nhận cho người hiến và thông báo cho Admin
     const user = await this.prisma.users.findUnique({ where: { user_id: userId } });
 
     await this.notificationsService.createNotification({
@@ -402,6 +414,7 @@ export class DonorService {
    * Hủy một lịch hẹn hiến máu đã đặt và giải phóng lượt đặt chỗ tương ứng.
    */
   async cancelDonationSlot(userId: number, slotId: number) {
+    // B1: Tìm lịch hẹn đang active của người dùng và kiểm tra quy tắc phải hủy trước ít nhất 2 ngày
     const slot = await this.prisma.donor_availability_slots.findFirst({
       where: { slot_id: slotId, user_id: userId, is_active: true },
       include: { schedule: true },
@@ -420,6 +433,7 @@ export class DonorService {
       throw new BadRequestException('Chỉ được phép hủy lịch trước ngày hiến máu ít nhất 2 ngày.');
     }
 
+    // B2: Đánh dấu slot CANCELLED, giảm current_donors của lịch và gửi thông báo xác nhận hủy
     // Tiến hành hủy
     await this.prisma.donor_availability_slots.update({
       where: { slot_id: slotId },
@@ -448,6 +462,7 @@ export class DonorService {
    * Lấy lịch sử các lần đã hiến máu kèm thống kê tổng thể tích và cơ sở tiếp nhận.
    */
   async getDonationHistory(userId: number) {
+    // B1: Lấy đồng thời danh sách lịch hẹn đã đặt và các bản ghi kết quả hiến máu thực tế
     const slots = await this.prisma.donor_availability_slots.findMany({
       where: { user_id: userId },
       include: {
@@ -463,6 +478,7 @@ export class DonorService {
       include: { facility: true, component: true, blood_type: true }
     });
 
+    // B2: Khớp từng slot theo ngày với bản ghi donation thực tế (dùng Set để không ghép trùng 1 donation cho nhiều slot)
     // Map slots to a unified history
     const usedDonationIds = new Set<number>();
     const history = slots.map(slot => {
@@ -488,6 +504,7 @@ export class DonorService {
       };
     });
 
+    // B3: Bổ sung các lượt hiến trực tiếp (walk-in) không đi qua slot đặt trước rồi sắp xếp mới nhất lên đầu
     // Also add any donations that don't have a matching slot (e.g. walk-ins)
     const walkInDonations = donations.filter(d => !slots.some(s => {
       const sDate = s.specific_date || s.schedule?.date;
@@ -532,6 +549,7 @@ export class DonorService {
    * Tổng hợp các cột mốc thành tích và huy hiệu đạt được của người hiến máu.
    */
   async getDonorAchievements(userId: number) {
+    // B1: Truy vấn thông tin người hiến, các lần hiến COMPLETED và số lượt được kêu gọi/match
     const user = await this.prisma.users.findUnique({
       where: { user_id: userId },
       include: {
@@ -553,6 +571,7 @@ export class DonorService {
       where: { donor_user_id: userId }
     });
 
+    // B2: Tính toán danh sách huy hiệu đạt được theo các mốc số lần hiến (1, 3, 5, 10) và huy hiệu nhóm máu hiếm
     const badges = [];
     if (totalDonations >= 1) badges.push({ id: 'first_blood', name: 'Giọt Máu Đầu Tiên', icon: 'droplet', color: 'bg-red-100 text-red-600' });
     if (totalDonations >= 3) badges.push({ id: 'bronze', name: 'Trái Tim Đồng', icon: 'heart', color: 'bg-amber-100 text-amber-600' });
@@ -669,6 +688,7 @@ export class DonorService {
    * Lấy danh sách chứng nhận hiến máu của người dùng đang đăng nhập có phân trang.
    */
   async getMyCertificates(userId: number, query: PaginationDto) {
+    // Khởi tạo phân trang và lọc chứng nhận theo user đang đăng nhập (tùy chọn trạng thái)
     const page = query.page || 1;
     const limit = query.limit || 10;
     const skip = (page - 1) * limit;
@@ -718,6 +738,7 @@ export class DonorService {
    * Lấy danh sách chứng nhận hiến máu phục vụ quản trị duyệt cấp chứng nhận.
    */
   async listCertificates(query: PaginationDto, user?: any) {
+    // Khởi tạo phân trang, lọc trạng thái, cơ sở HOSPITAL_STAFF và kết hợp điều kiện tìm kiếm tên/mã chứng nhận
     const page = query.page || 1;
     const limit = query.limit || 20;
     const skip = (page - 1) * limit;
@@ -783,6 +804,7 @@ export class DonorService {
    * Phê duyệt phát hành chứng nhận hiến máu cho lượt hiến theo ID.
    */
   async approveCertificate(certId: number, user: any) {
+    // B1: Tìm chứng nhận, kiểm tra phạm vi cơ sở của HOSPITAL_STAFF và chặn duyệt trùng
     const cert = await this.prisma.donation_certificates.findUnique({
       where: { certificate_id: certId },
       include: { donation: { include: { donor: true, facility: true } } }
@@ -796,6 +818,7 @@ export class DonorService {
 
     if (cert.status === 'APPROVED') throw new BadRequestException('Chứng nhận đã được duyệt');
 
+    // B2: Cấp số hiệu con dấu SEAL-YYYY-XXXXX, chuyển trạng thái APPROVED và thông báo tới người hiến máu
     const sealNumber = `SEAL-${new Date().getFullYear()}-${String(certId).padStart(5, '0')}`;
 
     const updated = await this.prisma.donation_certificates.update({
@@ -865,6 +888,7 @@ export class DonorService {
    * Tổng hợp bảng xếp hạng người hiến máu tiêu biểu công khai có tìm kiếm, sắp xếp và phân trang.
    */
   async getPublicLeaderboard(query: any) {
+    // B1: Lấy danh sách người hiến (đã đăng ký hoặc đã có lượt hiến COMPLETED)
     const page = query.page || 1;
     const limit = query.limit || 10;
     const search = query.search || '';
@@ -902,6 +926,7 @@ export class DonorService {
       }
     });
 
+    // B2: Quy đổi số lần hiến, tổng thể tích (ước lượng 350ml/lần nếu thiếu dữ liệu chi tiết) và số huy hiệu đạt được
     const mappedUsers = users.map(user => {
       const donationRecordsCount = user.donations_donor.length;
       const profileCount = user.donor_profile?.total_donations || 0;
@@ -930,6 +955,7 @@ export class DonorService {
       };
     });
 
+    // B3: Lọc những người đã từng hiến (trừ khi đang tìm kiếm theo tên), sắp xếp và cắt phân trang
     let filteredUsers = search ? mappedUsers : mappedUsers.filter(u => u.totalDonations > 0);
     if (filteredUsers.length === 0 && !search) {
       filteredUsers = mappedUsers;
@@ -1007,6 +1033,7 @@ export class DonorService {
    * Lấy danh sách tất cả lượt đăng ký hiến máu thuộc cơ sở quản lý có lọc và phân trang.
    */
   async getSlots(query: PaginationDto, user: any) {
+    // B1: Xây dựng bộ lọc theo trạng thái, tên người hiến và cơ sở của HOSPITAL_STAFF
     const page = query.page || 1;
     const limit = query.limit || 20;
 
@@ -1026,6 +1053,7 @@ export class DonorService {
       };
     }
 
+    // B2: Với chế độ sắp xếp mặc định (status_priority), tải dữ liệu rồi sort theo thứ tự ưu tiên nghiệp vụ và cắt trang
     const isDefaultSort = !query.sortBy || query.sortBy === 'status_priority';
     const sortOrder = query.sortOrder || 'desc';
 
@@ -1063,6 +1091,7 @@ export class DonorService {
       };
     }
 
+    // B3: Với các cột sắp xếp chuẩn DB (created_at, status), thực hiện phân trang trực tiếp tại Prisma
     const skip = (page - 1) * limit;
     let orderBy: any[];
     if (query.sortBy === 'created_at') {
@@ -1190,10 +1219,12 @@ export class DonorService {
    * Ghi nhận kết quả một lần hiến máu hoàn thành: lưu lịch sử hiến, tạo chứng nhận chờ duyệt, cập nhật túi máu và cộng dồn tổng lượt hiến.
    */
   async recordDonation(user: any, dto: RecordDonationDto) {
+    // B1: Xác định cơ sở y tế (ép theo nhân viên bệnh viện nếu là HOSPITAL_STAFF)
     const facilityId = user.role_code === 'HOSPITAL_STAFF' ? user.facility_id : dto.facility_id;
     if (!facilityId) throw new BadRequestException('Cơ sở y tế không hợp lệ');
 
     return await this.prisma.$transaction(async (tx) => {
+      // B2: Sinh mã donation_code và tìm yêu cầu máu đi kèm nếu ca hiến theo request_code
       const donationCode = `DON-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
       let requestId: number | null = null;
@@ -1207,6 +1238,7 @@ export class DonorService {
         }
       }
 
+      // B3: Tạo bản ghi kết quả hiến máu (COMPLETED nếu sàng lọc đạt, REJECTED nếu không đạt)
       const screeningPassed = dto.health_check_passed !== false;
       const donation = await tx.donations.create({
         data: {
@@ -1225,6 +1257,7 @@ export class DonorService {
         }
       });
 
+      // B4: Nếu hiến cho yêu cầu máu cụ thể -> cộng dồn units_fulfilled và chuyển COMPLETED nếu đủ đơn vị
       if (requestId && screeningPassed && matchedRequest && matchedRequest.units_fulfilled < matchedRequest.units_needed) {
         const newFulfilled = matchedRequest.units_fulfilled + 1;
         let newStatusId = matchedRequest.status_id;
@@ -1250,6 +1283,7 @@ export class DonorService {
         }
       }
 
+      // B5: Khi sàng lọc đạt -> nhập túi máu vào kho (RESERVED nếu gắn yêu cầu mở, ngược lại AVAILABLE), ghi giao dịch và cộng dồn hồ sơ/nhắc lịch
       if (screeningPassed) {
         const requestOpen = !!requestId && !!matchedRequest && matchedRequest.units_fulfilled < matchedRequest.units_needed;
         // Mặc định hạn sử dụng máu là 35 ngày
@@ -1355,6 +1389,7 @@ export class DonorService {
         });
       }
 
+      // B6: Khởi tạo sẵn chứng nhận hiến máu ở trạng thái PENDING để nhân viên phê duyệt sau
       // Auto-create certificate (PENDING — cần admin/staff duyệt), chỉ khi sàng lọc đạt
       if (screeningPassed) {
         const certCode = `BL-${new Date(dto.donation_date).getFullYear()}-${String(donation.donation_id).padStart(5, '0')}`;
@@ -1383,6 +1418,7 @@ export class DonorService {
     today.setHours(0, 0, 0, 0);
 
     try {
+      // B1: Tìm các bản ghi nhắc nhở chưa gửi đã đến hạn hoặc quá ngày reminder_date
       const reminders = await this.prisma.donation_reminders.findMany({
         where: {
           is_sent: false,
@@ -1390,6 +1426,7 @@ export class DonorService {
         }
       });
 
+      // B2: Gửi thông báo tới từng người hiến máu và đánh dấu is_sent = true để tránh gửi lặp
       if (reminders.length > 0) {
         for (const reminder of reminders) {
           await this.notificationsService.createNotification({
