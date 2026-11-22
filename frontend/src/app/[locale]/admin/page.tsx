@@ -54,12 +54,14 @@ export default function AdminDashboardPage() {
         facilityId: facilityId === 'all' ? undefined : facilityId
       });
 
+      // B1: Lấy số liệu thống kê, cảnh báo và chuỗi dữ liệu biểu đồ từ backend
       const rawStats = res.data?.stats || {};
       const rawAlerts = res.data?.alerts || {};
       const rawChart = res.data?.chartData || [];
 
 
 
+      // B2: Rẽ nhánh cấu trúc thẻ KPI hiển thị tùy theo vai trò Kiểm duyệt viên (MODERATOR) hay Quản trị/Bệnh viện
       if (isMod) {
         setStats([
           { 

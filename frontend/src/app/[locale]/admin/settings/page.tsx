@@ -92,6 +92,7 @@ export default function AdminSettingsPage() {
   /** Kiểm tra khóa/giá trị hợp lệ và lưu cập nhật cấu hình qua API upsertSetting. */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    // Kiểm tra đủ setting_key và setting_value rồi gọi API upsert để tạo mới hoặc ghi đè cấu hình
     if (!formData.setting_key || !formData.setting_value) {
       toast.error('Vui lòng nhập Key và Value');
       return;

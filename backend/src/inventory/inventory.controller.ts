@@ -93,6 +93,7 @@ export class InventoryController {
   @Roles(RoleCode.ADMIN, RoleCode.STAFF, RoleCode.HOSPITAL_STAFF)
   @Get('export')
   async exportExcel(@Query() query: any, @Res() res: Response, @Req() req: any) {
+    // Gọi service tạo buffer Excel tồn kho rồi gắn header Content-Type xlsx để trình duyệt tải về
     const buffer = await this.inventoryService.exportExcel(query, req.user);
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', 'attachment; filename=inventory.xlsx');

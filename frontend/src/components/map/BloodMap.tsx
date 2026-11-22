@@ -105,6 +105,7 @@ export default function BloodMap({ facilities, onFacilitySelect, selectedFacilit
   const defaultCenter: [number, number] = [10.8231, 106.6297]; // Ho Chi Minh City
   const defaultZoom = 12;
 
+  // B1: Khởi tạo bản đồ Leaflet giới hạn trong lãnh thổ Việt Nam và sử dụng tile Google Maps tiếng Việt
   // Initialize map
   useEffect(() => {
     if (!mapContainerRef.current || mapRef.current) return;
@@ -142,6 +143,7 @@ export default function BloodMap({ facilities, onFacilitySelect, selectedFacilit
     };
   }, []);
 
+  // B2: Vẽ lại marker từng cơ sở y tế (đếm yêu cầu chờ, tô màu cảnh báo) và tự căn khung nhìn fitBounds
   // Update markers when facilities change
   useEffect(() => {
     if (!mapRef.current || !markersRef.current) return;
@@ -196,6 +198,7 @@ export default function BloodMap({ facilities, onFacilitySelect, selectedFacilit
     }
   }, [facilities, selectedFacilityId, nearestFacilityId]);
 
+  // B3: Cập nhật marker vị trí GPS hiện tại và vẽ đường nét đứt nối tới cơ sở gần nhất
   // User location marker
   useEffect(() => {
     if (!mapRef.current) return;

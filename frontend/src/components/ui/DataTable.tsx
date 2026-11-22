@@ -116,6 +116,7 @@ export function DataTable<T extends Record<string, any>>({
 
   /** Xử lý chuyển đổi chu kỳ sắp xếp cột (tăng dần -> giảm dần -> bỏ sắp xếp). */
   const handleSort = (key: string) => {
+    // Xoay vòng trạng thái sắp xếp cho cột hiện tại: asc -> desc -> bỏ sắp xếp -> asc
     if (!onSort) return;
     if (sortBy === key) {
       if (sortDirection === 'asc') onSort(key, 'desc');
@@ -144,6 +145,7 @@ export function DataTable<T extends Record<string, any>>({
 
   /** Tạo mảng số trang và dấu '...' phục vụ thanh phân trang thu gọn. */
   const generatePagination = () => {
+    // Thu gọn danh sách số trang với dấu '...' quanh trang hiện tại khi tổng số trang > 5
     const pages = [];
     if (totalPages <= 5) {
       for (let i = 1; i <= totalPages; i++) pages.push(i);
@@ -161,6 +163,7 @@ export function DataTable<T extends Record<string, any>>({
 
   /** Chọn hoặc bỏ chọn toàn bộ các dòng dữ liệu đang hiển thị ở trang hiện tại. */
   const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Khi tích chọn tất cả -> gộp ID của trang hiện tại vào danh sách chọn; khi bỏ tích -> chỉ gỡ ID trang hiện tại
     if (!onSelectionChange) return;
     if (e.target.checked) {
       const allIds = data.map(item => item.id).filter(id => !!id);
