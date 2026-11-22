@@ -24,6 +24,7 @@ export class AuthService {
    * Đăng ký tài khoản người dùng mới, băm mật khẩu và gửi mã OTP xác thực qua email.
    */
   async register(dto: RegisterDto) {
+    // B1: Kiểm tra email chưa tồn tại và lấy role mặc định USER
     const existingUser = await this.prisma.users.findUnique({
       where: { email: dto.email },
     });
@@ -40,12 +41,14 @@ export class AuthService {
       throw new BadRequestException('Hệ thống chưa cấu hình Role MEMBER');
     }
 
+    // B2: Băm mật khẩu và sinh mã OTP 6 chữ số (lưu bản hash vào DB để đối chiếu)
     const salt = await bcrypt.genSalt(10);
     const hash = await bcrypt.hash(dto.password, salt);
 
     const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
     const otpHash = await bcrypt.hash(otpCode, 10);
 
+    // B3: Lưu tài khoản ở trạng thái chưa xác thực email và bản ghi OTP cùng trong transaction
     const result = await this.prisma.$transaction(async (tx) => {
       // 1. Tạo user
       const user = await tx.users.create({
@@ -59,6 +62,7 @@ export class AuthService {
         },
       });
 
+      // Đảm bảo loại OTP REGISTER_VERIFY tồn tại trong bảng cấu hình
       let otpType = await tx.otp_types.findUnique({ where: { otp_type_code: OtpTypeCode.REGISTER_VERIFY } });
       if (!otpType) {
         otpType = await tx.otp_types.create({
@@ -87,6 +91,7 @@ export class AuthService {
       };
     });
 
+    // B4: Gửi email chứa mã OTP gốc cho người dùng vừa đăng ký
     await this.mailService.sendVerificationEmail(dto.email, otpCode, dto.full_name);
 
     return {
@@ -100,6 +105,7 @@ export class AuthService {
    * Xác thực mã OTP đăng ký và kích hoạt tài khoản người dùng.
    */
   async verifyOtp(dto: OtpDto) {
+    // B1: Tìm tài khoản và lấy bản ghi OTP đăng ký mới nhất chưa xác thực
     const user = await this.prisma.users.findUnique({ where: { email: dto.email } });
     if (!user) throw new BadRequestException('User không tồn tại');
 
@@ -118,6 +124,7 @@ export class AuthService {
       throw new BadRequestException('Không tìm thấy mã OTP nào đang chờ xác thực');
     }
 
+    // B2: Kiểm tra hạn sử dụng và số lần thử sai tối đa trước khi so khớp bcrypt
     if (new Date() > latestOtp.expires_at) {
       throw new BadRequestException('Mã OTP đã hết hạn');
     }
@@ -128,6 +135,7 @@ export class AuthService {
 
     const isValid = await bcrypt.compare(dto.otp_code, latestOtp.otp_hash);
 
+    // Nếu nhập sai thì tăng bộ đếm attempt_count để khóa khi vượt ngưỡng
     if (!isValid) {
       await this.prisma.user_otps.update({
         where: { otp_id: latestOtp.otp_id },
@@ -136,6 +144,7 @@ export class AuthService {
       throw new BadRequestException('Mã OTP không hợp lệ');
     }
 
+    // B3: Xóa OTP đã dùng và kích hoạt trạng thái email verified + active cho tài khoản
     // OTP đúng, cập nhật trạng thái user
     await this.prisma.$transaction([
       this.prisma.user_otps.delete({
@@ -147,6 +156,7 @@ export class AuthService {
       }),
     ]);
 
+    // B4: Thông báo tới Admin về thành viên mới và gửi lời chào mừng tới người dùng
     // Gửi thông báo cho Admin
     await this.notificationsService.notifyAdmins(
       'Người dùng mới',
@@ -171,17 +181,20 @@ export class AuthService {
    * Tạo và gửi lại mã OTP mới qua email cho tài khoản chưa kích hoạt.
    */
   async resendOtp(dto: ResendOtpDto) {
+    // B1: Kiểm tra tài khoản tồn tại và vẫn đang ở trạng thái chưa xác thực email
     const user = await this.prisma.users.findUnique({ where: { email: dto.email } });
     if (!user) throw new BadRequestException('User không tồn tại');
     if (user.is_email_verified) throw new BadRequestException('Tài khoản đã được xác thực');
 
     const otpType = await this.prisma.otp_types.findUnique({ where: { otp_type_code: OtpTypeCode.REGISTER_VERIFY } });
 
+    // B2: Vô hiệu/xóa toàn bộ OTP đăng ký cũ chưa xác thực trước khi sinh mã mới
     // Delete old OTPs
     await this.prisma.user_otps.deleteMany({
       where: { user_id: user.user_id, otp_type_id: otpType?.otp_type_id, is_verified: false },
     });
 
+    // B3: Sinh OTP mới 6 số, lưu bản hash với thời hạn mới và gửi lại email
     const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
     const otpHash = await bcrypt.hash(otpCode, 10);
     const expiresAt = new Date();
@@ -207,6 +220,7 @@ export class AuthService {
    * Xác thực thông tin đăng nhập, kiểm tra trạng thái kích hoạt và cấp phát access token + refresh token.
    */
   async login(dto: LoginDto, metadata?: { ip_address?: string; device_info?: string }) {
+    // B1: Tìm tài khoản bằng email hoặc username kèm thông tin role và cơ sở y tế
     const user = await this.prisma.users.findFirst({
       where: {
         OR: [
@@ -217,6 +231,7 @@ export class AuthService {
       include: { role: true, facility: true },
     });
 
+    // B2: Kiểm tra tồn tại, xác thực email, trạng thái kích hoạt và đối chiếu mật khẩu bcrypt
     if (!user) {
       throw new UnauthorizedException('Email hoặc mật khẩu không chính xác');
     }
@@ -234,6 +249,7 @@ export class AuthService {
       throw new UnauthorizedException('Email hoặc mật khẩu không chính xác');
     }
 
+    // B3: Tạo refresh token ngẫu nhiên, lưu bản băm SHA256 vào bảng phiên đăng nhập và cập nhật last_login_at
     // Sinh refresh token ngẫu nhiên và hash bằng SHA256 để lưu vào user_sessions
     const rawRefreshToken = crypto.randomBytes(40).toString('hex');
     const tokenHash = crypto.createHash('sha256').update(rawRefreshToken).digest('hex');
@@ -258,6 +274,7 @@ export class AuthService {
       },
     });
 
+    // B4: Ký JWT access_token và trả kèm thông tin cơ bản của người dùng
     const payload = { sub: user.user_id, email: user.email, role: user.role.role_code, facility_id: user.facility_id };
 
     return {
@@ -282,6 +299,7 @@ export class AuthService {
    * Kiểm tra refresh token còn hiệu lực trong DB và xoay vòng cấp cặp token mới.
    */
   async refreshToken(rawRefreshToken: string) {
+    // B1: Băm refresh token đầu vào bằng SHA256 và tìm phiên còn hiệu lực, chưa bị thu hồi
     if (!rawRefreshToken) {
       throw new UnauthorizedException('Refresh token không hợp lệ');
     }
@@ -305,6 +323,7 @@ export class AuthService {
       throw new UnauthorizedException('Refresh token không hợp lệ hoặc đã hết hạn');
     }
 
+    // B2: Xoay vòng refresh token mới đè lên session cũ để chống dùng lại token cũ
     // Xoay vòng Refresh Token (Token Rotation)
     const newRefreshToken = crypto.randomBytes(40).toString('hex');
     const newTokenHash = crypto.createHash('sha256').update(newRefreshToken).digest('hex');
@@ -342,6 +361,7 @@ export class AuthService {
    * Đăng xuất bằng cách thu hồi bản ghi refresh token tương ứng.
    */
   async logout(rawRefreshToken?: string) {
+    // Nếu có refresh_token, băm SHA256 và đánh dấu revoked_at cho phiên đăng nhập tương ứng
     if (rawRefreshToken) {
       const tokenHash = crypto.createHash('sha256').update(rawRefreshToken).digest('hex');
       await this.prisma.user_sessions.updateMany({
@@ -356,12 +376,14 @@ export class AuthService {
    * Tạo và gửi mã OTP khôi phục mật khẩu tới email tài khoản đã đăng ký.
    */
   async forgotPassword(dto: ForgotPasswordDto) {
+    // B1: Xác nhận email tồn tại trong hệ thống và sinh OTP 6 chữ số kèm bản hash
     const user = await this.prisma.users.findUnique({ where: { email: dto.email } });
     if (!user) throw new BadRequestException('User không tồn tại');
 
     const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
     const otpHash = await bcrypt.hash(otpCode, 10);
 
+    // B2: Đóng toàn bộ OTP khôi phục cũ chưa dùng rồi lưu OTP mới vào DB trong transaction
     await this.prisma.$transaction(async (tx) => {
       let otpType = await tx.otp_types.findUnique({ where: { otp_type_code: OtpTypeCode.RESET_PASSWORD } });
       if (!otpType) {
@@ -400,6 +422,7 @@ export class AuthService {
    * Xác thực OTP khôi phục và cập nhật mật khẩu mới cho tài khoản.
    */
   async resetPassword(dto: ResetPasswordDto) {
+    // B1: Tìm tài khoản và lấy mã OTP RESET_PASSWORD gần nhất chưa được xác thực
     const user = await this.prisma.users.findUnique({ where: { email: dto.email } });
     if (!user) throw new BadRequestException('User không tồn tại');
 
@@ -414,6 +437,7 @@ export class AuthService {
       orderBy: { created_at: 'desc' },
     });
 
+    // B2: Kiểm tra hạn OTP, số lần nhập sai tối đa và đối chiếu mã OTP bằng bcrypt
     if (!latestOtp) throw new BadRequestException('Không tìm thấy mã OTP nào đang chờ xác thực');
     if (new Date() > latestOtp.expires_at) throw new BadRequestException('Mã OTP đã hết hạn');
     if (latestOtp.attempt_count >= latestOtp.max_attempts) throw new BadRequestException('Bạn đã nhập sai OTP quá nhiều lần');
@@ -428,6 +452,7 @@ export class AuthService {
       throw new BadRequestException('Mã OTP không hợp lệ');
     }
 
+    // B3: Băm mật khẩu mới, đánh dấu OTP đã dùng, đổi mật khẩu và thu hồi toàn bộ phiên đăng nhập cũ
     const salt = await bcrypt.genSalt(10);
     const newPasswordHash = await bcrypt.hash(dto.new_password, salt);
 

@@ -20,6 +20,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
    * Kiểm tra tài khoản từ payload JWT còn tồn tại và đang hoạt động hay không, trả về thông tin user gắn vào `req.user`.
    */
   async validate(payload: any) {
+    // Truy vấn lại user theo sub trong token để đảm bảo tài khoản chưa bị xóa hoặc bị khóa sau khi cấp token
     const user = await this.prisma.users.findUnique({
       where: { user_id: payload.sub },
       include: { role: true },
@@ -29,6 +30,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       throw new UnauthorizedException('Tài khoản không tồn tại hoặc đã bị khóa');
     }
 
+    // Gắn thông tin phân quyền chuẩn hóa vào req.user cho các Guard và Controller phía sau
     return {
       user_id: user.user_id,
       email: user.email,

@@ -24,6 +24,7 @@ export const useAuthStore = create<AuthState>()(
       donorProfile: null,
       /** Lưu token vào localStorage và cập nhật trạng thái đã đăng nhập trong store. */
       login: (user, token, refreshToken) => {
+        // Đồng bộ access_token/refresh_token xuống localStorage trước khi bật cờ isAuthenticated trong Zustand
         if (typeof window !== 'undefined') {
           localStorage.setItem('access_token', token);
           if (refreshToken) {
@@ -34,7 +35,9 @@ export const useAuthStore = create<AuthState>()(
       },
       /** Xóa token, reset store về trạng thái chưa đăng nhập và chuyển hướng về /login. */
       logout: () => {
+        // B1: Xóa sạch thông tin user và hồ sơ hiến máu trong Zustand
         set({ user: null, isAuthenticated: false, donorProfile: null });
+        // B2: Gỡ token khỏi localStorage và chuyển hướng về /login nếu đang đứng ở trang khác
         if (typeof window !== 'undefined') {
           localStorage.removeItem('access_token');
           localStorage.removeItem('refresh_token');

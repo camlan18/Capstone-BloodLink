@@ -103,6 +103,7 @@ export class MailService {
    * Gửi email chứa mã OTP xác thực tài khoản sau khi người dùng đăng ký.
    */
   async sendVerificationEmail(email: string, otpCode: string, name: string) {
+    // Tạo nội dung HTML OTP xác thực 10 phút, bọc khung BloodLink và gửi SMTP (lỗi gửi chỉ ghi log)
     const content = `
       <p>Xin chào <strong>${name}</strong>,</p>
       <p>Cảm ơn bạn đã đăng ký tài khoản tại <strong>BloodLink</strong>. Để hoàn tất quá trình đăng ký, vui lòng sử dụng mã xác thực (OTP) dưới đây:</p>
@@ -131,6 +132,7 @@ export class MailService {
    * Gửi email chứa mã OTP hỗ trợ người dùng đặt lại mật khẩu khi quên mật khẩu.
    */
   async sendForgotPasswordEmail(email: string, otpCode: string) {
+    // Dựng template email khôi phục mật khẩu với mã OTP hiệu lực 10 phút và gửi tới người dùng
     const content = `
       <p>Xin chào,</p>
       <p>Chúng tôi nhận được yêu cầu khôi phục mật khẩu cho tài khoản liên kết với email này tại <strong>BloodLink</strong>. Vui lòng sử dụng mã xác thực (OTP) dưới đây để thiết lập lại mật khẩu:</p>
@@ -159,6 +161,7 @@ export class MailService {
    * Gửi email chứa mã OTP xác nhận khi người dùng yêu cầu đổi mật khẩu trong tài khoản.
    */
   async sendChangePasswordEmail(email: string, otpCode: string, name: string) {
+    // Gửi email OTP xác nhận thao tác đổi mật khẩu từ trang tài khoản cá nhân
     const content = `
       <p>Xin chào <strong>${name}</strong>,</p>
       <p>Chúng tôi nhận được yêu cầu đổi mật khẩu cho tài khoản liên kết với email này tại <strong>BloodLink</strong>. Vui lòng sử dụng mã xác thực (OTP) dưới đây để thiết lập lại mật khẩu:</p>
@@ -186,6 +189,7 @@ export class MailService {
    * Gửi email kêu gọi người hiến máu phù hợp tham gia hiến máu cho yêu cầu khẩn cấp.
    */
   async sendDonorMatchEmail(email: string, name: string, patientName: string, bloodType: string, facilityName: string, facilityAddress: string) {
+    // Gửi email thông báo ca cần máu khẩn kèm thông tin bệnh nhân, nhóm máu và địa chỉ bệnh viện
     const content = `
       <p>Xin chào <strong>${name}</strong>,</p>
       <p>Hệ thống <strong>BloodLink</strong> vừa ghi nhận một yêu cầu máu khẩn cấp và bạn là một trong những người hiến máu phù hợp nhất.</p>
@@ -217,6 +221,7 @@ export class MailService {
    * Gửi email xác nhận đã tiếp nhận thông tin liên hệ từ người dùng.
    */
   async sendContactEmail(userEmail: string, name: string, subject: string, message: string) {
+    // Chuyển đổi ký tự xuống dòng \n thành <br/> rồi gửi email xác nhận đã tiếp nhận liên hệ
     const userContent = `
       <p>Xin chào <strong>${name}</strong>,</p>
       <p>Cảm ơn bạn đã liên hệ với <strong>BloodLink</strong>. Chúng tôi đã nhận được tin nhắn của bạn với nội dung như sau:</p>
